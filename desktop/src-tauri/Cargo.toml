@@ -52,6 +52,8 @@ futures = "0.3.31"
 futures-util = "0.3"
 cpal = { git = "https://github.com/thewh1teagle/cpal", branch = "feat/macos-system-audio-permission-check" }
 hound = "3.5.1"
+# Lock-free ring from the audio callback to the WAV writer thread
+rtrb = "0.3"
 rand = "0.9.2"
 # Anonymous, locally generated analytics install id
 uuid = { version = "1", features = ["v4"] }

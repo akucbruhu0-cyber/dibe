@@ -3,14 +3,11 @@
 //! Every `start_record` reserves the one slot here and gets a `session_id` back; `stop_record`
 //! must present that id. A stop for another session (or for one that already finished) is a no-op,
 //! so one caller can never end a recording that belongs to someone else.
+use super::writer::WriterHandle;
 use cpal::Stream;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::BufWriter;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-
-pub type WavWriterHandle = Arc<Mutex<Option<hound::WavWriter<BufWriter<File>>>>>;
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 pub struct StreamHandle(pub Stream);
 // A cpal stream is only ever played, paused and dropped by whoever owns the session.
@@ -37,7 +34,7 @@ pub struct ActiveRecording {
     pub origin: RecordingOrigin,
     pub recording_name: Option<String>,
     pub streams: Vec<StreamHandle>,
-    pub writers: Vec<WavWriterHandle>,
+    pub writers: Vec<WriterHandle>,
     pub wav_paths: Vec<PathBuf>,
 }
 
@@ -58,10 +55,15 @@ impl ActiveRecording {
 pub struct RecordingState(Mutex<Option<ActiveRecording>>);
 
 impl RecordingState {
+    /// The slot stays usable even if a thread panicked while holding it (release builds abort anyway).
+    fn slot(&self) -> MutexGuard<'_, Option<ActiveRecording>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// Reserves the slot for a new session. The streams are attached later with `install`, so a
     /// slow device never keeps the lock while a second caller is being turned away.
     pub fn try_begin(&self, origin: RecordingOrigin) -> Result<String, AlreadyRecording> {
-        let mut slot = self.0.lock().expect("lock");
+        let mut slot = self.slot();
         if slot.is_some() {
             return Err(AlreadyRecording);
         }
@@ -70,18 +72,25 @@ impl RecordingState {
         Ok(session_id)
     }
 
-    /// Hands the running streams to the slot `try_begin` reserved for the same session.
-    pub fn install(&self, recording: ActiveRecording) {
-        let mut slot = self.0.lock().expect("lock");
+    /// Hands the running streams to the slot `try_begin` reserved for the same session. Returns
+    /// false, and drops `recording`, when the session already ended (a device failed while starting).
+    pub fn install(&self, recording: ActiveRecording) -> bool {
+        let mut slot = self.slot();
         match slot.as_mut().filter(|active| active.session_id == recording.session_id) {
-            Some(active) => *active = recording,
-            None => tracing::error!("recording session {} was released before it started", recording.session_id),
+            Some(active) => {
+                *active = recording;
+                true
+            }
+            None => {
+                tracing::error!("recording session {} was released before it started", recording.session_id);
+                false
+            }
         }
     }
 
     /// Releases the slot and returns the session, or `None` when `session_id` is not the active one.
     pub fn take(&self, session_id: &str) -> Option<ActiveRecording> {
-        let mut slot = self.0.lock().expect("lock");
+        let mut slot = self.slot();
         if slot.as_ref()?.session_id != session_id {
             return None;
         }
