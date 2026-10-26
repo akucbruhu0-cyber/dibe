@@ -14,7 +14,8 @@ use crate::server::unload_timeout::ModelLease;
 use crate::server::{error, format, TextResponse};
 
 pub(super) struct TranscriptionRequest {
-    pub file: Vec<u8>,
+    /// The upload, spooled to disk while it arrived; deleted when this is dropped.
+    pub file: tempfile::NamedTempFile,
     pub form: HashMap<String, String>,
 }
 
@@ -39,13 +40,15 @@ pub(super) async fn transcribe(
         enhance_audio,
         verbose: config.verbose(),
     };
-    let samples = audio::read_bytes_with_options(file, audio_options).map_err(|err| {
+    let samples = audio::read_path_with_options(file.path(), audio_options).map_err(|err| {
         error(
             StatusCode::BAD_REQUEST,
             "invalid_audio",
             &format!("invalid audio file: {err}"),
         )
     })?;
+    // Decoded: a screen recording can be gigabytes, and the transcription below can run for hours.
+    drop(file);
 
     let diar_segments = diarize_model
         .as_deref()

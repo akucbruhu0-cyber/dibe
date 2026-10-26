@@ -1,4 +1,4 @@
-use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -13,9 +13,17 @@ pub fn read_file_with_options(path: impl AsRef<Path>, options: ReadOptions) -> a
     read_with_options(&mut file, options)
 }
 
-pub fn read_bytes_with_options(bytes: Vec<u8>, options: ReadOptions) -> anyhow::Result<Vec<f32>> {
-    let mut cursor = Cursor::new(bytes);
-    read_with_options(&mut cursor, options)
+/// Decodes a file on disk without loading it whole: a native WAV is read in place,
+/// anything else goes to ffmpeg by path. The upload route spools to disk and lands here.
+pub fn read_path_with_options(path: &Path, options: ReadOptions) -> anyhow::Result<Vec<f32>> {
+    if !options.enhance_audio {
+        // Buffered: hound reads a sample at a time, which on a bare File is a syscall each.
+        let mut file = std::io::BufReader::new(std::fs::File::open(path)?);
+        if let Ok(samples) = try_read_native_wav(&mut file) {
+            return Ok(samples);
+        }
+    }
+    convert_and_read(path, options)
 }
 
 pub fn read_with_options<R: Read + Seek>(reader: &mut R, options: ReadOptions) -> anyhow::Result<Vec<f32>> {
@@ -29,13 +37,16 @@ pub fn read_with_options<R: Read + Seek>(reader: &mut R, options: ReadOptions) -
     let mut input = tempfile::NamedTempFile::new()?;
     std::io::copy(reader, &mut input)?;
     input.flush()?;
+    convert_and_read(input.path(), options)
+}
 
-    let output_path = PathBuf::from(format!("{}.wav", input.path().display()));
-    convert_to_native_wav(input.path(), &output_path, options)?;
-    let mut output = std::fs::File::open(&output_path)?;
-    let samples = try_read_native_wav(&mut output)?;
-    let _ = std::fs::remove_file(output_path);
-    Ok(samples)
+/// ffmpeg turns `input` into a native WAV in a temp file of its own (never beside the
+/// input, which may be the caller's file), and the samples are read back. The output
+/// is removed on every path, a failed conversion included.
+fn convert_and_read(input: &Path, options: ReadOptions) -> anyhow::Result<Vec<f32>> {
+    let output = tempfile::Builder::new().suffix(".wav").tempfile()?.into_temp_path();
+    convert_to_native_wav(input, &output, options)?;
+    try_read_native_wav(&mut std::io::BufReader::new(std::fs::File::open(&output)?))
 }
 
 pub fn convert_to_native_wav(
@@ -169,6 +180,8 @@ fn find_in_path(name: &str) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
 
     fn fixture(name: &str) -> PathBuf {
@@ -200,6 +213,25 @@ mod tests {
         );
         let drift = (mixed.len() as f32 - whole.len() as f32).abs() / whole.len() as f32;
         assert!(drift < 0.02, "mix is {} samples, source {}", mixed.len(), whole.len());
+    }
+
+    /// The upload route decodes from the spooled file; it must hear what the in-memory
+    /// route heard, for a native WAV (read directly) and for a container (ffmpeg).
+    #[test]
+    fn read_path_matches_read_bytes() {
+        let have_ffmpeg = find_ffmpeg().is_ok();
+        for name in ["short.wav", "short.mp4"] {
+            if name.ends_with(".mp4") && !have_ffmpeg {
+                eprintln!("skipping {name}: ffmpeg not found");
+                continue;
+            }
+            let path = fixture(name);
+            let bytes = std::fs::read(&path).unwrap();
+            let from_bytes = read_with_options(&mut Cursor::new(bytes), ReadOptions::default()).unwrap();
+            let from_path = read_path_with_options(&path, ReadOptions::default()).unwrap();
+            assert!(!from_path.is_empty(), "{name} decoded to nothing");
+            assert_eq!(from_path, from_bytes, "{name}");
+        }
     }
 
     /// The silence trim still applies on top of a mix.
