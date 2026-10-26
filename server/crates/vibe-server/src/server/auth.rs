@@ -76,6 +76,7 @@ mod tests {
             inner,
             config: AppConfig::default(),
             token: token.map(Arc::from),
+            live: Default::default(),
         })
     }
 

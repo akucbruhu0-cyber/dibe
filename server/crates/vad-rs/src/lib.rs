@@ -90,7 +90,14 @@ impl Vad {
         self.options
     }
 
+    /// Speech chunks for transcription: [`Vad::speech`] joined into windows of up to `max_chunk_ms`.
     pub fn segments(&mut self, samples: &[f32]) -> Result<Vec<SpeechSegment>> {
+        let speech = self.speech(samples)?;
+        Ok(coalesce_bounded(&speech, samples.len(), self.options))
+    }
+
+    /// Speech as detected, before [`Vad::segments`] joins it into chunks, so the pauses survive.
+    pub fn speech(&mut self, samples: &[f32]) -> Result<Vec<SpeechSegment>> {
         if samples.is_empty() {
             return Ok(Vec::new());
         }
@@ -109,7 +116,7 @@ impl Vad {
                 });
             }
         }
-        Ok(coalesce_bounded(&speech, samples.len(), self.options))
+        Ok(speech)
     }
 }
 

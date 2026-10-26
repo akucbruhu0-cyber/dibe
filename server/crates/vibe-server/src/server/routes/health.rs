@@ -18,12 +18,22 @@ pub(in crate::server) async fn health() -> impl IntoResponse {
     get,
     path = "/ready",
     responses(
-        (status = 200, description = "Model loaded", body = ReadyResponse),
+        (status = 200, description = "Model loaded, or busy (in use by a transcription or live session)", body = ReadyResponse),
         (status = 503, description = "No model loaded", body = ReadyResponse)
     )
 )]
 pub(in crate::server) async fn ready(State(state): State<AppState>) -> impl IntoResponse {
-    let state = state.inner.lock().await;
+    // Never waits: a live session holds the model for as long as the recording runs.
+    let Ok(state) = state.inner.try_lock() else {
+        return (
+            StatusCode::OK,
+            Json(ReadyResponse {
+                status: "busy",
+                model: None,
+                message: None,
+            }),
+        );
+    };
     if state.ctx.is_some() {
         (
             StatusCode::OK,

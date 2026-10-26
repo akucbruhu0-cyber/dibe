@@ -2,6 +2,7 @@ mod auth;
 mod diarization;
 mod form;
 pub(crate) mod format;
+mod live;
 mod routes;
 mod stream;
 mod transcription;
@@ -34,6 +35,8 @@ pub(super) struct AppState {
     config: AppConfig,
     /// Bearer token every request but `/health` must present; `None` leaves the API open.
     token: Option<Arc<str>>,
+    /// The live-transcription session, if one is running. Taken before `inner`, never after: see `routes::live`.
+    live: routes::live::SharedLiveSlot,
 }
 
 pub(super) struct ServerState {
@@ -97,7 +100,10 @@ impl ServerState {
         routes::models::model_metadata,
         routes::models::unload_model,
         routes::models::list_models,
-        routes::transcriptions::transcriptions
+        routes::transcriptions::transcriptions,
+        routes::live::start_live,
+        routes::live::push_audio,
+        routes::live::stop_live
     ),
     components(schemas(
         HealthResponse,
@@ -113,7 +119,11 @@ impl ServerState {
         TextResponse,
         format::VerboseJson,
         format::VerboseSegment,
-        format::Warning
+        format::Warning,
+        routes::live::LiveStartRequest,
+        routes::live::LiveStartResponse,
+        routes::live::LiveUpdate,
+        live::LiveEvent
     )),
     tags((name = "vibe-server", description = "vibe-server transcription server"))
 )]
@@ -131,6 +141,9 @@ fn router(state: AppState) -> Router {
             delete(routes::models::unload_model).get(routes::models::list_models),
         )
         .route("/v1/audio/transcriptions", post(routes::transcriptions::transcriptions))
+        .route("/v1/live", post(routes::live::start_live))
+        .route("/v1/live/{id}/audio", post(routes::live::push_audio))
+        .route("/v1/live/{id}", delete(routes::live::stop_live))
         .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE));
     // Without a token (manual command-line use) the server answers anyone, as it always has.
@@ -162,7 +175,9 @@ pub async fn serve(
         inner,
         config,
         token: token.map(Arc::from),
+        live: routes::live::SharedLiveSlot::default(),
     };
+    tokio::spawn(routes::live::reap_idle(Arc::clone(&state.live)));
     let ready_config = state.config;
     let app = router(state);
 
