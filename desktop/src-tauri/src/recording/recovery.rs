@@ -3,7 +3,9 @@
 //! While recording, every device writes `<session id>-<device index>.wav` into the in-progress
 //! folder in app data, which, unlike the temp folder, is never wiped. A normal stop removes those
 //! files; whatever is still there at the next launch belongs to a recording that did not finish.
-//! `scan` turns each such session back into one WAV and the UI makes a project of it.
+//! `scan` turns each such session back into one WAV in the `recovered` folder, and the UI makes a
+//! project of it and then `forget`s it. Until then every launch offers it again, so it survives a
+//! UI that quit or failed halfway.
 
 use super::finalize::finalize_captures;
 use crate::error::LogError;
@@ -21,8 +23,13 @@ use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Manager};
 
 const IN_PROGRESS_DIR: &str = "recordings-in-progress";
+/// Inside the in-progress folder: the recordings rebuilt from crashed sessions, kept until the UI
+/// has made a project of each.
+const RECOVERED_DIR: &str = "recovered";
 /// Every capture is a 32-bit float WAV (see `capture::wav_spec`).
-const BYTES_PER_SAMPLE: u64 = 4;
+pub const BYTES_PER_SAMPLE: u64 = 4;
+/// A file shorter than this cannot hold a WAV header, so nothing was ever recorded in it.
+const WAV_HEADER_LEN: u64 = 44;
 
 /// A recording rebuilt from what a dead session left on disk, waiting to become a project.
 #[derive(Debug, Serialize, Clone)]
@@ -117,50 +124,138 @@ pub fn repair_wav_header(path: &Path) -> Result<u64> {
 
     let data = (len - data_at) / block_align * block_align;
     let end = data_at + data;
+    // Everything that can fail is checked before the first write: a file that cannot be repaired
+    // is left exactly as it was.
+    let riff_size = u32::try_from(end - 8).context("larger than a WAV can hold")?;
+    let data_size = u32::try_from(data).context("larger than a WAV can hold")?;
     if end != len {
         file.set_len(end)?;
     }
-    set_u32(&mut file, 4, u32::try_from(end - 8).context("larger than a WAV can hold")?)?;
-    set_u32(
-        &mut file,
-        data_at - 4,
-        u32::try_from(data).context("larger than a WAV can hold")?,
-    )?;
+    set_u32(&mut file, 4, riff_size)?;
+    set_u32(&mut file, data_at - 4, data_size)?;
     Ok(data)
 }
 
-/// Rebuilds one dead session: repairs each device's file, then merges and normalizes them like a
-/// normal stop does, into the same folder.
-fn recover_session(dir: &Path, captures: Vec<(usize, PathBuf)>) -> Option<RecoveredRecording> {
-    let mut files = Vec::new();
-    let mut last_written: Option<SystemTime> = None;
-    for (_, path) in captures {
-        // Before the repair touches the file: the modification time is when the audio ended.
-        let modified = std::fs::metadata(&path).and_then(|metadata| metadata.modified()).ok();
-        last_written = last_written.max(modified);
-        let samples = repair_wav_header(&path)
-            .map(|bytes| bytes / BYTES_PER_SAMPLE)
-            .unwrap_or_else(|error| {
-                tracing::error!("could not repair {}: {error:#}", path.display());
-                0
-            });
-        files.push((path, samples));
-    }
+/// Where the recordings rebuilt from crashed sessions wait for the UI.
+pub fn recovered_dir(in_progress: &Path) -> PathBuf {
+    in_progress.join(RECOVERED_DIR)
+}
 
-    let recorded_at: DateTime<Local> = last_written.unwrap_or_else(SystemTime::now).into();
-    let stem = recorded_at.format("%Y-%m-%d %H-%M-%S").to_string();
-    // What went wrong along the way is logged by `finalize_captures`; the audio is what matters here.
-    let output = finalize_captures(&files, dir, &stem, &mut Vec::new())?;
+/// A recording waiting in the recovered folder, described by its file: the modification time is
+/// when the audio ended.
+fn describe(path: &Path) -> Option<RecoveredRecording> {
+    let modified = std::fs::metadata(path).and_then(|metadata| metadata.modified()).ok();
+    let recorded_at: DateTime<Local> = modified.unwrap_or_else(SystemTime::now).into();
     Some(RecoveredRecording {
-        name: output.file_name()?.to_string_lossy().into_owned(),
-        path: output.to_string_lossy().into_owned(),
+        name: path.file_name()?.to_string_lossy().into_owned(),
+        path: path.to_string_lossy().into_owned(),
         recorded_at: recorded_at.to_rfc3339(),
     })
 }
 
-/// Turns every session left in `dir` into one recording, except the one `active` belongs to.
-/// A session that cannot be rebuilt is logged and skipped, never an error for the launch.
+/// Every recording in the recovered folder, oldest first by name (which is its timestamp).
+fn list_recovered(dir: &Path) -> Vec<RecoveredRecording> {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) => {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                tracing::error!("could not read {}: {error}", dir.display());
+            }
+            return Vec::new();
+        }
+    };
+    let mut paths: Vec<PathBuf> = entries
+        .filter_map(|entry| entry.log_error())
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "wav") && path.is_file())
+        .collect();
+    paths.sort();
+    paths.iter().filter_map(|path| describe(path)).collect()
+}
+
+/// Deletes a recording from the recovered folder once the UI has saved it as a project. This is
+/// the only thing the UI can make the app delete, so it refuses everything that does not resolve
+/// (links and `..` included) to a WAV directly inside the recovered folder. A path that is already
+/// gone is fine.
+pub fn forget(recovered_dir: &Path, path: &Path) -> Result<()> {
+    let path = match path.canonicalize() {
+        Ok(path) => path,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+    };
+    let root = recovered_dir.canonicalize().context("no recovered recordings folder")?;
+    if path.parent() != Some(root.as_path()) || !path.extension().is_some_and(|extension| extension == "wav") {
+        bail!("{} is not a recovered recording", path.display());
+    }
+    Ok(std::fs::remove_file(path)?)
+}
+
+/// Rebuilds one dead session: repairs each device's file, then merges and normalizes them like a
+/// normal stop does, and puts the result in the recovered folder. Returns where it ended up.
+fn recover_session(dir: &Path, captures: Vec<(usize, PathBuf)>) -> Option<PathBuf> {
+    let mut files = Vec::new();
+    let mut last_written: Option<SystemTime> = None;
+    for (_, path) in captures {
+        // Before the repair touches the file: the modification time is when the audio ended.
+        let metadata = std::fs::metadata(&path).ok();
+        last_written = last_written.max(metadata.as_ref().and_then(|metadata| metadata.modified().ok()));
+        match repair_wav_header(&path) {
+            Ok(bytes) => files.push((path, bytes / BYTES_PER_SAMPLE)),
+            // Too short to hold a header: nothing was ever recorded, so it is safe to remove.
+            Err(_) if metadata.is_some_and(|metadata| metadata.len() < WAV_HEADER_LEN) => files.push((path, 0)),
+            // Anything else may be a recording that only lost its header, possibly the only copy:
+            // it stays on disk as it is, out of the merge.
+            // ponytail: retried and logged on every launch; rename it to `.corrupt` if that gets noisy.
+            Err(error) => tracing::error!("leaving {} as it is, it cannot be repaired: {error:#}", path.display()),
+        }
+    }
+
+    let stem = DateTime::<Local>::from(last_written.unwrap_or_else(SystemTime::now))
+        .format("%Y-%m-%d %H-%M-%S")
+        .to_string();
+    // What went wrong along the way is logged by `finalize_captures`; the audio is what matters here.
+    let output = finalize_captures(&files, dir, &stem, &mut Vec::new())?;
+
+    // Published by a rename, so the recovered folder never holds a half-written recording.
+    let recovered = recovered_dir(dir);
+    let published = std::fs::create_dir_all(&recovered).and_then(|()| {
+        let target = crate::cmd::files::available_path(&recovered, &stem, "wav");
+        std::fs::rename(&output, &target).map(|()| target)
+    });
+    let output = published.unwrap_or_else(|error| {
+        tracing::error!("could not move {} to the recovered folder: {error}", output.display());
+        output
+    });
+    if let Some(last_written) = last_written {
+        // The recording ended when its captures were last written, not when this launch rebuilt it.
+        File::options()
+            .write(true)
+            .open(&output)
+            .and_then(|file| file.set_modified(last_written))
+            .log_error();
+    }
+    Some(output)
+}
+
+/// Rebuilds every session left in `dir` (except the one `active` belongs to) and returns the
+/// recordings waiting for the UI: these, and the ones earlier launches rebuilt that were never
+/// forgotten. A session that cannot be rebuilt is logged and skipped, never an error for the launch.
 pub fn scan(dir: &Path, active: Option<&Path>) -> Vec<RecoveredRecording> {
+    let rebuilt = recover_crashed_sessions(dir, active);
+    let recovered = recovered_dir(dir);
+    let mut offered = list_recovered(&recovered);
+    // A rebuilt recording that could not be moved into the recovered folder is still offered once.
+    offered.extend(
+        rebuilt
+            .iter()
+            .filter(|path| path.parent() != Some(recovered.as_path()))
+            .filter_map(|path| describe(path)),
+    );
+    offered
+}
+
+/// Turns every capture session left in `dir` into one recording; returns where each ended up.
+fn recover_crashed_sessions(dir: &Path, active: Option<&Path>) -> Vec<PathBuf> {
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(error) => {
@@ -312,8 +407,8 @@ mod tests {
         assert_eq!(recovered.len(), 1);
         let path = PathBuf::from(&recovered[0].path);
         assert!(
-            path.is_file() && path.starts_with(&dir),
-            "kept in the folder that is never wiped"
+            path.is_file() && path.parent() == Some(dir.join("recovered").as_path()),
+            "kept in the folder that is never wiped, apart from the captures"
         );
         // Normalized (16 kHz mono) when ffmpeg is there, the repaired capture otherwise: audio either way.
         assert!(sample_count(&path) > 0);
@@ -327,8 +422,103 @@ mod tests {
         let stamp = DateTime::<Local>::from(ended).format("%Y-%m-%d %H-%M-%S");
         assert_eq!(recovered[0].name, format!("{stamp}.wav"));
         assert!(serde_json::to_value(&recovered[0]).expect("json")["recordedAt"].is_string());
-        // The recovered file is the finished recording, not a second capture to recover.
+        // Offered again by every launch until the UI has saved it and says so: the one that
+        // collected it may have quit before it did.
+        let again = scan(&dir, None);
+        assert_eq!(again.len(), 1);
+        assert_eq!(
+            (&again[0].path, &again[0].recorded_at),
+            (&recovered[0].path, &recovered[0].recorded_at)
+        );
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn scan_offers_recovered_files_again_until_they_are_forgotten() {
+        let dir = temp_dir("offered");
+        let recovered_dir = dir.join("recovered");
+        std::fs::create_dir_all(&recovered_dir).expect("create dir");
+        let left_over = recovered_dir.join("2026-10-24 09-00-00.wav");
+        crashed_wav(&left_over, 1, 4_800);
+        let ended = SystemTime::now() - Duration::from_secs(2 * 24 * 3600);
+        std::fs::File::options()
+            .write(true)
+            .open(&left_over)
+            .and_then(|file| file.set_modified(ended))
+            .expect("set mtime");
+        std::fs::write(recovered_dir.join("notes.txt"), "not audio").expect("write");
+
+        let offered = scan(&dir, None);
+
+        assert_eq!(offered.len(), 1, "only the WAV is offered");
+        assert_eq!(offered[0].path, left_over.to_string_lossy());
+        assert_eq!(offered[0].name, "2026-10-24 09-00-00.wav");
+        let recorded_at = DateTime::parse_from_rfc3339(&offered[0].recorded_at).expect("RFC 3339");
+        assert_eq!(recorded_at.timestamp(), DateTime::<Utc>::from(ended).timestamp());
+        assert!(left_over.exists(), "offering it does not consume it");
+        assert_eq!(scan(&dir, None).len(), 1);
+
+        forget(&recovered_dir, &left_over).expect("forget");
         assert!(scan(&dir, None).is_empty());
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn forget_deletes_inside_the_recovered_folder_and_refuses_anything_else() {
+        let dir = temp_dir("forget");
+        let recovered_dir = dir.join("recovered");
+        std::fs::create_dir_all(&recovered_dir).expect("create dir");
+        let inside = recovered_dir.join("a.wav");
+        let outside = dir.join("outside.wav");
+        std::fs::write(&inside, "audio").expect("write");
+        std::fs::write(&outside, "audio").expect("write");
+
+        assert!(forget(&recovered_dir, &outside).is_err());
+        assert!(forget(&recovered_dir, &recovered_dir.join("..").join("outside.wav")).is_err());
+        assert!(forget(&recovered_dir, &recovered_dir).is_err(), "not the folder itself");
+        let not_audio = recovered_dir.join("notes.txt");
+        std::fs::write(&not_audio, "x").expect("write");
+        assert!(forget(&recovered_dir, &not_audio).is_err(), "only recordings");
+        #[cfg(unix)]
+        {
+            let link = recovered_dir.join("link.wav");
+            std::os::unix::fs::symlink(&outside, &link).expect("symlink");
+            assert!(
+                forget(&recovered_dir, &link).is_err(),
+                "a link out of the folder is not inside it"
+            );
+        }
+        assert!(outside.exists() && not_audio.exists(), "nothing outside was touched");
+
+        forget(&recovered_dir, &inside).expect("forget");
+        assert!(!inside.exists());
+        forget(&recovered_dir, &inside).expect("already gone is fine");
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn scan_leaves_an_unreadable_capture_alone() {
+        let dir = temp_dir("unreadable");
+        // A power cut lost the header of these files but not their audio: unreadable is not empty.
+        let damage = |path: &Path| {
+            crashed_wav(path, 1, 48_000);
+            let mut bytes = std::fs::read(path).expect("read");
+            bytes[..64].fill(0);
+            std::fs::write(path, &bytes).expect("write");
+            bytes
+        };
+        let lone = capture_path(&dir, OTHER_SESSION, 0);
+        let lone_bytes = damage(&lone);
+        let sibling = capture_path(&dir, SESSION, 1);
+        let sibling_bytes = damage(&sibling);
+        // A healthy session recovers around them.
+        crashed_wav(&capture_path(&dir, SESSION, 0), 1, 48_000);
+
+        let recovered = scan(&dir, None);
+
+        assert_eq!(recovered.len(), 1, "the readable device is recovered, nothing else");
+        assert_eq!(std::fs::read(&lone).expect("still there"), lone_bytes);
+        assert_eq!(std::fs::read(&sibling).expect("still there"), sibling_bytes);
         std::fs::remove_dir_all(dir).ok();
     }
 
@@ -358,13 +548,16 @@ mod tests {
         let recovered = scan(&dir, None);
 
         assert_eq!(recovered.len(), 1);
-        let files: Vec<_> = std::fs::read_dir(&dir)
-            .expect("read dir")
-            .map(|entry| entry.expect("entry").path())
-            .collect();
+        let list = |dir: &Path| -> Vec<PathBuf> {
+            std::fs::read_dir(dir)
+                .expect("read dir")
+                .map(|entry| entry.expect("entry").path())
+                .collect()
+        };
         // Merged when ffmpeg is there, the longer capture otherwise: one file holding audio, no leftovers.
-        assert_eq!(files, vec![PathBuf::from(&recovered[0].path)]);
-        assert!(sample_count(&files[0]) > 0);
+        assert_eq!(list(&dir), vec![dir.join("recovered")]);
+        assert_eq!(list(&dir.join("recovered")), vec![PathBuf::from(&recovered[0].path)]);
+        assert!(sample_count(&PathBuf::from(&recovered[0].path)) > 0);
         std::fs::remove_dir_all(dir).ok();
     }
 

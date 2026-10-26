@@ -102,6 +102,7 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 
 	// No unfinished recording is left over from an earlier run.
 	take_recovered_recordings: () => [],
+	forget_recovered: () => undefined,
 
 	// --- Text injection ---------------------------------------------------------
 

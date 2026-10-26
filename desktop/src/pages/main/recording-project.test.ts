@@ -30,6 +30,16 @@ function deps(autoTranscribeAfterRecording = false) {
 	return { current }
 }
 
+/** The backend answers `take_recovered_recordings` with `list`; `forget_recovered` just succeeds. */
+function backend(list: unknown[]) {
+	mocks.invoke.mockImplementation(async (command: string) => (command === 'take_recovered_recordings' ? list : undefined))
+}
+
+/** The paths the UI told the backend to delete. */
+function forgotten() {
+	return mocks.invoke.mock.calls.filter(([command]) => command === 'forget_recovered').map(([, args]) => args.path)
+}
+
 beforeEach(() => {
 	vi.clearAllMocks()
 	mocks.saveTranscript.mockResolvedValue(saved)
@@ -37,7 +47,7 @@ beforeEach(() => {
 
 describe('recoverUnfinishedRecordings', () => {
 	it('makes a project of each recovered recording the way a finished recording becomes one', async () => {
-		mocks.invoke.mockResolvedValue([recovered])
+		backend([recovered])
 		const { current } = deps()
 
 		await recoverUnfinishedRecordings({ current })
@@ -59,12 +69,14 @@ describe('recoverUnfinishedRecordings', () => {
 			'record',
 		)
 		expect(mocks.notifyTranscriptsChanged).toHaveBeenCalledTimes(1)
+		// Only now that it is a project may the backend stop offering it.
+		expect(mocks.invoke).toHaveBeenCalledWith('forget_recovered', { path: recovered.path })
 		expect(current.transcribeJob).not.toHaveBeenCalled()
 		expect(mocks.toast.info).toHaveBeenCalledWith(expect.stringContaining('2026'), expect.anything())
 	})
 
 	it('transcribes it when transcribing after recording is on', async () => {
-		mocks.invoke.mockResolvedValue([recovered])
+		backend([recovered])
 		const { current } = deps(true)
 
 		await recoverUnfinishedRecordings({ current })
@@ -73,7 +85,7 @@ describe('recoverUnfinishedRecordings', () => {
 	})
 
 	it('does nothing when there is nothing to recover', async () => {
-		mocks.invoke.mockResolvedValue([])
+		backend([])
 		const { current } = deps()
 
 		await recoverUnfinishedRecordings({ current })
@@ -83,7 +95,7 @@ describe('recoverUnfinishedRecordings', () => {
 	})
 
 	it('does not announce a recording it could not save', async () => {
-		mocks.invoke.mockResolvedValue([recovered])
+		backend([recovered])
 		mocks.saveTranscript.mockResolvedValue(null)
 		const { current } = deps()
 
@@ -92,6 +104,35 @@ describe('recoverUnfinishedRecordings', () => {
 		expect(mocks.toast.error).toHaveBeenCalledTimes(1)
 		expect(mocks.toast.info).not.toHaveBeenCalled()
 		expect(current.hydrate).not.toHaveBeenCalled()
+		expect(forgotten()).toEqual([])
+	})
+
+	it('keeps going when one recording throws, and forgets only the ones it saved', async () => {
+		const second = { path: '/data/recovered/2026-10-26 09-00-00.wav', name: '2026-10-26 09-00-00.wav', recordedAt: '2026-10-26T09:00:00+02:00' }
+		backend([recovered, second])
+		mocks.saveTranscript.mockRejectedValueOnce(new Error('disk full'))
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		const { current } = deps()
+
+		await recoverUnfinishedRecordings({ current })
+
+		expect(mocks.saveTranscript).toHaveBeenCalledTimes(2)
+		expect(current.hydrate).toHaveBeenCalledTimes(1)
+		// The first stays in the recovered folder and is offered again next launch.
+		expect(forgotten()).toEqual([second.path])
+		expect(mocks.toast.info).toHaveBeenCalledTimes(1)
+	})
+
+	it('still announces a saved recording when the backend cannot forget it', async () => {
+		mocks.invoke.mockImplementation(async (command: string) => {
+			if (command === 'forget_recovered') throw new Error('locked')
+			return [recovered]
+		})
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+
+		await recoverUnfinishedRecordings(deps())
+
+		expect(mocks.toast.info).toHaveBeenCalledTimes(1)
 	})
 
 	it('survives a backend that cannot answer', async () => {

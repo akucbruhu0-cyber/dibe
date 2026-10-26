@@ -70,8 +70,10 @@ export async function createRecordingProject(file: RecordingFile, { preference, 
 
 /**
  * Makes a project of every recording that an earlier run never got to finish (the app crashed or
- * was force-quit mid-recording), the same way a finished recording becomes one. The backend hands
- * them over once, so calling this again finds nothing.
+ * was force-quit mid-recording), the same way a finished recording becomes one. The backend keeps
+ * each one in its recovered folder and offers it again at every launch until it is forgotten, so a
+ * recording is forgotten only once its project exists, and one that fails here is simply offered
+ * again next time without costing the others.
  */
 export async function recoverUnfinishedRecordings(deps: { current: RecordingProjectDeps }) {
 	let recovered: RecoveredRecording[]
@@ -83,7 +85,13 @@ export async function recoverUnfinishedRecordings(deps: { current: RecordingProj
 	}
 	for (const { path, name, recordedAt } of recovered) {
 		const createdAt = new Date(recordedAt)
-		if (!(await createRecordingProject({ path, name, createdAt }, deps.current))) continue
+		try {
+			if (!(await createRecordingProject({ path, name, createdAt }, deps.current))) continue
+		} catch (error) {
+			console.error(`could not make a project of the recovered recording ${path}:`, error)
+			continue
+		}
+		await invoke('forget_recovered', { path }).catch((error) => console.error(`could not forget the recovered recording ${path}:`, error))
 		const date = createdAt.toLocaleDateString(getLocale(), { dateStyle: 'medium' })
 		toast.info(m.unfinishedRecordingRecovered({ date }), { position: 'bottom-center' })
 	}

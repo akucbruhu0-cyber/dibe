@@ -12,7 +12,9 @@ use crate::error::LogError;
 use crate::ffmpeg::{get_local_time, get_vibe_temp_folder};
 use crate::recording::capture::{self, build_capture, LevelMeter};
 use crate::recording::finalize::{finalize_captures, remove_files};
-use crate::recording::recovery::{capture_path, in_progress_dir, PendingRecovery, RecoveredRecording};
+use crate::recording::recovery::{
+    self, capture_path, in_progress_dir, repair_wav_header, PendingRecovery, RecoveredRecording, BYTES_PER_SAMPLE,
+};
 use crate::recording::session::{ActiveRecording, AlreadyRecording, RecordingOrigin, RecordingState, StreamHandle};
 use crate::recording::writer::{spawn_writer, WriterHandle, CHECKPOINT_EVERY};
 
@@ -172,10 +174,19 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
 }
 
 #[tauri::command]
-/// The recordings that an earlier run never got to finish, rebuilt at launch. Each is a WAV in app
-/// data waiting to become a project; they are returned once, so a second call gets nothing.
+/// The recordings that an earlier run never got to finish, rebuilt at launch, plus any rebuilt
+/// earlier and not yet forgotten. Each is a WAV in app data waiting to become a project; this
+/// launch's list is handed over once, so a second call gets nothing.
 pub async fn take_recovered_recordings(state: State<'_, PendingRecovery>) -> Result<Vec<RecoveredRecording>> {
     Ok(state.take().await)
+}
+
+#[tauri::command]
+/// Deletes a recovered recording once the UI has saved it as a project; until then every launch
+/// offers it again. Only files directly inside the recovered folder can be deleted.
+pub fn forget_recovered(app_handle: AppHandle, path: String) -> Result<(), CommandError> {
+    let recovered = recovery::recovered_dir(&in_progress_dir(&app_handle));
+    Ok(recovery::forget(&recovered, Path::new(&path))?)
 }
 
 /// cpal's error callback for a session's streams. A device that stops delivering audio (e.g.
@@ -232,8 +243,16 @@ fn close_captures(streams: Vec<StreamHandle>, writers: Vec<WriterHandle>, wav_pa
                 let message = format!("Saving {} failed: {error:#}", path.display());
                 tracing::error!("{message}");
                 closed.failures.push(message);
-                // The writer stopped at the error and its WAV was finalized up to there.
-                hound::WavReader::open(&path).map(|wav| u64::from(wav.len())).unwrap_or(0)
+                // The writer stopped at the error, so its header may not say how much audio the
+                // file holds: measure the file. One that cannot be measured is not known to be
+                // empty; it stays on disk for the next launch's scan instead of being deleted.
+                match repair_wav_header(&path) {
+                    Ok(bytes) => bytes / BYTES_PER_SAMPLE,
+                    Err(error) => {
+                        tracing::error!("leaving {} as it is: {error:#}", path.display());
+                        continue;
+                    }
+                }
             }
         };
         closed.files.push((path, samples));
