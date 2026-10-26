@@ -5,8 +5,10 @@ use crate::transcript::{Segment, Transcript};
 use eyre::Result;
 use futures_util::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{Emitter, EventId, Listener, State};
 use tokio::sync::{Mutex, Notify};
 
@@ -102,6 +104,47 @@ async fn next_or_abort<S: Stream + Unpin>(stream: &mut S, abort: &Notify) -> Opt
     }
 }
 
+/// How often to ask a busy server again, and how long to keep asking.
+const BUSY_RETRY_INTERVAL: Duration = Duration::from_millis(500);
+const BUSY_RETRY_DEADLINE: Duration = Duration::from_secs(10 * 60);
+
+/// Runs `attempt` until it stops failing with the server's "busy" error. The server
+/// decodes and diarizes synchronously and cannot be interrupted, so right after a
+/// cancel it is still busy with the cancelled file and rejects the next request.
+/// `None` means `abort` fired, during an attempt or a wait; after `deadline` the
+/// busy error is returned as is.
+async fn retry_while_busy<F, Fut, T>(mut attempt: F, abort: &Notify, interval: Duration, deadline: Duration) -> Option<Result<T>>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T>>,
+{
+    let give_up = tokio::time::Instant::now() + deadline;
+    loop {
+        let result = tokio::select! {
+            biased;
+            _ = abort.notified() => return None,
+            result = attempt() => result,
+        };
+        match result {
+            Err(error) if is_busy(&error) && tokio::time::Instant::now() < give_up => {
+                tracing::debug!("vibe-server is busy, trying again in {interval:?}");
+                tokio::select! {
+                    biased;
+                    _ = abort.notified() => return None,
+                    _ = tokio::time::sleep(interval) => {}
+                }
+            }
+            result => return Some(result),
+        }
+    }
+}
+
+fn is_busy(error: &eyre::Error) -> bool {
+    error
+        .downcast_ref::<crate::server::ServerApiError>()
+        .is_some_and(|api_error| api_error.code == "busy")
+}
+
 #[tauri::command]
 pub async fn transcribe(
     app_handle: tauri::AppHandle,
@@ -147,17 +190,19 @@ pub async fn transcribe(
 
     // The request (upload, then server-side decode and diarization until the first
     // response byte) can take minutes too; dropping it on abort closes the connection.
-    let stream = tokio::select! {
-        biased;
-        _ = abort.notified() => {
+    // The server may still be busy finishing a cancelled file, so "busy" is waited out.
+    let attempt = || crate::server::ServerProcess::transcribe_stream(&client, &base_url, &options);
+    let stream = match retry_while_busy(attempt, &abort, BUSY_RETRY_INTERVAL, BUSY_RETRY_DEADLINE).await {
+        Some(Ok(stream)) => stream,
+        Some(Err(e)) => return Err(transcribe_error(&server_state, e).await),
+        None => {
             tracing::debug!("transcription aborted by user");
             let _ = set_progress_bar(&app_handle, None);
-            return Ok(Transcript { processing_time_sec: start.elapsed().as_secs(), segments: Vec::new() });
+            return Ok(Transcript {
+                processing_time_sec: start.elapsed().as_secs(),
+                segments: Vec::new(),
+            });
         }
-        result = crate::server::ServerProcess::transcribe_stream(&client, &base_url, &options) => match result {
-            Ok(stream) => stream,
-            Err(e) => return Err(transcribe_error(&server_state, e).await),
-        },
     };
 
     tokio::pin!(stream);
@@ -243,8 +288,20 @@ pub async fn transcribe(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::server::ServerApiError;
     use futures_util::stream;
-    use std::time::Duration;
+    use std::cell::Cell;
+
+    fn api_error(code: &str) -> eyre::Report {
+        eyre::Report::new(ServerApiError {
+            code: code.to_string(),
+            message: "test".to_string(),
+        })
+    }
+
+    fn error_code(error: &eyre::Report) -> Option<&str> {
+        error.downcast_ref::<ServerApiError>().map(|e| e.code.as_str())
+    }
 
     #[tokio::test]
     async fn abort_wins_over_pending_stream() {
@@ -263,5 +320,101 @@ mod tests {
         assert!(matches!(next, Ok(Some(Next::Item(7)))));
         let end = next_or_abort(&mut stream, &abort).await;
         assert!(end.is_none());
+    }
+
+    #[tokio::test]
+    async fn busy_twice_then_ok_succeeds_after_two_retries() {
+        let calls = Cell::new(0);
+        let outcome = retry_while_busy(
+            || {
+                calls.set(calls.get() + 1);
+                let n = calls.get();
+                async move {
+                    if n <= 2 {
+                        Err(api_error("busy"))
+                    } else {
+                        Ok(7u8)
+                    }
+                }
+            },
+            &Notify::new(),
+            Duration::from_millis(1),
+            Duration::from_secs(5),
+        )
+        .await;
+        assert!(matches!(outcome, Some(Ok(7))));
+        assert_eq!(calls.get(), 3);
+    }
+
+    #[tokio::test]
+    async fn abort_during_the_wait_returns_aborted_promptly() {
+        let abort = Notify::new();
+        let retry = retry_while_busy(
+            || async { Err::<u8, _>(api_error("busy")) },
+            &abort,
+            Duration::from_secs(30),
+            Duration::from_secs(60),
+        );
+        let abort_later = async {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            abort.notify_one();
+        };
+        let (outcome, ()) = tokio::join!(tokio::time::timeout(Duration::from_millis(500), retry), abort_later);
+        assert!(matches!(outcome, Ok(None)));
+    }
+
+    #[tokio::test]
+    async fn abort_during_a_pending_attempt_returns_aborted() {
+        let abort = Notify::new();
+        abort.notify_one();
+        let retry = retry_while_busy(
+            std::future::pending::<Result<u8>>,
+            &abort,
+            Duration::from_secs(30),
+            Duration::from_secs(60),
+        );
+        let outcome = tokio::time::timeout(Duration::from_millis(50), retry).await;
+        assert!(matches!(outcome, Ok(None)));
+    }
+
+    #[tokio::test]
+    async fn other_errors_are_returned_without_retrying() {
+        for error in [api_error("invalid_request"), eyre::eyre!("connection reset")] {
+            let calls = Cell::new(0);
+            let mut error = Some(error);
+            let outcome = retry_while_busy(
+                || {
+                    calls.set(calls.get() + 1);
+                    let error = error.take();
+                    async move { Err::<u8, _>(error.unwrap_or_else(|| api_error("busy"))) }
+                },
+                &Notify::new(),
+                Duration::from_millis(1),
+                Duration::from_secs(5),
+            )
+            .await;
+            assert!(matches!(outcome, Some(Err(_))));
+            assert_eq!(calls.get(), 1);
+        }
+    }
+
+    #[tokio::test]
+    async fn past_the_deadline_the_busy_error_is_returned() {
+        let calls = Cell::new(0);
+        let outcome = retry_while_busy(
+            || {
+                calls.set(calls.get() + 1);
+                async { Err::<u8, _>(api_error("busy")) }
+            },
+            &Notify::new(),
+            Duration::from_millis(5),
+            Duration::from_millis(40),
+        )
+        .await;
+        match outcome {
+            Some(Err(error)) => assert_eq!(error_code(&error), Some("busy")),
+            _ => panic!("expected the busy error"),
+        }
+        assert!(calls.get() > 1);
     }
 }
