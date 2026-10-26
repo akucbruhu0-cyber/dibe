@@ -9,6 +9,7 @@ pub mod keepawake_cmd;
 pub mod permissions;
 pub mod server_cmd;
 pub mod skill;
+pub mod storage;
 pub mod transcribe;
 pub mod ui;
 pub mod ytdlp;

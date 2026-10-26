@@ -54,7 +54,8 @@ export const segmentModelUrl = 'https://github.com/thewh1teagle/vibe/releases/do
  *
  * Anyone upgrading still has the old `.onnx` sitting in their models folder. Nothing reads it any
  * more and it is not a `.gguf`/`.bin`, so it stays invisible to the model listing; the gate simply
- * finds this file missing and offers the download. Deleting the stale 492 MB file is left to them.
+ * finds this file missing and offers the download. Settings → Models → Storage flags the stale
+ * 492 MB file (`LEGACY_FILES` in cmd/storage.rs) and deletes it once the user confirms.
  */
 export const diarizeModelFilename = 'diar_streaming_sortformer_4spk-v2.q8_0.gguf'
 export const diarizeModelUrl = 'https://huggingface.co/vibe-app/diar-streaming-sortformer-4spk-v2-gguf/resolve/main/diar_streaming_sortformer_4spk-v2.q8_0.gguf'

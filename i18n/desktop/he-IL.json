@@ -703,5 +703,17 @@
 	"resetWhisperOptions": "איפוס אפשרויות Whisper",
 	"resetAudioProcessing": "איפוס עיבוד האודיו",
 	"whatsNew": "מה חדש",
-	"diarizationFailed": "זיהוי הדוברים נכשל. התמלול נעשה בלי דוברים."
+	"diarizationFailed": "זיהוי הדוברים נכשל. התמלול נעשה בלי דוברים.",
+	"storage": "אחסון",
+	"storageUsed": "שטח דיסק בשימוש",
+	"storageCanFree": "אפשר לפנות {size}",
+	"storageNothingToFree": "אין קבצים כפולים או ישנים",
+	"storageScanning": "סורק…",
+	"storageScanFailed": "לא ניתן היה לקרוא את תיקיית המודלים",
+	"storageDuplicateOf": "כפילות של {name}",
+	"storageLegacy": "קובץ ישן",
+	"storageDelete": "מחיקה…",
+	"storageDeleteTitle": "מחיקת קובץ",
+	"storageDeleteBody": "למחוק את “{name}” ({size})? הקובץ יימחק מהדיסק לצמיתות ולא ניתן יהיה לשחזר אותו.",
+	"storageDeleteFailed": "לא ניתן היה למחוק את {name}"
 }

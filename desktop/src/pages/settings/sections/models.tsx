@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import { ActionRow, IconAction, SettingsGroup, SettingsRow, rowControlClass, type SettingsViewModel } from './shared'
 import { getFriendlyModelName } from '~/lib/model'
 import { ModelGlyph } from '~/components/brand-glyph'
+import { ModelsStorageBlock } from './models-storage'
 
 export function ModelsSection({ vm }: { vm: SettingsViewModel }) {
 	const [editingPath, setEditingPath] = useState<string | null>(null)
@@ -161,6 +162,8 @@ export function ModelsSection({ vm }: { vm: SettingsViewModel }) {
 				<ActionRow label={m.modelsFolder()} icon={<FolderIcon className="h-4 w-4" />} onClick={vm.openModelPath} />
 				<ActionRow label={m.changeModelsFolder()} icon={<WrenchIcon className="h-4 w-4" />} onClick={vm.changeModelsFolder} />
 			</SettingsGroup>
+
+			<ModelsStorageBlock modelPath={vm.preference.modelPath} />
 		</div>
 	)
 }

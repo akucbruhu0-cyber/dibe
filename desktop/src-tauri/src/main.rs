@@ -122,6 +122,8 @@ async fn main() -> Result<()> {
             cmd::download::download_model,
             cmd::download::check_model_files,
             cmd::download::cleanup_partial_downloads,
+            cmd::storage::scan_models_storage,
+            cmd::storage::delete_model_file,
             cmd::server_cmd::load_model,
             cmd::server_cmd::get_gpu_devices,
             cmd::server_cmd::get_model_metadata,

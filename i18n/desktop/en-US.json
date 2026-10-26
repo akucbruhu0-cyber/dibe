@@ -703,5 +703,17 @@
 	"phoneRevokeDevice": "Revoke",
 	"phoneRevokeDeviceNamed": "Revoke {name}",
 	"whatsNew": "What's new",
-	"diarizationFailed": "Speaker detection failed. Transcribing without speakers."
+	"diarizationFailed": "Speaker detection failed. Transcribing without speakers.",
+	"storage": "Storage",
+	"storageUsed": "Disk space used",
+	"storageCanFree": "You can free {size}",
+	"storageNothingToFree": "No duplicate or old files",
+	"storageScanning": "Scanning…",
+	"storageScanFailed": "Couldn't read the models folder",
+	"storageDuplicateOf": "Duplicate of {name}",
+	"storageLegacy": "Old file",
+	"storageDelete": "Delete…",
+	"storageDeleteTitle": "Delete file",
+	"storageDeleteBody": "Delete “{name}” ({size})? It is removed from the disk permanently and cannot be restored.",
+	"storageDeleteFailed": "Couldn't delete {name}"
 }

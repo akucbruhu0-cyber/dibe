@@ -75,7 +75,7 @@ fn remove_if_exists(path: &Path) -> Result<()> {
 
 /// Only `.bin` and `.gguf` downloads are model weights. Everything else that goes through this
 /// module (yt-dlp, the legacy ONNX embedding/segmentation models) has no magic we can rely on.
-fn is_model_path(path: &Path) -> bool {
+pub(super) fn is_model_path(path: &Path) -> bool {
     matches!(
         path.extension()
             .and_then(|extension| extension.to_str())
@@ -93,7 +93,7 @@ fn read_magic(path: &Path) -> Result<[u8; 4]> {
     Ok(magic)
 }
 
-fn sha256_file(path: &Path) -> Result<String> {
+pub(super) fn sha256_file(path: &Path) -> Result<String> {
     let mut file = std::fs::File::open(path).context(format!("Failed to open {}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buffer = vec![0u8; 1024 * 1024];
