@@ -9,8 +9,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use whisper_rs::StreamCallbacks;
 
 use crate::cli::AppConfig;
-use crate::server::diarization;
-use crate::server::transcription::build_options;
+use crate::server::transcription::{build_options, Diarized};
 use crate::server::unload_timeout::ModelLease;
 use crate::server::{error, format};
 
@@ -21,7 +20,7 @@ pub(super) fn stream_transcription(
     form: HashMap<String, String>,
     stable_timestamps: bool,
     vad_model_path: Option<String>,
-    diar_segments: Vec<diarization::Segment>,
+    diarized: Diarized,
 ) -> Result<Response, Box<Response>> {
     if model.ctx.is_none() {
         return Err(Box::new(error(
@@ -47,7 +46,12 @@ pub(super) fn stream_transcription(
     let progress_tx = tx.clone();
     let segment_tx = tx.clone();
     let final_tx = tx.clone();
-    let segment_diar_segments = diar_segments.clone();
+    let Diarized {
+        segments: segment_diar_segments,
+        warnings,
+    } = diarized;
+    // Before the worker starts, so no segment can precede them.
+    send_warnings(&tx, &warnings);
 
     tokio::task::spawn_blocking(move || {
         let Some(ctx) = model.ctx.as_mut() else {
@@ -141,6 +145,23 @@ pub(super) fn stream_transcription(
         .into_response())
 }
 
+fn warning_event(warning: &format::Warning) -> serde_json::Value {
+    serde_json::json!({
+        "type": "warning",
+        "code": warning.code,
+        "message": warning.message,
+    })
+}
+
+fn send_warnings(
+    tx: &tokio::sync::mpsc::UnboundedSender<Result<bytes::Bytes, std::convert::Infallible>>,
+    warnings: &[format::Warning],
+) {
+    for warning in warnings {
+        let _ = send_event(tx, warning_event(warning));
+    }
+}
+
 fn send_event(
     tx: &tokio::sync::mpsc::UnboundedSender<Result<bytes::Bytes, std::convert::Infallible>>,
     value: serde_json::Value,
@@ -148,4 +169,35 @@ fn send_event(
     let mut line = serde_json::to_vec(&value).map_err(|_| ())?;
     line.push(b'\n');
     tx.send(Ok(bytes::Bytes::from(line))).map_err(|_| ())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::server::format::Warning;
+
+    #[test]
+    fn a_warning_event_carries_its_code_and_message() {
+        let event = warning_event(&Warning {
+            code: "diarization_failed".to_string(),
+            message: "model missing".to_string(),
+        });
+        assert_eq!(
+            event,
+            serde_json::json!({"type": "warning", "code": "diarization_failed", "message": "model missing"})
+        );
+    }
+
+    #[test]
+    fn warnings_are_the_first_lines_of_the_stream() {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let warning = Warning {
+            code: "diarization_failed".to_string(),
+            message: "model missing".to_string(),
+        };
+        send_warnings(&tx, &[warning]);
+        let _ = send_event(&tx, serde_json::json!({"type": "progress", "progress": 1}));
+        let first = rx.try_recv().unwrap().unwrap();
+        assert!(String::from_utf8_lossy(&first).contains("\"type\":\"warning\""));
+    }
 }

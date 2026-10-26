@@ -29,6 +29,24 @@ async fn decodes_events_across_arbitrary_chunk_boundaries() {
 }
 
 #[tokio::test]
+async fn decodes_a_warning_event_ahead_of_the_segments() {
+    let lines = concat!(
+        "{\"type\":\"warning\",\"code\":\"diarization_failed\",\"message\":\"model missing\"}\n",
+        "{\"type\":\"segment\",\"start\":0.0,\"end\":1.5,\"text\":\"hello\"}\n",
+    );
+    let chunks = stream::iter([Ok::<_, std::io::Error>(Bytes::from_static(lines.as_bytes()))]);
+    let events = decode_event_reader(StreamReader::new(chunks)).collect::<Vec<_>>().await;
+
+    assert_eq!(events.len(), 2);
+    assert!(matches!(
+        events[0],
+        Ok(ServerEvent::Warning { ref code, ref message }) if code == "diarization_failed" && message == "model missing"
+    ));
+    // `speaker` is absent when diarization produced nothing, and must still decode.
+    assert!(matches!(events[1], Ok(ServerEvent::Segment { speaker: None, .. })));
+}
+
+#[tokio::test]
 async fn reports_invalid_json_instead_of_dropping_it() {
     let chunks = stream::iter([Ok::<_, std::io::Error>(Bytes::from_static(b"not json\n"))]);
     let events = decode_event_reader(StreamReader::new(chunks)).collect::<Vec<_>>().await;

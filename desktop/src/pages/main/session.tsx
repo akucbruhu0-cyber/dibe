@@ -20,6 +20,7 @@ import { useRecording } from '~/pages/home/hooks/use-recording'
 import { useDropTarget } from './hooks/use-drop-target'
 import { useSummaries, type Summaries } from './hooks/use-summaries'
 import { useTranscribeQueue, type TranscribeQueue } from './hooks/use-transcribe-queue'
+import { useTranscribeWarnings } from './hooks/use-transcribe-warnings'
 import { createRecordingProject, recoverUnfinishedRecordings } from './recording-project'
 
 /** Recordings that end up as a project here; dictation is handled by the hotkey provider. */
@@ -65,6 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	const { setState: setErrorModal } = useContext(ErrorModalContext)
 	const queue = useTranscribeQueue()
 	const summaries = useSummaries(queue)
+	useTranscribeWarnings()
 	const [panel, setPanel] = useState<IdlePanel>('none')
 	const [collectingFolder, setCollectingFolder] = useState(false)
 	const [recordElapsed, setRecordElapsed] = useState(0)

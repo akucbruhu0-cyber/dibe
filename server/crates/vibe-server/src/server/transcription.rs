@@ -50,9 +50,7 @@ pub(super) async fn transcribe(
     // Decoded: a screen recording can be gigabytes, and the transcription below can run for hours.
     drop(file);
 
-    let diar_segments = diarize_model
-        .as_deref()
-        .map_or_else(Vec::new, |model_path| diarization::diarize(model_path, &samples));
+    let diarized = diarize_or_warn(diarize_model.as_deref(), &samples);
 
     if stable_timestamps && vad_model_path.is_none() {
         return Err(error(
@@ -63,7 +61,7 @@ pub(super) async fn transcribe(
     }
 
     if stream {
-        return stream_transcription(config, model, samples, form, stable_timestamps, vad_model_path, diar_segments)
+        return stream_transcription(config, model, samples, form, stable_timestamps, vad_model_path, diarized)
             .map_err(|err| *err);
     }
 
@@ -91,7 +89,7 @@ pub(super) async fn transcribe(
         )
     })?;
 
-    Ok(format_response(&response_format, &result, &diar_segments))
+    Ok(format_response(&response_format, &result, diarized))
 }
 
 pub(super) fn build_options(
@@ -120,13 +118,40 @@ pub(super) fn build_options(
     }
 }
 
-fn format_response(
-    response_format: &str,
-    result: &whisper_rs::TranscribeResult,
-    diar_segments: &[diarization::Segment],
-) -> Response {
+/// What diarization contributed to a request: speaker turns, or a warning saying why not.
+#[derive(Default)]
+pub(super) struct Diarized {
+    pub segments: Vec<diarization::Segment>,
+    pub warnings: Vec<format::Warning>,
+}
+
+/// Diarization is optional, so a failure must not fail the transcription, but it must not
+/// pass unnoticed either: the transcript comes back without speakers, plus a warning.
+fn diarize_or_warn(model_path: Option<&str>, samples: &[f32]) -> Diarized {
+    let Some(model_path) = model_path else {
+        return Diarized::default();
+    };
+    match diarization::diarize(model_path, samples) {
+        Ok(segments) => Diarized {
+            segments,
+            warnings: Vec::new(),
+        },
+        Err(err) => {
+            tracing::warn!("diarization failed, continuing without speakers: {err:#}");
+            Diarized {
+                segments: Vec::new(),
+                warnings: vec![format::Warning {
+                    code: "diarization_failed".to_string(),
+                    message: format!("{err:#}"),
+                }],
+            }
+        }
+    }
+}
+
+fn format_response(response_format: &str, result: &whisper_rs::TranscribeResult, diarized: Diarized) -> Response {
     match response_format {
-        "verbose_json" => Json(format::build_verbose_json(result, diar_segments)).into_response(),
+        "verbose_json" => Json(format::build_verbose_json(result, &diarized.segments, diarized.warnings)).into_response(),
         "text" => ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], result.text()).into_response(),
         "srt" => (
             [(header::CONTENT_TYPE, "text/plain; charset=utf-8")],
@@ -139,5 +164,31 @@ fn format_response(
         )
             .into_response(),
         _ => Json(TextResponse { text: result.text() }).into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_diarization_becomes_a_warning_and_no_speakers() {
+        let model = "/definitely/not/a/model.gguf";
+        let diarized = diarize_or_warn(Some(model), &[0.0; 16_000]);
+        assert!(diarized.segments.is_empty());
+        assert_eq!(diarized.warnings.len(), 1);
+        assert_eq!(diarized.warnings[0].code, "diarization_failed");
+        assert!(
+            diarized.warnings[0].message.contains(model),
+            "{}",
+            diarized.warnings[0].message
+        );
+    }
+
+    #[test]
+    fn no_diarization_requested_means_no_warning() {
+        let diarized = diarize_or_warn(None, &[0.0; 16_000]);
+        assert!(diarized.segments.is_empty());
+        assert!(diarized.warnings.is_empty());
     }
 }

@@ -112,7 +112,8 @@ impl ServerState {
         crate::engine::EngineCapabilities,
         TextResponse,
         format::VerboseJson,
-        format::VerboseSegment
+        format::VerboseSegment,
+        format::Warning
     )),
     tags((name = "vibe-server", description = "vibe-server transcription server"))
 )]

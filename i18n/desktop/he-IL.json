@@ -702,5 +702,6 @@
 	"tuningCustomized": "מותאם אישית",
 	"resetWhisperOptions": "איפוס אפשרויות Whisper",
 	"resetAudioProcessing": "איפוס עיבוד האודיו",
-	"whatsNew": "מה חדש"
+	"whatsNew": "מה חדש",
+	"diarizationFailed": "זיהוי הדוברים נכשל. התמלול נעשה בלי דוברים."
 }

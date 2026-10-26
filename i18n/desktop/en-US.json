@@ -702,5 +702,6 @@
 	"phonePairedOn": "Paired {date}",
 	"phoneRevokeDevice": "Revoke",
 	"phoneRevokeDeviceNamed": "Revoke {name}",
-	"whatsNew": "What's new"
+	"whatsNew": "What's new",
+	"diarizationFailed": "Speaker detection failed. Transcribing without speakers."
 }

@@ -50,6 +50,13 @@ pub struct TranscribeOptions {
     pub vad_model: Option<String>,
 }
 
+/// Payload of the `transcribe_warning` event: the transcription carries on, minus something asked for.
+#[derive(Serialize, Clone, Debug)]
+struct TranscribeWarning {
+    code: String,
+    message: String,
+}
+
 pub(crate) const SERVER_DIED: &str = "vibe-server process died during transcription";
 
 /// Turn a transcription failure into something diagnosable: a send failure or a
@@ -244,6 +251,12 @@ pub async fn transcribe(
                 ServerEvent::Result { .. } => {
                     tracing::debug!("transcription complete");
                     completed = true;
+                }
+                ServerEvent::Warning { code, message } => {
+                    tracing::warn!("vibe-server transcription warning [{code}]: {message}");
+                    app_handle
+                        .emit_to("main", "transcribe_warning", TranscribeWarning { code, message })
+                        .log_error();
                 }
                 ServerEvent::Error { code, message } => {
                     tracing::error!("vibe-server transcription error: {}", message);

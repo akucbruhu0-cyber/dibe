@@ -150,6 +150,12 @@ pub enum ServerEvent {
     Result {
         text: String,
     },
+    /// Something the request asked for did not happen (diarization failed, say) but the
+    /// transcription goes on. Sent before any segment.
+    Warning {
+        code: String,
+        message: String,
+    },
     Error {
         code: Option<String>,
         message: String,

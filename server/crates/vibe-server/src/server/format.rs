@@ -59,6 +59,15 @@ pub fn format_vtt(segments: &[Segment]) -> String {
 pub struct VerboseJson {
     pub text: String,
     pub segments: Vec<VerboseSegment>,
+    /// Things the caller asked for that did not happen; the transcript is still complete.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<Warning>,
+}
+
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+pub struct Warning {
+    pub code: String,
+    pub message: String,
 }
 
 #[derive(Debug, Serialize, utoipa::ToSchema)]
@@ -71,7 +80,11 @@ pub struct VerboseSegment {
     pub no_speech_prob: f32,
 }
 
-pub fn build_verbose_json(result: &TranscribeResult, diar_segments: &[diarization::Segment]) -> VerboseJson {
+pub fn build_verbose_json(
+    result: &TranscribeResult,
+    diar_segments: &[diarization::Segment],
+    warnings: Vec<Warning>,
+) -> VerboseJson {
     VerboseJson {
         text: result.text(),
         segments: result
@@ -85,6 +98,7 @@ pub fn build_verbose_json(result: &TranscribeResult, diar_segments: &[diarizatio
                 no_speech_prob: segment.no_speech_prob,
             })
             .collect(),
+        warnings,
     }
 }
 
@@ -123,6 +137,34 @@ mod tests {
 
     fn turn(start: f64, end: f64, speaker_id: usize) -> diarization::Segment {
         diarization::Segment { start, end, speaker_id }
+    }
+
+    fn one_line_result() -> TranscribeResult {
+        TranscribeResult {
+            segments: vec![Segment {
+                start: 0,
+                end: 100,
+                text: " hello".to_string(),
+                no_speech_prob: 0.0,
+            }],
+        }
+    }
+
+    #[test]
+    fn verbose_json_includes_warnings() {
+        let warning = Warning {
+            code: "diarization_failed".to_string(),
+            message: "model missing".to_string(),
+        };
+        let json = serde_json::to_value(build_verbose_json(&one_line_result(), &[], vec![warning])).unwrap();
+        assert_eq!(json["warnings"][0]["code"], "diarization_failed");
+        assert_eq!(json["warnings"][0]["message"], "model missing");
+    }
+
+    #[test]
+    fn verbose_json_without_warnings_has_no_warnings_field() {
+        let json = serde_json::to_value(build_verbose_json(&one_line_result(), &[], Vec::new())).unwrap();
+        assert!(json.get("warnings").is_none(), "{json}");
     }
 
     #[test]

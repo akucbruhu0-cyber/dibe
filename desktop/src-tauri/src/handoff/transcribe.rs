@@ -247,6 +247,11 @@ impl HandoffHandler {
                 Ok(ServerEvent::Result { text }) => {
                     full_text = Some(text);
                 }
+                // The phone cannot ask for diarization (`diarize_model` is None above), so the
+                // server has nothing to warn about; if that changes, the wire format needs it.
+                Ok(ServerEvent::Warning { code, message }) => {
+                    tracing::warn!("handoff transcription warning [{code}]: {message}");
+                }
                 Ok(ServerEvent::Error { code, message }) => {
                     return Err(TransferError::new(code.as_deref().unwrap_or("internal_error"), message));
                 }

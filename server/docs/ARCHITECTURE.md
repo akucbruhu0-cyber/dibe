@@ -134,7 +134,7 @@ Documentation endpoints:
     - client disconnect triggers the abort callback
 7. Output is formatted based on `response_format`:
     - `json`: `{ "text": "..." }`
-    - `verbose_json`: text + timestamped segments
+    - `verbose_json`: text + timestamped segments, plus `warnings` (`code`, `message`) when something requested did not happen, such as `diarization_failed`
     - `text`, `srt`, `vtt`: plain text responses
 
 ---
@@ -154,6 +154,10 @@ Events are emitted as newline-delimited JSON objects:
     - `start`
     - `end`
     - `text`
+
+- `warning`
+    - `code` (`diarization_failed`), `message`
+    - sent before any `segment`; the transcription continues without what failed
 
 - `result`
     - final `text`
