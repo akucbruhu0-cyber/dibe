@@ -25,6 +25,9 @@ const YTDLP_TICK_MS = 100
 let dictationIndicatorEnabled = false
 let meetingDetectionEnabled = false
 let meetingPromptState: { source: 'meet' | 'zoom' | 'teams' } | null = null
+// Like the real backend, only one recording session can run at a time.
+let activeRecording: { sessionId: string; origin: unknown; levelTimer: number } | null = null
+let recordingCounter = 0
 
 function sleep(ms: number) {
 	return new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -69,23 +72,31 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 
 	start_record: (args) => {
 		console.info('[mock] start_record', args)
-		const path = `${APP_LOCAL_DATA}/recording.wav`
+		if (activeRecording) throw { code: 'already_recording', message: 'A recording is already in progress' }
 		// Stand in for the capture callbacks: a level event every 100ms, like the throttled Rust side.
 		let tick = 0
 		const levelTimer = window.setInterval(() => {
 			tick += 1
 			emitMockEvent('record_level', mockSpeechLevel(tick))
 		}, RECORD_LEVEL_TICK_MS)
-		// The frontend stops recording by emitting `stop_record` on the event bus.
-		const unsub = onMockEvent('stop_record', () => {
-			unsub()
-			window.clearInterval(levelTimer)
-			setTimeout(() => {
-				virtualFs.set(path, null)
-				emitMockEvent('record_finish', { path, name: basename(path) })
-			}, RECORD_FINISH_DELAY_MS)
-		})
-		// Resolve immediately, like the real command which spawns a background thread.
+		recordingCounter += 1
+		const sessionId = `mock-session-${recordingCounter}`
+		activeRecording = { sessionId, origin: args?.origin, levelTimer }
+		return sessionId
+	},
+
+	stop_record: (args) => {
+		console.info('[mock] stop_record', args)
+		// A session that is not the active one is ignored, like the real backend.
+		if (!activeRecording || activeRecording.sessionId !== args?.sessionId) return undefined
+		const { sessionId, origin, levelTimer } = activeRecording
+		activeRecording = null
+		window.clearInterval(levelTimer)
+		const path = `${APP_LOCAL_DATA}/recording.wav`
+		setTimeout(() => {
+			virtualFs.set(path, null)
+			emitMockEvent('record_finish', { sessionId, origin, path, name: basename(path) })
+		}, RECORD_FINISH_DELAY_MS)
 		return undefined
 	},
 

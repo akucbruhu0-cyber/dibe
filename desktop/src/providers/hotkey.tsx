@@ -1,9 +1,10 @@
 import { ReactNode, createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { notify } from '~/lib/notify'
-import { emit, listen } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { register, unregister, isRegistered } from '@tauri-apps/plugin-global-shortcut'
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager'
+import { toast } from 'sonner'
 import { trackTranscribeFailed, trackTranscribeStarted, trackTranscribeSucceeded } from '~/lib/analytics'
 import { AudioDevice } from '~/lib/audio'
 import { CONFIG_KEYS } from '~/lib/config-keys'
@@ -11,16 +12,14 @@ import { gpuOutOfMemoryBefore } from '~/lib/gpu-memory'
 import { usePersisted } from '~/lib/config-store'
 import { createClient, fillPrompt } from '~/lib/ai'
 import { withoutUnsupportedOptions } from '~/lib/model'
+import { isMine, type RecordErrorPayload, type RecordFinishPayload } from '~/lib/recording-origin'
+import { isAlreadyRecording } from '~/lib/recording-session'
 import { isUserError } from '~/lib/server-errors'
 import * as transcript from '~/lib/transcript'
 import { usePreferenceProvider } from '~/providers/preference'
 import { m } from '~/paraglide/messages.js'
 import { hideDictationIndicator, showDictationIndicator } from '~/lib/dictation-indicator'
 import * as config from '~/lib/config'
-
-// Module-level flag used by home viewModel to skip processing
-// when hotkey-triggered recording finishes
-export let hotkeyRecordingActive = false
 
 // Lives in lib/config so modules without a React dependency (the agent skill) can read the default.
 export const getDefaultHotkeyShortcut = config.getDefaultHotkeyShortcut
@@ -84,6 +83,8 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 	const [isHotkeyRecording, setIsHotkeyRecording] = useState(false)
 
 	const isHotkeyRecordingRef = useRef(false)
+	/** The dictation session; `stop_record` ends only this one, never a recording someone else started. */
+	const sessionIdRef = useRef<string | null>(null)
 	const isStartingRef = useRef(false)
 	const isStoppingRef = useRef(false)
 	const shortcutPressedRef = useRef(false)
@@ -134,19 +135,20 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 			}
 
 			isHotkeyRecordingRef.current = true
-			hotkeyRecordingActive = true
 			setIsHotkeyRecording(true)
 
-			await invoke('start_record', {
+			sessionIdRef.current = null
+			sessionIdRef.current = await invoke<string>('start_record', {
 				devices: [defaultInput],
 				recordingName: null,
+				origin: 'dictation',
 			})
 			indicatorSessionRef.current += 1
 			showIndicator('recording')
 		} catch (error) {
 			console.error('Hotkey start_record error:', error)
+			if (isAlreadyRecording(error)) toast.error(m.recordingAlreadyInProgress())
 			isHotkeyRecordingRef.current = false
-			hotkeyRecordingActive = false
 			setIsHotkeyRecording(false)
 		} finally {
 			isStartingRef.current = false
@@ -154,10 +156,11 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 	}, [showIndicator])
 
 	const handleHotkeyUp = useCallback(async () => {
-		if (!isHotkeyRecordingRef.current || isStoppingRef.current) return
+		// No session id yet means start_record is still in flight; there is nothing to stop.
+		if (!isHotkeyRecordingRef.current || isStoppingRef.current || !sessionIdRef.current) return
 		isStoppingRef.current = true
 		try {
-			await emit('stop_record')
+			await invoke('stop_record', { sessionId: sessionIdRef.current })
 		} catch (error) {
 			isStoppingRef.current = false
 			throw error
@@ -166,8 +169,8 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 
 	// Listen for record_finish and process when hotkey-triggered
 	useEffect(() => {
-		const unlisten = listen<{ path: string; name: string }>('record_finish', async (event) => {
-			if (!isHotkeyRecordingRef.current) return
+		const unlisten = listen<RecordFinishPayload>('record_finish', async (event) => {
+			if (!isMine(event.payload, 'dictation')) return
 
 			const { path } = event.payload
 
@@ -239,7 +242,6 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 			} finally {
 				isStoppingRef.current = false
 				isHotkeyRecordingRef.current = false
-				hotkeyRecordingActive = false
 				setIsHotkeyRecording(false)
 			}
 		})
@@ -250,20 +252,16 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 	}, [finishIndicator, showIndicator])
 
 	useEffect(() => {
-		const unlisten = listen<string | { message?: string }>('record_error', ({ payload }) => {
-			if (!isHotkeyRecordingRef.current) return
-			const message = typeof payload === 'string' ? payload : payload?.message || m.error()
+		const unlisten = listen<RecordErrorPayload>('record_error', ({ payload }) => {
+			if (!isMine(payload, 'dictation')) return
+			const message = payload.message || m.error()
 			finishIndicator('error', { message })
 			void notify('Vibe', message)
-			// Keep the module flag true for the rest of this event dispatch so SessionProvider knows
-			// this was dictation, then release every dictation state before the next task.
-			queueMicrotask(() => {
-				isStartingRef.current = false
-				isStoppingRef.current = false
-				isHotkeyRecordingRef.current = false
-				hotkeyRecordingActive = false
-				setIsHotkeyRecording(false)
-			})
+			// Release every dictation state before the next task.
+			isStartingRef.current = false
+			isStoppingRef.current = false
+			isHotkeyRecordingRef.current = false
+			setIsHotkeyRecording(false)
 		})
 		return () => {
 			unlisten.then((dispose) => dispose())

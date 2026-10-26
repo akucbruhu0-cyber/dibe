@@ -1,4 +1,3 @@
-import { emit } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { type SetStateAction, useContext, useEffect, useState } from 'react'
 import type { AudioDevice } from '~/lib/audio'
@@ -6,6 +5,7 @@ import { CONFIG_KEYS } from '~/lib/config-keys'
 import { usePersisted } from '~/lib/config-store'
 import { KEEP_AWAKE, startKeepAwake, stopKeepAwake } from '~/lib/keep-awake'
 import { ensureSystemAudioPermission } from '~/lib/permissions'
+import { recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
 import { ErrorModalContext } from '~/providers/error-modal'
 import { usePreferenceProvider } from '~/providers/preference'
 
@@ -60,26 +60,28 @@ export function useRecording(onBeforeStart: () => void) {
 		setIsRecording(true)
 		const selectedDevices = [inputDevice, outputDevice].filter((device): device is AudioDevice => device !== null)
 		try {
-			await invoke('start_record', {
+			const sessionId = await invoke<string>('start_record', {
 				devices: selectedDevices,
 				recordingName: recordingName.trim() || null,
+				origin: 'manual',
 			})
+			rememberNormalSession(sessionId)
 		} catch (error) {
 			stopKeepAwake(KEEP_AWAKE.record)
 			setIsRecording(false)
 			console.error('startRecord error: ', error)
-			setErrorModal?.({ log: String(error), open: true })
+			setErrorModal?.({ log: recordingErrorMessage(error), open: true })
 		}
 	}
 
 	async function stopRecord() {
 		try {
-			await emit('stop_record')
+			await stopNormalSession()
 		} catch (error) {
 			stopKeepAwake(KEEP_AWAKE.record)
 			setIsRecording(false)
 			console.error('stopRecord error: ', error)
-			setErrorModal?.({ log: String(error), open: true })
+			setErrorModal?.({ log: recordingErrorMessage(error), open: true })
 		}
 	}
 

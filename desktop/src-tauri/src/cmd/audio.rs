@@ -4,18 +4,18 @@ use cpal::{Device, FromSample, Sample, SizedSample, Stream, SupportedStreamConfi
 use eyre::{bail, eyre, Context, ContextCompat, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fs::File;
-use std::io::BufWriter;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter, Listener};
+use tauri::{AppHandle, Emitter, State};
 
+use super::CommandError;
 use crate::error::LogError;
 use crate::ffmpeg::{get_local_time, random_string};
-
-type WavWriterHandle = Arc<Mutex<Option<hound::WavWriter<BufWriter<File>>>>>;
+use crate::recording::session::{
+    ActiveRecording, AlreadyRecording, RecordingOrigin, RecordingState, StreamHandle, WavWriterHandle,
+};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -60,10 +60,6 @@ pub fn get_audio_devices() -> Result<Vec<AudioDevice>> {
 
     Ok(audio_devices)
 }
-
-struct StreamHandle(Stream);
-unsafe impl Send for StreamHandle {}
-unsafe impl Sync for StreamHandle {}
 
 /// At most ~10 `record_level` events per second reach the webview.
 const LEVEL_EMIT_INTERVAL_MS: u64 = 100;
@@ -146,17 +142,46 @@ fn remove_recording_intermediates(paths: impl IntoIterator<Item = PathBuf>, keep
     }
 }
 
-#[tauri::command]
-/// Record audio from the given devices, store to wav, merge with ffmpeg, and return path
-pub async fn start_record(app_handle: AppHandle, devices: Vec<AudioDevice>, recording_name: Option<String>) -> Result<()> {
-    if devices.is_empty() {
-        bail!("At least one audio device is required");
+impl From<AlreadyRecording> for CommandError {
+    fn from(_: AlreadyRecording) -> Self {
+        CommandError {
+            code: "already_recording".to_string(),
+            message: "A recording is already in progress".to_string(),
+        }
     }
-    let host = cpal::default_host();
+}
 
-    let mut wav_paths: Vec<(PathBuf, u32)> = Vec::new();
-    let mut stream_handles = Vec::new();
-    let mut stream_writers = Vec::new();
+#[tauri::command]
+/// Record audio from the given devices into wav files and return the session id that `stop_record`
+/// needs. Only one recording can run at a time; a second call fails with code `already_recording`.
+pub async fn start_record(
+    app_handle: AppHandle,
+    state: State<'_, RecordingState>,
+    devices: Vec<AudioDevice>,
+    recording_name: Option<String>,
+    origin: RecordingOrigin,
+) -> Result<String, CommandError> {
+    if devices.is_empty() {
+        return Err(eyre!("At least one audio device is required").into());
+    }
+    let session_id = state.try_begin(origin)?;
+    let mut recording = ActiveRecording::new(session_id.clone(), origin, recording_name);
+    if let Err(error) = start_streams(&app_handle, devices, &mut recording) {
+        // Dropping `recording` stops the streams that did start; free the slot for the next attempt.
+        state.take(&session_id);
+        return Err(CommandError {
+            code: "internal_error".to_string(),
+            message: format!("{error:#}"),
+        });
+    }
+    state.install(recording);
+
+    crate::meeting_prompt::recording_started(&app_handle);
+    Ok(session_id)
+}
+
+fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &mut ActiveRecording) -> Result<()> {
+    let host = cpal::default_host();
     // One meter for the whole session: input and output streams both feed it, so the UI sees
     // the max of the two under a single throttled `record_level` event.
     let meter = Arc::new(LevelMeter::new(app_handle.clone()));
@@ -178,126 +203,142 @@ pub async fn start_record(app_handle: AppHandle, devices: Vec<AudioDevice>, reco
 
         let path = get_vibe_temp_folder().join(format!("{}.wav", random_string(10)));
         tracing::debug!("WAV file path: {:?}", path);
-        wav_paths.push((path.clone(), 0));
+        recording.wav_paths.push(path.clone());
 
-        let writer = hound::WavWriter::create(path.clone(), spec)?;
+        let writer = hound::WavWriter::create(path, spec)?;
         let writer = Arc::new(Mutex::new(Some(writer)));
-        stream_writers.push(writer.clone());
-        let writer_2 = writer.clone();
+        recording.writers.push(writer.clone());
 
-        let stream = build_input_stream(&device, config, writer_2, meter.clone())?;
+        let stream = build_input_stream(&device, config, writer, meter.clone())?;
         stream.play()?;
         tracing::debug!("Stream started playing");
+        recording.streams.push(StreamHandle(stream));
+    }
+    Ok(())
+}
 
-        let stream_handle = Arc::new(Mutex::new(Some(StreamHandle(stream))));
-        stream_handles.push(stream_handle.clone());
-        tracing::debug!("Stream handle created");
+#[tauri::command]
+/// Stop the session `start_record` returned, merge its captures and emit `record_finish`.
+/// A session that is not the active one (already finished, or never started) is ignored.
+pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>, session_id: String) -> Result<()> {
+    let Some(recording) = state.take(&session_id) else {
+        tracing::debug!("stop_record ignored: session {session_id} is not active");
+        return Ok(());
+    };
+    // Merging and normalizing shell out to ffmpeg, which must not block the async runtime.
+    tauri::async_runtime::spawn_blocking(move || finish_recording(&app_handle, recording)).await?;
+    Ok(())
+}
+
+fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording) {
+    let ActiveRecording {
+        session_id,
+        origin,
+        recording_name,
+        streams,
+        writers,
+        wav_paths,
+    } = recording;
+    let mut wav_paths: Vec<(PathBuf, u32)> = wav_paths.into_iter().map(|path| (path, 0)).collect();
+
+    for (i, (stream, writer)) in streams.into_iter().zip(writers).enumerate() {
+        tracing::debug!("Pausing stream");
+        stream.0.pause().map_err(|e| eyre!("{:?}", e)).log_error();
+        tracing::debug!("Finalizing writer");
+        let writer = writer.lock().expect("lock").take();
+        if let Some(writer) = writer {
+            wav_paths[i].1 = writer.len();
+            writer.finalize().map_err(|e| eyre!("{:?}", e)).log_error();
+        }
     }
 
-    let app_handle_clone = app_handle.clone();
-    app_handle.once("stop_record", move |_event| {
-        for (i, stream_handle) in stream_handles.iter().enumerate() {
-            let stream_handle = stream_handle.lock().map_err(|e| eyre!("{:?}", e)).log_error();
-            if let Some(mut stream_handle) = stream_handle {
-                let stream = stream_handle.take();
-                let writer = stream_writers[i].clone();
-                if let Some(stream) = stream {
-                    tracing::debug!("Pausing stream");
-                    stream.0.pause().map_err(|e| eyre!("{:?}", e)).log_error();
-                    tracing::debug!("Finalizing writer");
-                    let writer = writer.lock().expect("lock").take().expect("writer");
-                    let written = writer.len();
-                    wav_paths[i] = (wav_paths[i].0.clone(), written);
-                    writer.finalize().map_err(|e| eyre!("{:?}", e)).log_error();
-                }
-            }
-        }
-
-        let Some(best_raw) = best_raw_capture(&wav_paths) else {
-            tracing::error!("Recording stopped without any capture files");
-            app_handle_clone
-                .emit(
-                    "record_error",
-                    json!({"message": "Recording stopped without any captured audio"}),
-                )
-                .map_err(|e| eyre!("{e:?}"))
-                .log_error();
-            crate::meeting_prompt::recording_stopped(&app_handle_clone);
-            return;
-        };
-
-        let (dst, mut warning) = if wav_paths.len() > 1 && wav_paths[0].1 > 0 && wav_paths[1].1 > 0 {
-            let dst = get_vibe_temp_folder().join(format!("{}.wav", random_string(10)));
-            tracing::debug!("Merging WAV files");
-            match crate::ffmpeg::merge_wav_files(wav_paths[0].0.clone(), wav_paths[1].0.clone(), dst.clone()) {
-                Ok(()) if dst.is_file() => (dst, None),
-                Ok(()) => {
-                    std::fs::remove_file(&dst).ok();
-                    let message = "Audio merge produced no output; preserving the best raw capture".to_string();
-                    tracing::error!("{message}");
-                    (best_raw, Some(message))
-                }
-                Err(error) => {
-                    std::fs::remove_file(&dst).ok();
-                    let message = format!("Audio merge failed; preserving the best raw capture: {error:#}");
-                    tracing::error!("{message}");
-                    (best_raw, Some(message))
-                }
-            }
-        } else {
-            (best_raw, None)
-        };
-
-        tracing::debug!("Emitting record_finish event");
-        let recording_stem = recording_name
-            .as_deref()
-            .map(crate::cmd::files::sanitize_filename_stem)
-            .filter(|name| !name.is_empty())
-            .unwrap_or_else(get_local_time);
-        let temp_dir = get_vibe_temp_folder();
-        let normalized = crate::cmd::files::available_path(&temp_dir, &recording_stem, "wav");
-        let output = match crate::ffmpeg::normalize(dst.clone(), normalized.clone(), None) {
-            Ok(()) if normalized.is_file() => normalized,
-            result => {
-                std::fs::remove_file(&normalized).ok();
-                let detail = match result {
-                    Ok(()) => "normalization produced no output".to_string(),
-                    Err(error) => format!("{error:#}"),
-                };
-                let message = format!("Audio normalization failed; preserving the unnormalized capture: {detail}");
-                tracing::error!("{message}");
-                warning = Some(match warning {
-                    Some(previous) => format!("{previous}; {message}"),
-                    None => message,
-                });
-
-                let recovery = crate::cmd::files::available_path(&temp_dir, &recording_stem, "wav");
-                if dst != recovery && std::fs::rename(&dst, &recovery).is_ok() {
-                    recovery
-                } else {
-                    dst.clone()
-                }
-            }
-        };
-
-        let intermediates = wav_paths.into_iter().map(|(path, _)| path).chain(std::iter::once(dst));
-        remove_recording_intermediates(intermediates, &output);
-        app_handle_clone
+    let Some(best_raw) = best_raw_capture(&wav_paths) else {
+        tracing::error!("Recording stopped without any capture files");
+        app_handle
             .emit(
-                "record_finish",
+                "record_error",
                 json!({
-                    "path": output.to_string_lossy(),
-                    "name": output.file_name().map(|n| n.to_str().unwrap_or_default()).unwrap_or_default(),
-                    "warning": warning,
+                    "sessionId": session_id,
+                    "origin": origin,
+                    "message": "Recording stopped without any captured audio",
                 }),
             )
             .map_err(|e| eyre!("{e:?}"))
             .log_error();
-        crate::meeting_prompt::recording_stopped(&app_handle_clone);
-    });
+        crate::meeting_prompt::recording_stopped(app_handle);
+        return;
+    };
 
-    crate::meeting_prompt::recording_started(&app_handle);
-    Ok(())
+    let (dst, mut warning) = if wav_paths.len() > 1 && wav_paths[0].1 > 0 && wav_paths[1].1 > 0 {
+        let dst = get_vibe_temp_folder().join(format!("{}.wav", random_string(10)));
+        tracing::debug!("Merging WAV files");
+        match crate::ffmpeg::merge_wav_files(wav_paths[0].0.clone(), wav_paths[1].0.clone(), dst.clone()) {
+            Ok(()) if dst.is_file() => (dst, None),
+            Ok(()) => {
+                std::fs::remove_file(&dst).ok();
+                let message = "Audio merge produced no output; preserving the best raw capture".to_string();
+                tracing::error!("{message}");
+                (best_raw, Some(message))
+            }
+            Err(error) => {
+                std::fs::remove_file(&dst).ok();
+                let message = format!("Audio merge failed; preserving the best raw capture: {error:#}");
+                tracing::error!("{message}");
+                (best_raw, Some(message))
+            }
+        }
+    } else {
+        (best_raw, None)
+    };
+
+    tracing::debug!("Emitting record_finish event");
+    let recording_stem = recording_name
+        .as_deref()
+        .map(crate::cmd::files::sanitize_filename_stem)
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(get_local_time);
+    let temp_dir = get_vibe_temp_folder();
+    let normalized = crate::cmd::files::available_path(&temp_dir, &recording_stem, "wav");
+    let output = match crate::ffmpeg::normalize(dst.clone(), normalized.clone(), None) {
+        Ok(()) if normalized.is_file() => normalized,
+        result => {
+            std::fs::remove_file(&normalized).ok();
+            let detail = match result {
+                Ok(()) => "normalization produced no output".to_string(),
+                Err(error) => format!("{error:#}"),
+            };
+            let message = format!("Audio normalization failed; preserving the unnormalized capture: {detail}");
+            tracing::error!("{message}");
+            warning = Some(match warning {
+                Some(previous) => format!("{previous}; {message}"),
+                None => message,
+            });
+
+            let recovery = crate::cmd::files::available_path(&temp_dir, &recording_stem, "wav");
+            if dst != recovery && std::fs::rename(&dst, &recovery).is_ok() {
+                recovery
+            } else {
+                dst.clone()
+            }
+        }
+    };
+
+    let intermediates = wav_paths.into_iter().map(|(path, _)| path).chain(std::iter::once(dst));
+    remove_recording_intermediates(intermediates, &output);
+    app_handle
+        .emit(
+            "record_finish",
+            json!({
+                "sessionId": session_id,
+                "origin": origin,
+                "path": output.to_string_lossy(),
+                "name": output.file_name().map(|n| n.to_str().unwrap_or_default()).unwrap_or_default(),
+                "warning": warning,
+            }),
+        )
+        .map_err(|e| eyre!("{e:?}"))
+        .log_error();
+    crate::meeting_prompt::recording_stopped(app_handle);
 }
 
 #[allow(unused_variables)]

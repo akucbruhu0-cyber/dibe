@@ -10,10 +10,10 @@ import * as config from '~/lib/config'
 import { pathToNamedPath } from '~/lib/fs'
 import { cleanupPartialDownloads, listInstalledModels, type InstalledModel } from '~/lib/model'
 import { autoProjectName } from '~/lib/project-name'
+import { isMine, type RecordErrorPayload, type RecordFinishPayload, type RecordingOrigin } from '~/lib/recording-origin'
 import { notifyTranscriptsChanged, saveTranscript, TRANSCRIPT_VERSION, type TranscriptRecord } from '~/lib/transcripts-store'
 import type { NamedPath, ProjectSource } from '~/lib/types'
 import { useConfirmExit } from '~/lib/use-confirm-exit'
-import { hotkeyRecordingActive } from '~/providers/hotkey'
 import { useRecordingShortcut } from '~/providers/recording-shortcut'
 import { ErrorModalContext } from '~/providers/error-modal'
 import { usePreferenceProvider, type Preference } from '~/providers/preference'
@@ -22,6 +22,9 @@ import { useRecording } from '~/pages/home/hooks/use-recording'
 import { useDropTarget } from './hooks/use-drop-target'
 import { useSummaries, type Summaries } from './hooks/use-summaries'
 import { useTranscribeQueue, type TranscribeQueue } from './hooks/use-transcribe-queue'
+
+/** Recordings that end up as a project here; dictation is handled by the hotkey provider. */
+const PROJECT_RECORDING_ORIGINS: RecordingOrigin[] = ['manual', 'shortcut', 'meeting']
 
 export type SessionMode = 'idle' | 'working' | 'done'
 export type IdlePanel = 'none' | 'record' | 'link'
@@ -157,8 +160,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	// A recording becomes a durable project first. Transcription is an optional second step which
 	// updates that same project, so a failed/disabled transcription never costs the user the audio.
 	useEffect(() => {
-		const unlisten: Promise<UnlistenFn> = listen<{ path: string; name: string; warning?: string }>('record_finish', async ({ payload }) => {
-			if (hotkeyRecordingActive) return
+		const unlisten: Promise<UnlistenFn> = listen<RecordFinishPayload>('record_finish', async ({ payload }) => {
+			if (!isMine(payload, PROJECT_RECORDING_ORIGINS)) return
 			recording.setIsRecording(false)
 			setPanel('none')
 			if (payload.warning) toast.warning(m.recordingRecoveredWarning(), { description: payload.warning, position: 'bottom-center' })
@@ -202,9 +205,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	}, [recording.setIsRecording])
 
 	useEffect(() => {
-		const unlisten: Promise<UnlistenFn> = listen<string | { message?: string }>('record_error', ({ payload }) => {
-			if (hotkeyRecordingActive) return
-			const message = typeof payload === 'string' ? payload : payload?.message || m.error()
+		const unlisten: Promise<UnlistenFn> = listen<RecordErrorPayload>('record_error', ({ payload }) => {
+			if (!isMine(payload, PROJECT_RECORDING_ORIGINS)) return
+			const message = payload.message || m.error()
 			recording.setIsRecording(false)
 			setPanel('none')
 			toast.error(m.error(), { description: message, position: 'bottom-center' })

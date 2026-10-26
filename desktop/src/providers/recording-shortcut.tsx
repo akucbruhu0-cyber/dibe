@@ -9,6 +9,8 @@ import { usePersisted } from '~/lib/config-store'
 import { getDefaultRecordingShortcut } from '~/lib/config'
 import type { MeetingRecordingOptions } from '~/lib/meeting-prompt'
 import { ensureSystemAudioPermission } from '~/lib/permissions'
+import { isMine, type RecordErrorPayload, type RecordFinishPayload, type RecordingOrigin } from '~/lib/recording-origin'
+import { isAlreadyRecording, recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
 import { m } from '~/paraglide/messages.js'
 import { useHotkeyProvider } from './hotkey'
 
@@ -32,9 +34,7 @@ export function useRecordingShortcut() {
 	return context
 }
 
-function errorDescription(error: unknown) {
-	return error instanceof Error ? error.message : String(error)
-}
+const DEFAULT_OPTIONS: MeetingRecordingOptions = { microphone: true, systemAudio: false }
 
 export function RecordingShortcutProvider({ children }: { children: ReactNode }) {
 	const dictation = useHotkeyProvider()
@@ -55,7 +55,7 @@ export function RecordingShortcutProvider({ children }: { children: ReactNode })
 		dictationRecordingRef.current = dictation.isHotkeyRecording
 	}, [dictation.isHotkeyRecording])
 
-	const startRecording = useCallback(async (options: MeetingRecordingOptions = { microphone: true, systemAudio: false }) => {
+	const startRecording = useCallback(async (options = DEFAULT_OPTIONS, origin: RecordingOrigin = 'shortcut') => {
 		if (normalRecordingActiveRef.current || startingRef.current || stoppingRef.current) return false
 		if (dictationRecordingRef.current) {
 			toast.error(m.recordingAlreadyInProgress())
@@ -73,14 +73,15 @@ export function RecordingShortcutProvider({ children }: { children: ReactNode })
 				(device): device is AudioDevice => device != null,
 			)
 			if (selectedDevices.length === 0) throw new Error(m.noDefaultMicrophone())
-			await invoke('start_record', { devices: selectedDevices, recordingName: null })
+			rememberNormalSession(await invoke<string>('start_record', { devices: selectedDevices, recordingName: null, origin }))
 			recordingRef.current = true
 			normalRecordingActiveRef.current = true
 			setIsShortcutRecording(true)
 			return true
 		} catch (error) {
 			console.error('Recording shortcut failed to start:', error)
-			toast.error(m.recordingShortcutStartFailed(), { description: errorDescription(error) })
+			if (isAlreadyRecording(error)) toast.error(m.recordingAlreadyInProgress())
+			else toast.error(m.recordingShortcutStartFailed(), { description: recordingErrorMessage(error) })
 			return false
 		} finally {
 			startingRef.current = false
@@ -89,19 +90,21 @@ export function RecordingShortcutProvider({ children }: { children: ReactNode })
 
 	const stopRecording = useCallback(async () => {
 		if (!normalRecordingActiveRef.current || stoppingRef.current) return
-		stoppingRef.current = true
+		// A recording started from the main screen is reset by the main screen, not by our finish
+		// event, so only guard the one that is ours.
+		stoppingRef.current = recordingRef.current
 		try {
-			await emit('stop_record')
+			await stopNormalSession()
 		} catch (error) {
 			stoppingRef.current = false
 			console.error('Recording shortcut failed to stop:', error)
-			toast.error(m.recordingShortcutStopFailed(), { description: errorDescription(error) })
+			toast.error(m.recordingShortcutStopFailed(), { description: recordingErrorMessage(error) })
 		}
 	}, [])
 
 	useEffect(() => {
 		const unlisten = listen<MeetingRecordingOptions>('meeting-prompt-start-recording', async ({ payload }) => {
-			const started = await startRecording(payload)
+			const started = await startRecording(payload, 'meeting')
 			await emit('meeting-prompt-recording-result', { started })
 		})
 		return () => {
@@ -110,15 +113,16 @@ export function RecordingShortcutProvider({ children }: { children: ReactNode })
 	}, [startRecording])
 
 	useEffect(() => {
-		function resetRecording() {
+		function resetRecording({ payload }: { payload: RecordFinishPayload | RecordErrorPayload }) {
+			if (!isMine(payload, ['shortcut', 'meeting'])) return
 			normalRecordingActiveRef.current = false
 			stoppingRef.current = false
 			if (!recordingRef.current) return
 			recordingRef.current = false
 			setIsShortcutRecording(false)
 		}
-		const unlistenFinish = listen('record_finish', resetRecording)
-		const unlistenError = listen('record_error', resetRecording)
+		const unlistenFinish = listen<RecordFinishPayload>('record_finish', resetRecording)
+		const unlistenError = listen<RecordErrorPayload>('record_error', resetRecording)
 		return () => {
 			unlistenFinish.then((dispose) => dispose())
 			unlistenError.then((dispose) => dispose())
@@ -162,7 +166,7 @@ export function RecordingShortcutProvider({ children }: { children: ReactNode })
 				registeredRef.current = recordingShortcut
 			} catch (error) {
 				console.error('Failed to register recording shortcut:', error)
-				toast.error(m.recordingShortcutRegistrationFailed(), { description: errorDescription(error) })
+				toast.error(m.recordingShortcutRegistrationFailed(), { description: recordingErrorMessage(error) })
 			}
 		}
 

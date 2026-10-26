@@ -15,6 +15,7 @@ mod handoff;
 mod keepawake;
 mod logging;
 mod meeting_prompt;
+mod recording;
 mod server;
 mod setup;
 mod transcript;
@@ -139,6 +140,7 @@ async fn main() -> Result<()> {
             cmd::files::get_default_projects_path,
             cmd::audio::get_audio_devices,
             cmd::audio::start_record,
+            cmd::audio::stop_record,
             cmd::app::get_models_folder,
             cmd::app::get_logs_folder,
             cmd::app::show_log_path,
