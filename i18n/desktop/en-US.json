@@ -252,6 +252,7 @@
 	"recordingShortcutStartFailed": "Could not start recording",
 	"recordingShortcutStopFailed": "Could not stop recording",
 	"noDefaultMicrophone": "No default microphone is available.",
+	"savedDeviceNotConnected": "The selected device is not connected",
 	"recordingAlreadyInProgress": "Another recording is already in progress.",
 	"recordingRecoveredWarning": "Recording saved with reduced processing",
 	"unfinishedRecordingRecovered": "Recovered an unfinished recording from {date}",

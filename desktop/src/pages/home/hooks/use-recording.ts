@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { type SetStateAction, useContext, useEffect, useState } from 'react'
-import type { AudioDevice } from '~/lib/audio'
+import { toast } from 'sonner'
+import { type AudioDevice, pickSavedDevice } from '~/lib/audio'
 import { CONFIG_KEYS } from '~/lib/config-keys'
 import { usePersisted } from '~/lib/config-store'
 import { KEEP_AWAKE, startKeepAwake, stopKeepAwake } from '~/lib/keep-awake'
@@ -8,6 +9,7 @@ import { ensureSystemAudioPermission } from '~/lib/permissions'
 import { recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
 import { ErrorModalContext } from '~/providers/error-modal'
 import { usePreferenceProvider } from '~/providers/preference'
+import { m } from '~/paraglide/messages.js'
 
 export function useRecording(onBeforeStart: () => void) {
 	const preference = usePreferenceProvider()
@@ -36,16 +38,12 @@ export function useRecording(onBeforeStart: () => void) {
 		const newDevices = await invoke<AudioDevice[]>('get_audio_devices')
 		const inputs = newDevices.filter((device) => device.isInput)
 		const outputs = newDevices.filter((device) => !device.isInput)
-		setInputDevice(
-			savedInputDeviceId === null
-				? (inputs.find((device) => device.isDefault) ?? null)
-				: (inputs.find((device) => device.id === savedInputDeviceId) ?? null),
-		)
-		setOutputDevice(
-			savedOutputDeviceId === null
-				? (outputs.find((device) => device.isDefault) ?? null)
-				: (outputs.find((device) => device.id === savedOutputDeviceId) ?? null),
-		)
+		const input = pickSavedDevice(inputs, savedInputDeviceId)
+		const output = pickSavedDevice(outputs, savedOutputDeviceId)
+		setInputDevice(input.device)
+		setOutputDevice(output.device)
+		// One toast for both; the id keeps a reload of the tab from stacking copies.
+		if (input.missing || output.missing) toast.warning(m.savedDeviceNotConnected(), { id: 'saved-device-not-connected' })
 		setDevices(newDevices)
 	}
 

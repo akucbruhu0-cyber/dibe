@@ -1,6 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Device, SupportedStreamConfig};
-use eyre::{eyre, Context, ContextCompat, Result};
+use cpal::{Device, DeviceId, SupportedStreamConfig};
+use eyre::{eyre, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -27,39 +27,92 @@ pub struct AudioDevice {
     pub name: String,
 }
 
+/// Which of `names` are the default input or output. `None` means the machine has no such device
+/// (a Mac mini without a microphone), which marks nothing instead of being an error.
+fn mark_defaults(names: &[String], default_in: Option<&str>, default_out: Option<&str>) -> Vec<bool> {
+    names
+        .iter()
+        .map(|name| [default_in, default_out].contains(&Some(name.as_str())))
+        .collect()
+}
+
 #[tauri::command]
+/// Every audio device the host lists, each with the stable id `start_record` finds it by. A machine
+/// without a default microphone or speakers still gets its list.
 pub fn get_audio_devices() -> Result<Vec<AudioDevice>> {
     let host = cpal::default_host();
-    let mut audio_devices = Vec::new();
-
-    let default_in = host
-        .default_input_device()
-        .map(|e| e.description().map(|d| d.to_string()))
-        .context("name")?;
-    let default_out = host
-        .default_output_device()
-        .map(|e| e.description().map(|d| d.to_string()))
-        .context("name")?;
+    let default_name = |device: Option<Device>| device.and_then(|device| device.description().ok()).map(|d| d.to_string());
+    let default_in = default_name(host.default_input_device());
+    let default_out = default_name(host.default_output_device());
     tracing::debug!("Default Input Device:\n{:?}", default_in);
     tracing::debug!("Default Output Device:\n{:?}", default_out);
 
-    let devices = host.devices()?;
+    // (id, name, is_input) of each device that can be told apart and selected again later.
+    let mut found = Vec::new();
     tracing::debug!("Devices: ");
-    for (device_index, device) in devices.enumerate() {
-        let name = device.description()?.to_string();
-        let is_default_in = default_in.as_ref().is_ok_and(|d| d == &name);
-        let is_default_out = default_out.as_ref().is_ok_and(|d| d == &name);
-
-        let audio_device = AudioDevice {
-            is_default: is_default_in || is_default_out,
-            is_input: device.supports_input(),
-            id: device_index.to_string(),
-            name,
-        };
-        audio_devices.push(audio_device);
+    for device in host.devices()? {
+        match (device.id(), device.description()) {
+            (Ok(id), Ok(name)) => found.push((id.to_string(), name.to_string(), device.supports_input())),
+            (id, name) => tracing::warn!("Skipping a device that cannot be identified: id {id:?}, name {name:?}"),
+        }
     }
 
-    Ok(audio_devices)
+    let names: Vec<String> = found.iter().map(|(_, name, _)| name.clone()).collect();
+    let defaults = mark_defaults(&names, default_in.as_deref(), default_out.as_deref());
+    Ok(found
+        .into_iter()
+        .zip(defaults)
+        .map(|((id, name, is_input), is_default)| AudioDevice {
+            is_default,
+            is_input,
+            id,
+            name,
+        })
+        .collect())
+}
+
+/// A device `start_record` was asked for is not connected (anymore). The UI shows it by name.
+#[derive(Debug)]
+struct DeviceUnavailable(String);
+
+impl std::fmt::Display for DeviceUnavailable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "The audio device \"{}\" is not connected", self.0)
+    }
+}
+
+impl std::error::Error for DeviceUnavailable {}
+
+impl From<DeviceUnavailable> for CommandError {
+    fn from(error: DeviceUnavailable) -> Self {
+        CommandError {
+            code: "device_unavailable".to_string(),
+            message: error.to_string(),
+        }
+    }
+}
+
+/// The device a recording asked for, found by the stable id `get_audio_devices` gave it. An id
+/// that no connected device has (unplugged since, or an index an older version saved) is
+/// `DeviceUnavailable`, never another device that happens to sit at that position now.
+fn find_device(host: &cpal::Host, audio_device: &AudioDevice) -> Result<Device> {
+    audio_device
+        .id
+        .parse::<DeviceId>()
+        .ok()
+        .and_then(|id| host.device_by_id(&id))
+        .ok_or_else(|| DeviceUnavailable(audio_device.name.clone()).into())
+}
+
+/// How a failed start reaches the UI: a missing device has its own code, anything else is internal.
+fn start_error(error: eyre::Report) -> CommandError {
+    match error.downcast::<DeviceUnavailable>() {
+        Ok(unavailable) => unavailable.into(),
+        Err(error) => CommandError {
+            code: "internal_error".to_string(),
+            message: format!("{error:#}"),
+        },
+    }
 }
 
 impl From<AlreadyRecording> for CommandError {
@@ -90,10 +143,7 @@ pub async fn start_record(
         // Free the slot for the next attempt and stop the streams that did start.
         state.take(&session_id);
         discard_recording(recording);
-        return Err(CommandError {
-            code: "internal_error".to_string(),
-            message: format!("{error:#}"),
-        });
+        return Err(start_error(error));
     }
     if let Err(recording) = state.install(recording) {
         discard_recording(*recording);
@@ -128,8 +178,7 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
 
         let is_input = device.is_input;
         let (device, config) = if is_input {
-            let device_id: usize = device.id.parse().context("Failed to parse device ID")?;
-            let dev = host.devices()?.nth(device_id).context("Failed to get device by ID")?;
+            let dev = find_device(&host, &device)?;
             let config = dev.default_input_config().context("Failed to get default input config")?;
             (dev, config)
         } else {
@@ -335,28 +384,21 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
     crate::meeting_prompt::recording_stopped(app_handle);
 }
 
-#[allow(unused_variables)]
 fn get_output_device_and_config(host: &cpal::Host, audio_device: &AudioDevice) -> Result<(Device, SupportedStreamConfig)> {
     // On macOS, use the default output device directly — cpal's loopback support
     // requires this path to build an input stream from an output device.
     #[cfg(target_os = "macos")]
-    {
-        let device = host.default_output_device().context("Failed to get default output device")?;
-        let config = device
-            .default_output_config()
-            .context("Failed to get default output config")?;
-        Ok((device, config))
-    }
+    let device = host
+        .default_output_device()
+        .ok_or_else(|| DeviceUnavailable(audio_device.name.clone()))?;
 
     #[cfg(not(target_os = "macos"))]
-    {
-        let device_id: usize = audio_device.id.parse().context("Failed to parse device ID")?;
-        let device = host.devices()?.nth(device_id).context("Failed to get device by ID")?;
-        let config = device
-            .default_output_config()
-            .context("Failed to get default output config")?;
-        Ok((device, config))
-    }
+    let device = find_device(host, audio_device)?;
+
+    let config = device
+        .default_output_config()
+        .context("Failed to get default output config")?;
+    Ok((device, config))
 }
 
 #[cfg(test)]
@@ -364,6 +406,64 @@ mod tests {
     use super::*;
     use crate::ffmpeg::random_string;
     use crate::recording::finalize::best_raw_capture;
+    use std::str::FromStr;
+
+    fn sample_names() -> Vec<String> {
+        ["MacBook Mic", "Speakers", "AirPods"].map(String::from).to_vec()
+    }
+
+    #[test]
+    fn mark_defaults_marks_input_and_output_defaults() {
+        let flags = mark_defaults(&sample_names(), Some("MacBook Mic"), Some("Speakers"));
+        assert_eq!(flags, vec![true, true, false]);
+    }
+
+    #[test]
+    fn mark_defaults_tolerates_a_machine_without_a_default_input() {
+        // A Mac mini has no microphone: the list still comes back, with only the output marked.
+        assert_eq!(
+            mark_defaults(&sample_names(), None, Some("Speakers")),
+            vec![false, true, false]
+        );
+        assert_eq!(mark_defaults(&sample_names(), None, None), vec![false; 3]);
+        assert!(mark_defaults(&[], None, None).is_empty());
+    }
+
+    #[test]
+    fn device_id_roundtrips_through_string() {
+        // CoreAudio UIDs contain colons of their own; only the first one separates the host.
+        let id = DeviceId::new(cpal::default_host().id(), "AppleUSBAudioEngine:Vendor:Mic:1234:1");
+        assert_eq!(DeviceId::from_str(&id.to_string()).expect("parses back"), id);
+    }
+
+    #[test]
+    fn missing_device_is_reported_by_name() {
+        let host = cpal::default_host();
+        let gone = AudioDevice {
+            is_default: false,
+            is_input: true,
+            id: DeviceId::new(host.id(), "no-such-device").to_string(),
+            name: "AirPods".to_string(),
+        };
+        let error = start_error(find_device(&host, &gone).expect_err("nothing has this id"));
+        assert_eq!(error.code, "device_unavailable");
+        assert!(error.message.contains("AirPods"));
+
+        // An index saved by an older version is not a device id at all.
+        let legacy = AudioDevice {
+            id: "2".to_string(),
+            ..gone
+        };
+        let error = start_error(find_device(&host, &legacy).expect_err("an index is no id"));
+        assert_eq!(error.code, "device_unavailable");
+    }
+
+    #[test]
+    fn other_start_failures_stay_internal() {
+        let error = start_error(eyre!("disk full"));
+        assert_eq!(error.code, "internal_error");
+        assert!(error.message.contains("disk full"));
+    }
 
     #[test]
     fn discarded_recording_leaves_nothing_to_recover() {

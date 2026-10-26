@@ -252,6 +252,7 @@
 	"recordingShortcutStartFailed": "לא ניתן להתחיל את ההקלטה",
 	"recordingShortcutStopFailed": "לא ניתן לעצור את ההקלטה",
 	"noDefaultMicrophone": "אין מיקרופון ברירת מחדל זמין.",
+	"savedDeviceNotConnected": "המכשיר שנבחר לא מחובר",
 	"recordingAlreadyInProgress": "הקלטה אחרת כבר מתבצעת.",
 	"recordingRecoveredWarning": "ההקלטה נשמרה עם עיבוד מופחת",
 	"unfinishedRecordingRecovered": "שוחזרה הקלטה שלא הסתיימה מ-{date}",
