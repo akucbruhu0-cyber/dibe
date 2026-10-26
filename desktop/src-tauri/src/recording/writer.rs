@@ -3,7 +3,8 @@
 //! The audio callback only pushes samples into a lock-free ring (see `capture`). This thread
 //! empties it every ~20 ms into a 32-bit float WAV and checkpoints the header every
 //! `checkpoint_every`, so the file on disk is readable up to the last checkpoint even if the app
-//! dies without finalizing it.
+//! dies without finalizing it. Its drain tick also runs `on_tick`, the non-realtime home of
+//! anything the callback must not do itself (the level meter's emit).
 
 use eyre::{bail, eyre, Result};
 use std::fs::File;
@@ -40,19 +41,21 @@ pub struct WriterHandle {
     thread: JoinHandle<Result<u64>>,
 }
 
-/// Creates the WAV at `path` and starts the thread that fills it from `rx`. A handle dropped
-/// without `finish` still stops the thread, which then finalizes the file on its own.
+/// Creates the WAV at `path` and starts the thread that fills it from `rx`, calling `on_tick`
+/// after every drain. A handle dropped without `finish` still stops the thread, which then
+/// finalizes the file on its own.
 pub fn spawn_writer(
     path: PathBuf,
     spec: hound::WavSpec,
     rx: rtrb::Consumer<f32>,
     checkpoint_every: Duration,
+    on_tick: impl FnMut() + Send + 'static,
 ) -> Result<WriterHandle> {
     let wav = hound::WavWriter::create(&path, spec)?;
     let (stop, stopped) = mpsc::channel();
     let thread = std::thread::Builder::new()
         .name("vibe-wav-writer".into())
-        .spawn(move || write_until_stopped(wav, rx, &stopped, checkpoint_every))?;
+        .spawn(move || write_until_stopped(wav, rx, &stopped, checkpoint_every, on_tick))?;
     Ok(WriterHandle {
         dropped: Arc::default(),
         stop,
@@ -78,6 +81,7 @@ fn write_until_stopped(
     mut rx: rtrb::Consumer<f32>,
     stopped: &mpsc::Receiver<()>,
     checkpoint_every: Duration,
+    mut on_tick: impl FnMut(),
 ) -> Result<u64> {
     let mut last_checkpoint = Instant::now();
     loop {
@@ -86,6 +90,7 @@ fn write_until_stopped(
         if stopping {
             break;
         }
+        on_tick();
         if last_checkpoint.elapsed() >= checkpoint_every {
             // hound's flush rewrites the header's lengths, so the file is valid up to here.
             wav.flush()?;
@@ -140,7 +145,7 @@ mod tests {
     fn checkpoint_makes_file_readable_while_writing() {
         let path = temp_wav("checkpoint");
         let (mut tx, rx) = rtrb::RingBuffer::new(48_000);
-        let writer = spawn_writer(path.clone(), mono_spec(), rx, Duration::ZERO).expect("spawn");
+        let writer = spawn_writer(path.clone(), mono_spec(), rx, Duration::ZERO, || {}).expect("spawn");
         push(&mut tx, 48_000);
 
         // The recording is still running: only a checkpoint can have put the length in the header.
@@ -160,7 +165,7 @@ mod tests {
     fn finish_reports_samples_and_drops() {
         let path = temp_wav("finish");
         let (mut tx, rx) = rtrb::RingBuffer::new(1_000);
-        let writer = spawn_writer(path.clone(), mono_spec(), rx, CHECKPOINT_EVERY).expect("spawn");
+        let writer = spawn_writer(path.clone(), mono_spec(), rx, CHECKPOINT_EVERY, || {}).expect("spawn");
         push(&mut tx, 600);
         // What the audio callback adds when the ring is full.
         writer.dropped.fetch_add(7, Ordering::Relaxed);

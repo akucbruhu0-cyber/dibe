@@ -59,9 +59,11 @@ pub fn get_audio_devices() -> Result<Vec<AudioDevice>> {
     Ok(audio_devices)
 }
 
+/// The capture with the most audio, or `None` when no device delivered any.
 fn best_raw_capture(wav_paths: &[(PathBuf, u64)]) -> Option<PathBuf> {
     wav_paths
         .iter()
+        .filter(|(_, samples)| *samples > 0)
         .max_by_key(|(_, samples)| *samples)
         .map(|(path, _)| path.clone())
 }
@@ -119,9 +121,9 @@ pub async fn start_record(
 
 fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &mut ActiveRecording) -> Result<()> {
     let host = cpal::default_host();
-    // One meter for the whole session: input and output streams both feed it, so the UI sees
-    // the max of the two under a single throttled `record_level` event.
-    let meter = Arc::new(LevelMeter::new(app_handle.clone()));
+    // One meter for the whole session: every stream raises its peak and every writer's tick may
+    // emit it, so the UI sees the max of all devices under a single throttled `record_level` event.
+    let meter = Arc::new(LevelMeter::default());
 
     for device in devices {
         tracing::debug!("Recording from device: {}", device.name);
@@ -142,7 +144,11 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
         tracing::debug!("WAV file path: {:?}", path);
 
         let (tx, rx) = capture::ring(&spec);
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY)?;
+        let emit_level = {
+            let (meter, app_handle) = (meter.clone(), app_handle.clone());
+            move || meter.emit_if_due(&app_handle)
+        };
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, emit_level)?;
         let dropped = writer.dropped.clone();
         recording.writers.push(writer);
         recording.wav_paths.push(path);
@@ -157,8 +163,8 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
 }
 
 #[tauri::command]
-/// Stop the session `start_record` returned, merge its captures and emit `record_finish` (or
-/// `record_error`, still naming the saved file, if saving the audio failed).
+/// Stop the session `start_record` returned, merge its captures and emit `record_finish`
+/// (`record_error` only when no audio was saved at all).
 /// A session that is not the active one (already finished, or never started) is ignored.
 pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>, session_id: String) -> Result<()> {
     let Some(recording) = state.take(&session_id) else {
@@ -171,7 +177,8 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
 }
 
 /// cpal's error callback for a session's streams. A device that stops delivering audio (e.g.
-/// AirPods unplugged mid-meeting) ends the session, keeping what was captured until then.
+/// AirPods unplugged mid-meeting) ends the session; what was captured until then still becomes a
+/// recording, with the failure as its warning.
 fn end_on_stream_error(app_handle: &AppHandle, session_id: &str) -> impl FnMut(cpal::Error) + Send + 'static {
     let app_handle = app_handle.clone();
     let session_id = session_id.to_string();
@@ -182,7 +189,7 @@ fn end_on_stream_error(app_handle: &AppHandle, session_id: &str) -> impl FnMut(c
         tauri::async_runtime::spawn_blocking(move || {
             // Only the first failure finds the session; a second device or a racing stop_record is a no-op.
             if let Some(recording) = app_handle.state::<RecordingState>().take(&session_id) {
-                let failure = format!("The recording device stopped ({error})");
+                let failure = format!("The recording device stopped ({error}); the recording was saved up to that point");
                 finish_recording(&app_handle, recording, Some(failure));
             }
         });
@@ -232,35 +239,36 @@ fn close_captures(streams: Vec<StreamHandle>, writers: Vec<WriterHandle>, wav_pa
     closed
 }
 
-/// The event that ends a session for its listeners. A `failure` (a device or the disk cut the
-/// recording short) makes it `record_error`, which still names the file that was saved.
+/// The event that ends a session for its listeners: `record_finish` whenever audio was saved, so
+/// the UI keeps it as a project and shows `warnings` (a failed device or writer included);
+/// `record_error` only when there is no `output` to keep.
 fn recording_event(
     session_id: &str,
     origin: RecordingOrigin,
-    output: &Path,
+    output: Option<&Path>,
     warnings: Vec<String>,
-    failure: Option<String>,
 ) -> (&'static str, Value) {
-    let path = output.to_string_lossy();
-    let name = output.file_name().map(|name| name.to_string_lossy()).unwrap_or_default();
-    let warning = (!warnings.is_empty()).then(|| warnings.join("; "));
-    match failure {
-        None => (
-            "record_finish",
-            json!({ "sessionId": session_id, "origin": origin, "path": path, "name": name, "warning": warning }),
-        ),
-        Some(failure) => (
+    let Some(output) = output else {
+        let mut message = "Recording stopped without any captured audio".to_string();
+        if !warnings.is_empty() {
+            message = format!("{message}: {}", warnings.join("; "));
+        }
+        return (
             "record_error",
-            json!({
-                "sessionId": session_id,
-                "origin": origin,
-                "message": format!("{failure}. The audio recorded until then was saved to {path}"),
-                "path": path,
-                "name": name,
-                "warning": warning,
-            }),
-        ),
-    }
+            json!({ "sessionId": session_id, "origin": origin, "message": message }),
+        );
+    };
+    let warning = (!warnings.is_empty()).then(|| warnings.join("; "));
+    (
+        "record_finish",
+        json!({
+            "sessionId": session_id,
+            "origin": origin,
+            "path": output.to_string_lossy(),
+            "name": output.file_name().map(|name| name.to_string_lossy()).unwrap_or_default(),
+            "warning": warning,
+        }),
+    )
 }
 
 /// Ends a session: saves its audio, merges and normalizes it, and tells the listeners. `failure`
@@ -276,11 +284,8 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
     } = recording;
     let closed = close_captures(streams, writers, wav_paths);
     let wav_paths = closed.files;
-    let failure = failure
-        .into_iter()
-        .chain(closed.failures)
-        .reduce(|all, next| format!("{all}; {next}"));
-    let mut warnings = Vec::new();
+    // What cut the recording short rides on it as a warning: the saved audio still becomes a project.
+    let mut warnings: Vec<String> = failure.into_iter().chain(closed.failures).collect();
     if closed.dropped > 0 {
         let message = format!(
             "{} audio samples were dropped because the disk could not keep up",
@@ -291,18 +296,9 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
     }
 
     let Some(best_raw) = best_raw_capture(&wav_paths) else {
-        tracing::error!("Recording stopped without any capture files");
-        app_handle
-            .emit(
-                "record_error",
-                json!({
-                    "sessionId": session_id,
-                    "origin": origin,
-                    "message": "Recording stopped without any captured audio",
-                }),
-            )
-            .map_err(|e| eyre!("{e:?}"))
-            .log_error();
+        tracing::error!("Recording stopped without any captured audio");
+        let (event, payload) = recording_event(&session_id, origin, None, warnings);
+        app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
         crate::meeting_prompt::recording_stopped(app_handle);
         return;
     };
@@ -361,7 +357,7 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
 
     let intermediates = wav_paths.into_iter().map(|(path, _)| path).chain(std::iter::once(dst));
     remove_recording_intermediates(intermediates, &output);
-    let (event, payload) = recording_event(&session_id, origin, &output, warnings, failure);
+    let (event, payload) = recording_event(&session_id, origin, Some(&output), warnings);
     tracing::debug!("Emitting {event} event");
     app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
     crate::meeting_prompt::recording_stopped(app_handle);
@@ -400,6 +396,7 @@ mod tests {
         let captures = vec![(PathBuf::from("short.wav"), 12), (PathBuf::from("long.wav"), 42)];
         assert_eq!(best_raw_capture(&captures), Some(PathBuf::from("long.wav")));
         assert_eq!(best_raw_capture(&[]), None);
+        assert_eq!(best_raw_capture(&[(PathBuf::from("silent.wav"), 0)]), None);
     }
 
     #[test]
@@ -412,7 +409,7 @@ mod tests {
             sample_format: hound::SampleFormat::Float,
         };
         let (mut tx, rx) = capture::ring(&spec);
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY).expect("spawn");
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}).expect("spawn");
         let state = RecordingState::default();
         let session_id = state.try_begin(RecordingOrigin::Meeting).expect("begin");
         // The device delivered 0.1 s of audio and was unplugged: cpal calls the error callback and
@@ -424,21 +421,30 @@ mod tests {
         recording.wav_paths.push(path.clone());
         assert!(state.install(recording));
 
-        // What the error callback does: take the session, close its captures, report the failure.
+        // What the error callback does: take the session, close its captures, keep what was saved
+        // and carry the failure as a warning.
         let recording = state.take(&session_id).expect("the failure ends the active session");
         let closed = close_captures(recording.streams, recording.writers, recording.wav_paths);
+        let saved = best_raw_capture(&closed.files).expect("the audio before the failure was saved");
         let failure = "The recording device stopped (Device disconnected)".to_string();
-        let (event, payload) = recording_event(&session_id, recording.origin, &path, Vec::new(), Some(failure));
+        let (event, payload) = recording_event(&session_id, recording.origin, Some(&saved), vec![failure.clone()]);
 
         assert_eq!(closed.files, vec![(path.clone(), 4_800)]);
         assert_eq!(hound::WavReader::open(&path).expect("saved WAV").len(), 4_800);
-        assert_eq!(event, "record_error");
+        assert_eq!(event, "record_finish", "saved audio becomes a project");
         assert_eq!(payload["path"], path.to_string_lossy().as_ref());
         assert_eq!(payload["origin"], "meeting");
-        let message = payload["message"].as_str().expect("message");
-        assert!(message.contains("Device disconnected") && message.contains(path.to_string_lossy().as_ref()));
+        assert!(payload["warning"]
+            .as_str()
+            .is_some_and(|warning| warning.contains("Device disconnected")));
         // A second failing device finds no session left to end.
         assert!(state.take(&session_id).is_none());
+        // Had the device failed before delivering any audio, there would be no project: an error says why.
+        let (event, payload) = recording_event(&session_id, recording.origin, None, vec![failure]);
+        assert_eq!(event, "record_error");
+        assert!(payload["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("Device disconnected")));
         std::fs::remove_file(path).ok();
     }
 }

@@ -1,6 +1,6 @@
-//! The audio-thread side of a recording: a cpal input stream whose callback only feeds the level
-//! meter and pushes samples into a lock-free ring. No allocation, no lock, no I/O happens there;
-//! the WAV is written by the thread in `writer`.
+//! The audio-thread side of a recording: a cpal input stream whose callback only raises the level
+//! meter's peak (one atomic) and pushes samples into a lock-free ring. No allocation, no lock, no
+//! I/O happens there; the WAV is written, and the level emitted, by the threads in `writer`.
 
 use cpal::traits::DeviceTrait;
 use cpal::{Device, ErrorKind, FromSample, Sample, SizedSample, Stream, SupportedStreamConfig};
@@ -20,45 +20,50 @@ const RING_SECONDS: usize = 10;
 /// Shared by every capture stream of a recording session, so the emitted value is the max
 /// level across input + output (loopback) devices.
 ///
-/// Everything here is atomic and allocation-free: the audio callback only does a few relaxed
-/// loads/stores, and once per 100ms one callback also performs the (non-blocking) `emit_to`.
+/// Atomics only. The audio callbacks `record` their peak; the writer threads call `emit_if_due`
+/// on every drain tick, which sends one `record_level` per 100 ms window to the webview.
 pub struct LevelMeter {
-    app_handle: AppHandle,
     started_at: Instant,
     /// Max level seen since the last emit, stored as `f32::to_bits` (monotonic for +0.0..=1.0).
     peak_bits: AtomicU32,
     last_emit_ms: AtomicU64,
 }
 
-impl LevelMeter {
-    pub fn new(app_handle: AppHandle) -> Self {
+impl Default for LevelMeter {
+    fn default() -> Self {
         Self {
-            app_handle,
             started_at: Instant::now(),
             peak_bits: AtomicU32::new(0),
             last_emit_ms: AtomicU64::new(0),
         }
     }
+}
 
-    /// Accumulate one buffer's peak and emit if the throttle window elapsed.
-    fn push(&self, peak: f32) {
+impl LevelMeter {
+    /// Audio thread: one relaxed `fetch_max`.
+    fn record(&self, peak: f32) {
         self.peak_bits.fetch_max(peak.to_bits(), Ordering::Relaxed);
+    }
 
+    /// Writer threads: emits the window's peak once the throttle window has elapsed.
+    pub fn emit_if_due(&self, app_handle: &AppHandle) {
+        if let Some(level) = self.take_due() {
+            app_handle.emit_to("main", "record_level", level).ok();
+        }
+    }
+
+    /// The peak since the last emit, once per window.
+    fn take_due(&self) -> Option<f32> {
         let now_ms = self.started_at.elapsed().as_millis() as u64;
         let last_ms = self.last_emit_ms.load(Ordering::Relaxed);
         if now_ms.saturating_sub(last_ms) < LEVEL_EMIT_INTERVAL_MS {
-            return;
+            return None;
         }
-        // Only the stream that wins the swap emits, so two devices can't double-emit a window.
-        if self
-            .last_emit_ms
+        // Only the writer that wins the swap emits, so two devices can't double-emit a window.
+        self.last_emit_ms
             .compare_exchange(last_ms, now_ms, Ordering::Relaxed, Ordering::Relaxed)
-            .is_err()
-        {
-            return;
-        }
-        let level = f32::from_bits(self.peak_bits.swap(0, Ordering::Relaxed)).clamp(0.0, 1.0);
-        self.app_handle.emit_to("main", "record_level", level).ok();
+            .ok()?;
+        Some(f32::from_bits(self.peak_bits.swap(0, Ordering::Relaxed)).clamp(0.0, 1.0))
     }
 }
 
@@ -128,7 +133,7 @@ where
     let stream = device.build_input_stream(
         config.into(),
         move |data: &[T], _: &_| {
-            meter.push(buffer_peak(data));
+            meter.record(buffer_peak(data));
             push_samples(data, channels, &mut tx, &dropped);
         },
         move |error: cpal::Error| {
@@ -184,6 +189,20 @@ mod tests {
         assert_eq!(rx.slots(), 16);
         assert_eq!(rx.pop(), Ok(0.0));
         assert_eq!(rx.pop(), Ok(f32::from_sample(1i16)));
+    }
+
+    #[test]
+    fn level_is_the_window_peak_once_per_window() {
+        // Built without an AppHandle: what the audio callback touches is atomics only.
+        let meter = LevelMeter::default();
+        meter.record(0.3);
+        meter.record(0.7);
+        meter.record(0.5);
+        assert_eq!(meter.take_due(), None, "the first window is still open");
+
+        std::thread::sleep(std::time::Duration::from_millis(LEVEL_EMIT_INTERVAL_MS + 10));
+        assert_eq!(meter.take_due(), Some(0.7));
+        assert_eq!(meter.take_due(), None, "one emit per window");
     }
 
     #[test]
