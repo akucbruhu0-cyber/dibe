@@ -33,6 +33,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     app.manage(Mutex::new(ServerState { process: None }));
     app.manage(crate::dictation_indicator::DictationIndicatorRuntime::default());
     app.manage(crate::recording::session::RecordingState::default());
+    app.manage(crate::recording::recovery::PendingRecovery::default());
 
     let store = app.store(STORE_FILENAME)?;
 
@@ -164,6 +165,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                 tracing::error!("{:?}", error);
             }
         }
+        crate::recording::recovery::start_scan(app.handle());
         crate::dictation_indicator::initialize(app.handle());
         if let Err(error) = crate::meeting_prompt::initialize(app.handle()) {
             tracing::error!("could not initialize meeting prompt: {error}");

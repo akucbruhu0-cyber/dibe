@@ -1,4 +1,3 @@
-use crate::ffmpeg::get_vibe_temp_folder;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, SupportedStreamConfig};
 use eyre::{eyre, Context, ContextCompat, Result};
@@ -10,8 +9,10 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use super::CommandError;
 use crate::error::LogError;
-use crate::ffmpeg::{get_local_time, random_string};
+use crate::ffmpeg::{get_local_time, get_vibe_temp_folder};
 use crate::recording::capture::{self, build_capture, LevelMeter};
+use crate::recording::finalize::{finalize_captures, remove_files};
+use crate::recording::recovery::{capture_path, in_progress_dir, PendingRecovery, RecoveredRecording};
 use crate::recording::session::{ActiveRecording, AlreadyRecording, RecordingOrigin, RecordingState, StreamHandle};
 use crate::recording::writer::{spawn_writer, WriterHandle, CHECKPOINT_EVERY};
 
@@ -59,23 +60,6 @@ pub fn get_audio_devices() -> Result<Vec<AudioDevice>> {
     Ok(audio_devices)
 }
 
-/// The capture with the most audio, or `None` when no device delivered any.
-fn best_raw_capture(wav_paths: &[(PathBuf, u64)]) -> Option<PathBuf> {
-    wav_paths
-        .iter()
-        .filter(|(_, samples)| *samples > 0)
-        .max_by_key(|(_, samples)| *samples)
-        .map(|(path, _)| path.clone())
-}
-
-fn remove_recording_intermediates(paths: impl IntoIterator<Item = PathBuf>, keep: &PathBuf) {
-    for path in paths {
-        if path != *keep && path.exists() {
-            std::fs::remove_file(path).map_err(|e| eyre!("{e:?}")).log_error();
-        }
-    }
-}
-
 impl From<AlreadyRecording> for CommandError {
     fn from(_: AlreadyRecording) -> Self {
         CommandError {
@@ -101,14 +85,16 @@ pub async fn start_record(
     let session_id = state.try_begin(origin)?;
     let mut recording = ActiveRecording::new(session_id.clone(), origin, recording_name);
     if let Err(error) = start_streams(&app_handle, devices, &mut recording) {
-        // Dropping `recording` stops the streams that did start; free the slot for the next attempt.
+        // Free the slot for the next attempt and stop the streams that did start.
         state.take(&session_id);
+        discard_recording(recording);
         return Err(CommandError {
             code: "internal_error".to_string(),
             message: format!("{error:#}"),
         });
     }
-    if !state.install(recording) {
+    if let Err(recording) = state.install(recording) {
+        discard_recording(*recording);
         return Err(CommandError {
             code: "internal_error".to_string(),
             message: "The recording device stopped while the recording was starting".to_string(),
@@ -119,13 +105,22 @@ pub async fn start_record(
     Ok(session_id)
 }
 
+/// Stops a recording that never got going and deletes what it wrote. Left in the in-progress
+/// folder, it would be recovered at the next launch as if the app had crashed.
+fn discard_recording(recording: ActiveRecording) {
+    let closed = close_captures(recording.streams, recording.writers, recording.wav_paths);
+    remove_files(closed.files.into_iter().map(|(path, _)| path));
+}
+
 fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &mut ActiveRecording) -> Result<()> {
     let host = cpal::default_host();
     // One meter for the whole session: every stream raises its peak and every writer's tick may
     // emit it, so the UI sees the max of all devices under a single throttled `record_level` event.
     let meter = Arc::new(LevelMeter::default());
+    // Not the temp folder: it is wiped on the next day's launch, which a crash would never outlive.
+    let dir = in_progress_dir(app_handle);
 
-    for device in devices {
+    for (device_index, device) in devices.into_iter().enumerate() {
         tracing::debug!("Recording from device: {}", device.name);
         tracing::debug!("Device ID: {}", device.id);
 
@@ -140,7 +135,7 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
         };
         let spec = capture::wav_spec(&config);
 
-        let path = get_vibe_temp_folder().join(format!("{}.wav", random_string(10)));
+        let path = capture_path(&dir, &recording.session_id, device_index);
         tracing::debug!("WAV file path: {:?}", path);
 
         let (tx, rx) = capture::ring(&spec);
@@ -174,6 +169,13 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
     // Merging and normalizing shell out to ffmpeg, which must not block the async runtime.
     tauri::async_runtime::spawn_blocking(move || finish_recording(&app_handle, recording, None)).await?;
     Ok(())
+}
+
+#[tauri::command]
+/// The recordings that an earlier run never got to finish, rebuilt at launch. Each is a WAV in app
+/// data waiting to become a project; they are returned once, so a second call gets nothing.
+pub async fn take_recovered_recordings(state: State<'_, PendingRecovery>) -> Result<Vec<RecoveredRecording>> {
+    Ok(state.take().await)
 }
 
 /// cpal's error callback for a session's streams. A device that stops delivering audio (e.g.
@@ -295,7 +297,12 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
         warnings.push(message);
     }
 
-    let Some(best_raw) = best_raw_capture(&wav_paths) else {
+    let recording_stem = recording_name
+        .as_deref()
+        .map(crate::cmd::files::sanitize_filename_stem)
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(get_local_time);
+    let Some(output) = finalize_captures(&wav_paths, &get_vibe_temp_folder(), &recording_stem, &mut warnings) else {
         tracing::error!("Recording stopped without any captured audio");
         let (event, payload) = recording_event(&session_id, origin, None, warnings);
         app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
@@ -303,60 +310,6 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
         return;
     };
 
-    let dst = if wav_paths.len() > 1 && wav_paths[0].1 > 0 && wav_paths[1].1 > 0 {
-        let dst = get_vibe_temp_folder().join(format!("{}.wav", random_string(10)));
-        tracing::debug!("Merging WAV files");
-        match crate::ffmpeg::merge_wav_files(wav_paths[0].0.clone(), wav_paths[1].0.clone(), dst.clone()) {
-            Ok(()) if dst.is_file() => dst,
-            Ok(()) => {
-                std::fs::remove_file(&dst).ok();
-                let message = "Audio merge produced no output; preserving the best raw capture".to_string();
-                tracing::error!("{message}");
-                warnings.push(message);
-                best_raw
-            }
-            Err(error) => {
-                std::fs::remove_file(&dst).ok();
-                let message = format!("Audio merge failed; preserving the best raw capture: {error:#}");
-                tracing::error!("{message}");
-                warnings.push(message);
-                best_raw
-            }
-        }
-    } else {
-        best_raw
-    };
-
-    let recording_stem = recording_name
-        .as_deref()
-        .map(crate::cmd::files::sanitize_filename_stem)
-        .filter(|name| !name.is_empty())
-        .unwrap_or_else(get_local_time);
-    let temp_dir = get_vibe_temp_folder();
-    let normalized = crate::cmd::files::available_path(&temp_dir, &recording_stem, "wav");
-    let output = match crate::ffmpeg::normalize(dst.clone(), normalized.clone(), None) {
-        Ok(()) if normalized.is_file() => normalized,
-        result => {
-            std::fs::remove_file(&normalized).ok();
-            let detail = match result {
-                Ok(()) => "normalization produced no output".to_string(),
-                Err(error) => format!("{error:#}"),
-            };
-            let message = format!("Audio normalization failed; preserving the unnormalized capture: {detail}");
-            tracing::error!("{message}");
-            warnings.push(message);
-
-            let recovery = crate::cmd::files::available_path(&temp_dir, &recording_stem, "wav");
-            if dst != recovery && std::fs::rename(&dst, &recovery).is_ok() {
-                recovery
-            } else {
-                dst.clone()
-            }
-        }
-    };
-
-    let intermediates = wav_paths.into_iter().map(|(path, _)| path).chain(std::iter::once(dst));
-    remove_recording_intermediates(intermediates, &output);
     let (event, payload) = recording_event(&session_id, origin, Some(&output), warnings);
     tracing::debug!("Emitting {event} event");
     app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
@@ -390,13 +343,30 @@ fn get_output_device_and_config(host: &cpal::Host, audio_device: &AudioDevice) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ffmpeg::random_string;
+    use crate::recording::finalize::best_raw_capture;
 
     #[test]
-    fn recovery_prefers_the_capture_with_the_most_samples() {
-        let captures = vec![(PathBuf::from("short.wav"), 12), (PathBuf::from("long.wav"), 42)];
-        assert_eq!(best_raw_capture(&captures), Some(PathBuf::from("long.wav")));
-        assert_eq!(best_raw_capture(&[]), None);
-        assert_eq!(best_raw_capture(&[(PathBuf::from("silent.wav"), 0)]), None);
+    fn discarded_recording_leaves_nothing_to_recover() {
+        let path = std::env::temp_dir().join(format!("vibe-discard-{}.wav", random_string(8)));
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 48_000,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let (mut tx, rx) = capture::ring(&spec);
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}).expect("spawn");
+        // A first device was already recording when the second one failed to start.
+        capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
+        let mut recording = ActiveRecording::new("session".to_string(), RecordingOrigin::Meeting, None);
+        recording.writers.push(writer);
+        recording.wav_paths.push(path.clone());
+
+        discard_recording(recording);
+
+        // Left in the in-progress folder it would be recovered at the next launch as a crash.
+        assert!(!path.exists());
     }
 
     #[test]
@@ -419,7 +389,7 @@ mod tests {
         let mut recording = ActiveRecording::new(session_id.clone(), RecordingOrigin::Meeting, None);
         recording.writers.push(writer);
         recording.wav_paths.push(path.clone());
-        assert!(state.install(recording));
+        assert!(state.install(recording).is_ok());
 
         // What the error callback does: take the session, close its captures, keep what was saved
         // and carry the failure as a warning.

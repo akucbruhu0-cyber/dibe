@@ -9,9 +9,7 @@ import { m } from '~/paraglide/messages.js'
 import * as config from '~/lib/config'
 import { pathToNamedPath } from '~/lib/fs'
 import { cleanupPartialDownloads, listInstalledModels, type InstalledModel } from '~/lib/model'
-import { autoProjectName } from '~/lib/project-name'
 import { isMine, type RecordErrorPayload, type RecordFinishPayload, type RecordingOrigin } from '~/lib/recording-origin'
-import { notifyTranscriptsChanged, saveTranscript, TRANSCRIPT_VERSION, type TranscriptRecord } from '~/lib/transcripts-store'
 import type { NamedPath, ProjectSource } from '~/lib/types'
 import { useConfirmExit } from '~/lib/use-confirm-exit'
 import { useRecordingShortcut } from '~/providers/recording-shortcut'
@@ -22,6 +20,7 @@ import { useRecording } from '~/pages/home/hooks/use-recording'
 import { useDropTarget } from './hooks/use-drop-target'
 import { useSummaries, type Summaries } from './hooks/use-summaries'
 import { useTranscribeQueue, type TranscribeQueue } from './hooks/use-transcribe-queue'
+import { createRecordingProject, recoverUnfinishedRecordings } from './recording-project'
 
 /** Recordings that end up as a project here; dictation is handled by the hotkey provider. */
 const PROJECT_RECORDING_ORIGINS: RecordingOrigin[] = ['manual', 'shortcut', 'meeting']
@@ -157,52 +156,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		return () => window.clearInterval(timer)
 	}, [recording.isRecording])
 
-	// A recording becomes a durable project first. Transcription is an optional second step which
-	// updates that same project, so a failed/disabled transcription never costs the user the audio.
+	// A finished recording becomes a durable project (see createRecordingProject).
 	useEffect(() => {
 		const unlisten: Promise<UnlistenFn> = listen<RecordFinishPayload>('record_finish', async ({ payload }) => {
 			if (!isMine(payload, PROJECT_RECORDING_ORIGINS)) return
 			recording.setIsRecording(false)
 			setPanel('none')
 			if (payload.warning) toast.warning(m.recordingRecoveredWarning(), { description: payload.warning, position: 'bottom-center' })
-
-			const { preference: current, hydrate, transcribeJob } = recordingCompletionRef.current
-			const name = autoProjectName(payload.name, 'record')
-			const createdAt = new Date()
-			const saved = await saveTranscript({
-				name,
-				sourcePath: payload.path,
-				projectsPath: current.projectsPath,
-				moveSourceMedia: true,
-				segments: [],
-				language: current.modelOptions.lang,
-				modelPath: current.modelPath,
-				createdAt,
-			})
-			if (!saved) {
-				const message = `Failed to save recording project; the recording remains at ${payload.path}`
-				console.error(message)
-				toast.error(m.error(), { description: message, position: 'bottom-center' })
-				return
-			}
-
-			const record: TranscriptRecord = {
-				version: TRANSCRIPT_VERSION,
-				name,
-				sourcePath: saved.mediaPath,
-				createdAt: createdAt.toISOString(),
-				language: current.modelOptions.lang,
-				modelPath: current.modelPath,
-				segments: [],
-			}
-			const jobId = hydrate(record, saved.recordPath, saved.mediaPath, 'record')
-			notifyTranscriptsChanged()
-			if (current.autoTranscribeAfterRecording && jobId) transcribeJob(jobId)
+			await createRecordingProject({ path: payload.path, name: payload.name, createdAt: new Date() }, recordingCompletionRef.current)
 		})
 		return () => {
 			unlisten.then((fn) => fn())
 		}
 	}, [recording.setIsRecording])
+
+	// A recording the previous run never got to stop (crash, force-quit) is rebuilt by the backend at
+	// launch; each one becomes a project here. It is handed over once, so this must not be cancelled.
+	useEffect(() => {
+		void recoverUnfinishedRecordings(recordingCompletionRef)
+	}, [])
 
 	useEffect(() => {
 		const unlisten: Promise<UnlistenFn> = listen<RecordErrorPayload>('record_error', ({ payload }) => {

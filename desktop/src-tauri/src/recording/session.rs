@@ -72,18 +72,18 @@ impl RecordingState {
         Ok(session_id)
     }
 
-    /// Hands the running streams to the slot `try_begin` reserved for the same session. Returns
-    /// false, and drops `recording`, when the session already ended (a device failed while starting).
-    pub fn install(&self, recording: ActiveRecording) -> bool {
+    /// Hands the running streams to the slot `try_begin` reserved for the same session. Gives
+    /// `recording` back when the session already ended (a device failed while starting).
+    pub fn install(&self, recording: ActiveRecording) -> Result<(), Box<ActiveRecording>> {
         let mut slot = self.slot();
         match slot.as_mut().filter(|active| active.session_id == recording.session_id) {
             Some(active) => {
                 *active = recording;
-                true
+                Ok(())
             }
             None => {
                 tracing::error!("recording session {} was released before it started", recording.session_id);
-                false
+                Err(Box::new(recording))
             }
         }
     }

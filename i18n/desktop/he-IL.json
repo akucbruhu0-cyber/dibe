@@ -254,6 +254,7 @@
 	"noDefaultMicrophone": "אין מיקרופון ברירת מחדל זמין.",
 	"recordingAlreadyInProgress": "הקלטה אחרת כבר מתבצעת.",
 	"recordingRecoveredWarning": "ההקלטה נשמרה עם עיבוד מופחת",
+	"unfinishedRecordingRecovered": "שוחזרה הקלטה שלא הסתיימה מ-{date}",
 	"recordingName": "שם ההקלטה",
 	"recordingNamePlaceholder": "לדוגמה: ישיבת צוות",
 	"projectsFolder": "תיקיית פרויקטים",
