@@ -108,7 +108,14 @@ pub async fn load_model(
     let spawn_server = |cpu_variant: crate::cmd::config::CpuVariant| -> Result<crate::server::ServerProcess> {
         let binary_path = resolve_server_binary(&app_handle)?;
         let ffmpeg_path = resolve_ffmpeg_path(&app_handle);
-        crate::server::ServerProcess::spawn(&binary_path, ffmpeg_path.as_deref(), unload_timeout_minutes, cpu_variant)
+        let info_path = crate::server::info::path(&app_handle).log_error();
+        crate::server::ServerProcess::spawn(
+            &binary_path,
+            ffmpeg_path.as_deref(),
+            unload_timeout_minutes,
+            cpu_variant,
+            info_path,
+        )
     };
 
     // Spawn server if not running
@@ -210,6 +217,7 @@ pub async fn get_model_metadata(app_handle: tauri::AppHandle, model_path: String
             ffmpeg_path.as_deref(),
             5,
             cpu_variant,
+            crate::server::info::path(&app_handle).log_error(),
         )?);
     }
     state.process.as_ref().unwrap().model_metadata(&model_path).await
@@ -219,6 +227,25 @@ pub async fn get_model_metadata(app_handle: tauri::AppHandle, model_path: String
 pub async fn get_api_base_url(server_state: State<'_, Mutex<ServerState>>) -> Result<Option<String>> {
     let state = server_state.lock().await;
     Ok(state.process.as_ref().map(|process| process.base_url()))
+}
+
+/// The runner's own `/skill` document. Fetched here, with the server's authenticated client, rather
+/// than from the webview: the bearer token never has to leave Rust.
+#[tauri::command]
+pub async fn get_api_skill(server_state: State<'_, Mutex<ServerState>>) -> Result<String> {
+    let (client, base_url) = {
+        let state = server_state.lock().await;
+        let process = state.process.as_ref().context("API server is not running")?;
+        (process.client(), process.base_url())
+    };
+    let response = client
+        .get(format!("{base_url}/skill"))
+        .send()
+        .await
+        .context("failed to request the API skill")?
+        .error_for_status()
+        .context("the API server refused the skill request")?;
+    response.text().await.context("failed to read the API skill")
 }
 
 #[tauri::command]
@@ -241,8 +268,14 @@ pub async fn start_api_server(
     if state_guard.process.is_none() {
         let binary_path = resolve_server_binary(&app_handle)?;
         let ffmpeg_path = resolve_ffmpeg_path(&app_handle);
-        let process =
-            crate::server::ServerProcess::spawn(&binary_path, ffmpeg_path.as_deref(), unload_timeout_minutes, cpu_variant)?;
+        let info_path = crate::server::info::path(&app_handle).log_error();
+        let process = crate::server::ServerProcess::spawn(
+            &binary_path,
+            ffmpeg_path.as_deref(),
+            unload_timeout_minutes,
+            cpu_variant,
+            info_path,
+        )?;
         state_guard.process = Some(process);
     }
     let process = state_guard.process.as_ref().context("API server process missing")?;

@@ -126,6 +126,7 @@ async fn main() -> Result<()> {
             cmd::server_cmd::get_gpu_devices,
             cmd::server_cmd::get_model_metadata,
             cmd::server_cmd::get_api_base_url,
+            cmd::server_cmd::get_api_skill,
             cmd::server_cmd::start_api_server,
             cmd::server_cmd::stop_api_server,
             cmd::app::track_analytics_event,
@@ -198,6 +199,11 @@ async fn main() -> Result<()> {
             }
             // A base URL left in the config file would point an agent at a dead port.
             cmd::config::set_api_base_url(app, None).log_error();
+            // Likewise for the discovery file: its port and token die with the server. The kill
+            // below clears it too, but only when the lock is free; this does not depend on that.
+            if let Some(path) = server::info::path(app).log_error() {
+                server::info::remove(&path);
+            }
             let mutex = app.state::<tokio::sync::Mutex<setup::ServerState>>();
             if let Ok(mut guard) = mutex.try_lock() {
                 if let Some(ref mut process) = guard.process {

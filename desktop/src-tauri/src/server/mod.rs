@@ -1,4 +1,5 @@
 mod devices;
+pub mod info;
 mod process;
 #[cfg(test)]
 mod tests;
@@ -52,8 +53,11 @@ pub struct ServerProcess {
     child: Child,
     /// Cached because `try_wait` hands the status over exactly once.
     exit_status: Option<std::process::ExitStatus>,
+    /// Carries the server's bearer token on every request.
     client: reqwest::Client,
     stderr_buf: Arc<Mutex<StderrTail>>,
+    /// Where `server.json` was written for this process, to take it down again.
+    info_path: Option<std::path::PathBuf>,
 }
 
 /// The child's most recent stderr. A crash message is the *last* thing written,

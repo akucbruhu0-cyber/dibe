@@ -154,7 +154,7 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 	// Unique like the real one: several downloads in a row must not land on the same file.
 	get_temp_path: (args) => `${APP_LOCAL_DATA}/tmp-${(tempPathCounter += 1)}.${String(args?.ext ?? 'tmp')}`,
 
-	get_agent_paths: () => ({ server: `${APP_LOCAL_DATA}/server`, vibe: `${APP_LOCAL_DATA}/vibe` }),
+	get_agent_paths: () => ({ server: `${APP_LOCAL_DATA}/server`, vibe: `${APP_LOCAL_DATA}/vibe`, serverInfo: `${APP_LOCAL_DATA}/server.json` }),
 
 	// Mirrors the Rust command: `<home>/.claude|.codex/skills/vibe/SKILL.md`, parents created.
 	install_agent_skill: (args) => {

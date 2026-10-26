@@ -219,6 +219,8 @@ export const serverHandlers: CommandHandlerMap = {
 
 	get_api_base_url: () => apiBaseUrl,
 
+	get_api_skill: () => `# Server Local Transcription API\n\nBase URL: ${apiBaseUrl ?? 'http://127.0.0.1:33333'}\n`,
+
 	start_api_server: () => {
 		apiBaseUrl = 'http://127.0.0.1:33333'
 		return apiBaseUrl

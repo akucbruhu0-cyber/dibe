@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { CONFIG_KEYS } from './config-keys'
 import { composeSkill, withFrontmatter, type SkillContext } from './skill'
 
 const context: SkillContext = {
@@ -10,6 +9,7 @@ const context: SkillContext = {
 	dictationShortcut: 'Alt+Space',
 	serverBinary: '/Applications/vibe.app/Contents/MacOS/server',
 	vibeBinary: '/Applications/vibe.app/Contents/MacOS/vibe',
+	serverInfoPath: '/Users/me/Library/Application Support/vibe/server.json',
 }
 
 describe('composeSkill', () => {
@@ -25,18 +25,20 @@ describe('composeSkill', () => {
 		expect(skill).toContain('# When invoked without a task')
 	})
 
-	// The port is per-run: an agent that cannot find the live one, or the offline route, is stuck.
-	it('routes around the dynamic port', () => {
+	// The port and the token are per-run: an agent that cannot find the live pair, or the offline route, is stuck.
+	it('routes around the dynamic port and token', () => {
 		const skill = composeSkill(context)
-		expect(skill).toContain(CONFIG_KEYS.apiBaseUrl)
+		expect(skill).toContain(context.serverInfoPath!)
+		expect(skill).toContain('Authorization: Bearer <token>')
 		expect(skill).toContain('/health')
 		expect(skill).toContain(context.serverBinary!)
 		expect(skill).toContain(context.vibeBinary!)
 	})
 
 	it('still names both transcript layouts when the folder cannot be resolved', () => {
-		const skill = composeSkill({ ...context, transcriptsFolder: null, configPath: null, serverBinary: null, vibeBinary: null })
+		const skill = composeSkill({ ...context, transcriptsFolder: null, configPath: null, serverBinary: null, vibeBinary: null, serverInfoPath: null })
 		expect(skill).toContain('$HOME/Documents/Vibe')
+		expect(skill).toContain('`server.json` in the Vibe app data folder')
 		expect(skill).toContain('Settings → API & Agents → Config file')
 		expect(skill).toContain('bundles the `server` engine')
 	})

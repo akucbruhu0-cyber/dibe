@@ -49,6 +49,8 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }
+# `oneshot` drives the Router in-process, so the auth tests need no socket.
+tower = { version = "0.5", features = ["util"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [

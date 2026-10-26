@@ -13,13 +13,16 @@ fn runtime_folder(target: &str) -> Result<&'static str> {
     }
 }
 
-/// Executables an agent can drive, resolved for this install.
+/// Paths an agent needs, resolved for this install.
 #[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentPaths {
     /// The bundled server binary — transcribes from the command line, no server and no GUI needed.
     pub server: Option<String>,
     /// The Vibe app itself, for suggesting the user open it. It takes no useful CLI flags.
     pub vibe: Option<String>,
+    /// `server.json`: the running API server's port and bearer token, while it runs.
+    pub server_info: Option<String>,
 }
 
 /// Resolve the paths baked into an installed skill. Both are optional: a missing binary should
@@ -31,6 +34,9 @@ pub fn get_agent_paths(app_handle: tauri::AppHandle) -> AgentPaths {
             .ok()
             .map(|path| path.display().to_string()),
         vibe: std::env::current_exe().ok().map(|path| path.display().to_string()),
+        server_info: crate::server::info::path(&app_handle)
+            .ok()
+            .map(|path| path.display().to_string()),
     }
 }
 

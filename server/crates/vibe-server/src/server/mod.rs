@@ -1,3 +1,4 @@
+mod auth;
 mod diarization;
 mod form;
 pub(crate) mod format;
@@ -12,6 +13,7 @@ use std::sync::Arc;
 
 use crate::engine::Engine;
 use axum::extract::DefaultBodyLimit;
+use axum::middleware;
 use axum::routing::{delete, get, post};
 use axum::Router;
 use serde::{Deserialize, Serialize};
@@ -30,6 +32,8 @@ pub(super) struct AppState {
     inner: Arc<Mutex<ServerState>>,
     unload_timeout: unload_timeout::UnloadTimeoutRuntime,
     config: AppConfig,
+    /// Bearer token every request but `/health` must present; `None` leaves the API open.
+    token: Option<Arc<str>>,
 }
 
 pub(super) struct ServerState {
@@ -114,11 +118,35 @@ impl ServerState {
 )]
 struct ApiDoc;
 
+fn router(state: AppState) -> Router {
+    let app = Router::new()
+        .route("/health", get(routes::health::health))
+        .route("/ready", get(routes::health::ready))
+        .route("/skill", get(routes::skill::skill))
+        .route("/v1/models/load", post(routes::models::load_model))
+        .route("/v1/models/metadata", post(routes::models::model_metadata))
+        .route(
+            "/v1/models",
+            delete(routes::models::unload_model).get(routes::models::list_models),
+        )
+        .route("/v1/audio/transcriptions", post(routes::transcriptions::transcriptions))
+        .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE));
+    // Without a token (manual command-line use) the server answers anyone, as it always has.
+    let app = if state.token.is_some() {
+        app.layer(middleware::from_fn_with_state(state.clone(), auth::require_token))
+    } else {
+        app
+    };
+    app.layer(TraceLayer::new_for_http()).with_state(state)
+}
+
 pub async fn serve(
     host: String,
     port: u16,
     initial_model: Option<String>,
     unload_timeout: unload_timeout::UnloadTimeout,
+    token: Option<String>,
     config: AppConfig,
 ) -> anyhow::Result<()> {
     whisper_rs::set_verbose(config.verbose());
@@ -132,23 +160,10 @@ pub async fn serve(
         unload_timeout: unload_timeout::UnloadTimeoutRuntime::start(unload_timeout, Arc::clone(&inner)),
         inner,
         config,
+        token: token.map(Arc::from),
     };
     let ready_config = state.config;
-    let app = Router::new()
-        .route("/health", get(routes::health::health))
-        .route("/ready", get(routes::health::ready))
-        .route("/skill", get(routes::skill::skill))
-        .route("/v1/models/load", post(routes::models::load_model))
-        .route("/v1/models/metadata", post(routes::models::model_metadata))
-        .route(
-            "/v1/models",
-            delete(routes::models::unload_model).get(routes::models::list_models),
-        )
-        .route("/v1/audio/transcriptions", post(routes::transcriptions::transcriptions))
-        .merge(SwaggerUi::new("/docs").url("/openapi.json", ApiDoc::openapi()))
-        .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE))
-        .layer(TraceLayer::new_for_http())
-        .with_state(state);
+    let app = router(state);
 
     let listener = tokio::net::TcpListener::bind((host.as_str(), port)).await?;
     let addr = listener.local_addr()?;

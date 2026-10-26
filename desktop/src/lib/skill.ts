@@ -1,14 +1,14 @@
 import { invoke } from '@tauri-apps/api/core'
-import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import * as config from './config'
 import { CONFIG_KEYS } from './config-keys'
 import { readConfig } from './config-store'
 import { transcriptsFolder } from './transcripts-store'
 
-/** Executables an agent can drive, as resolved by `cmd::skill::get_agent_paths`. */
+/** Paths an agent needs, as resolved by `cmd::skill::get_agent_paths`. */
 interface AgentPaths {
 	server: string | null
 	vibe: string | null
+	serverInfo: string | null
 }
 
 /**
@@ -43,25 +43,33 @@ export interface SkillContext {
 	serverBinary: string | null
 	/** Absolute path of the Vibe executable, or null when it cannot be resolved. */
 	vibeBinary: string | null
+	/** Absolute path of `server.json` (port and bearer token of the running server), or null when it cannot be resolved. */
+	serverInfoPath: string | null
 }
 
 /**
- * The port is picked per run, so a baked-in base URL goes stale as soon as Vibe restarts, and the
- * API server is off by default. Point at the config key that holds the live one, insist on a health
- * check before trusting it, and make clear that most work needs no server at all.
+ * The port and the access token are picked per run, so a baked-in base URL goes stale as soon as
+ * Vibe restarts, and the API server is off by default. Point at the file that holds the live pair,
+ * insist on a health check before trusting it, and make clear that most work needs no server at all.
  */
 function baseUrlSection(context: SkillContext) {
 	return [
-		'## The base URL changes every run',
+		'## The port and the access token change every run',
 		'',
-		`\`${context.baseUrl}\` was correct when this skill was installed. Vibe binds a free port on every`,
-		'run, and the API server is a toggle that is off by default, so do not assume it still answers.',
+		`\`${context.baseUrl}\` was correct when this skill was installed. Vibe binds a free port and makes up`,
+		'a new access token on every run, and the API server is a toggle that is off by default, so do not',
+		'assume it still answers.',
 		'',
-		`While the server runs, Vibe writes the current base URL into \`${CONFIG_KEYS.apiBaseUrl}\` in the config file`,
-		'(path in the settings section below) and removes it on stop. Read it there rather than reusing',
-		'the one above — but treat it as a hint: a crash can leave a dead value behind, so confirm with',
-		'`GET <base>/health` before relying on it. No key, or no answer, means the server is off; ask the',
-		'user to turn it on in Settings → API & Agents if you actually need it.',
+		'While the server runs, Vibe writes its current `port` and `token` to this file and removes it on stop:',
+		'',
+		context.serverInfoPath ? `  ${context.serverInfoPath}` : '  `server.json` in the Vibe app data folder',
+		'',
+		'Read it rather than reusing the URL above: the base URL is `http://127.0.0.1:<port>`, and every',
+		'request except `GET /health` must send `Authorization: Bearer <token>` (a request that carries an',
+		'`Origin` header is refused). Treat the file as a hint: a crash can leave a dead one behind, so',
+		'confirm with `GET <base>/health` before relying on it. No file, or no answer, means the server is',
+		'off; ask the user to turn it on in Settings → API & Agents if you actually need it. Keep the token',
+		'out of anything you write down or print.',
 		'',
 		'Most requests do not. Summarising, pulling out action items and searching earlier transcripts all',
 		'read files from the transcripts folder below — reach for the filesystem first. The API is only',
@@ -229,16 +237,18 @@ export function withFrontmatter(body: string) {
 
 /** Gather everything the document needs. Throws only when the local API is unreachable. */
 async function skillContext(baseUrl: string): Promise<SkillContext> {
-	const response = await tauriFetch(`${baseUrl}/skill`)
-	const paths = await invoke<AgentPaths>('get_agent_paths').catch(() => ({ server: null, vibe: null }))
+	// Fetched by the backend: the API wants a bearer token, and that stays out of the webview.
+	const serverSkill = await invoke<string>('get_api_skill')
+	const paths = await invoke<AgentPaths>('get_agent_paths').catch(() => ({ server: null, vibe: null, serverInfo: null }))
 	return {
 		baseUrl,
-		serverSkill: await response.text(),
+		serverSkill,
 		transcriptsFolder: await transcriptsFolder(readConfig<string | null>(CONFIG_KEYS.projectsPath, null)).catch(() => null),
 		configPath: await invoke<string>('get_config_path').catch(() => null),
 		dictationShortcut: config.getDefaultHotkeyShortcut(),
 		serverBinary: paths.server,
 		vibeBinary: paths.vibe,
+		serverInfoPath: paths.serverInfo,
 	}
 }
 

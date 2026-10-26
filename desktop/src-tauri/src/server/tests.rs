@@ -1,4 +1,4 @@
-use super::{decode_event_reader, ServerEvent};
+use super::{decode_event_reader, ServerEvent, ServerProcess};
 use bytes::Bytes;
 use futures_util::{stream, StreamExt};
 use tokio_util::io::StreamReader;
@@ -69,4 +69,74 @@ fn stderr_tail_reports_a_read_failure_instead_of_looking_empty() {
 
     assert!(tail.is_finished());
     assert!(tail.snapshot().contains("stream did not contain valid UTF-8"));
+}
+
+/// One token, three places: the server's environment, the client's `Authorization` header and
+/// `server.json`. If any of them drifts, the app locks itself out or an agent gets a dead token.
+#[cfg(unix)]
+#[tokio::test]
+async fn one_token_reaches_the_server_the_client_and_server_json() {
+    use std::io::{Read, Write};
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = std::env::temp_dir().join(format!("vibe-spawn-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // A stand-in for vibe-server: writes down the token it was started with, reports `port` as its
+    // own, and stays alive until killed. The listener plays the API behind that port.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let script = dir.join("fake-server");
+    std::fs::write(
+        &script,
+        format!(
+            "#!/bin/sh\necho \"$VIBE_SERVER_TOKEN\" > \"$(dirname \"$0\")/seen-token\"\n\
+             echo '{{\"status\":\"ready\",\"port\":{port}}}'\nexec sleep 30\n"
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let request = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().unwrap();
+        let (mut head, mut chunk) = (Vec::new(), [0u8; 1024]);
+        while !head.windows(4).any(|window| window == b"\r\n\r\n") {
+            match stream.read(&mut chunk).unwrap() {
+                0 => break,
+                read => head.extend_from_slice(&chunk[..read]),
+            }
+        }
+        stream
+            .write_all(b"HTTP/1.1 200 OK\r\ncontent-length: 0\r\nconnection: close\r\n\r\n")
+            .unwrap();
+        String::from_utf8_lossy(&head).to_ascii_lowercase()
+    });
+
+    let info_path = dir.join("server.json");
+    let mut process = ServerProcess::spawn(
+        &script,
+        None,
+        0,
+        crate::cmd::config::CpuVariant::Auto,
+        Some(info_path.clone()),
+    )
+    .unwrap();
+
+    let token = std::fs::read_to_string(dir.join("seen-token")).unwrap().trim().to_string();
+    assert!(!token.is_empty(), "the server was started without a token");
+    let info: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&info_path).unwrap()).unwrap();
+    assert_eq!(info, serde_json::json!({ "port": port, "token": token }));
+
+    process
+        .client()
+        .get(format!("{}/ready", process.base_url()))
+        .send()
+        .await
+        .unwrap();
+    let head = request.join().unwrap();
+    assert!(head.contains(&format!("authorization: bearer {token}")), "{head}");
+
+    process.kill();
+    assert!(!info_path.exists(), "server.json outlived its server");
+    std::fs::remove_dir_all(&dir).unwrap();
 }

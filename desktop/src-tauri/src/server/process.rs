@@ -1,8 +1,9 @@
-use super::{ReadySignal, ServerProcess, StderrTail};
+use super::{info, ReadySignal, ServerProcess, StderrTail};
 use crate::cmd::config::CpuVariant;
 use eyre::{bail, Context, ContextCompat, Result};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use std::io::BufRead;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -119,8 +120,16 @@ fn wait_for_stderr_blocking(stderr: &Arc<Mutex<StderrTail>>) -> String {
     stderr_snapshot(stderr)
 }
 
-fn build_client() -> Result<reqwest::Client> {
+/// Every request this client makes carries the server's bearer token, so no call site has to
+/// remember it. Only ever use it for the local server: it would hand the token to anyone else.
+fn build_client(token: &str) -> Result<reqwest::Client> {
+    let mut authorization = HeaderValue::from_str(&format!("Bearer {token}")).context("server token is not a valid header")?;
+    // Keeps the token out of reqwest's and hyper's debug output.
+    authorization.set_sensitive(true);
+    let mut headers = HeaderMap::new();
+    headers.insert(AUTHORIZATION, authorization);
     reqwest::Client::builder()
+        .default_headers(headers)
         .no_proxy()
         .connect_timeout(CONNECT_TIMEOUT)
         .pool_idle_timeout(POOL_IDLE_TIMEOUT)
@@ -138,6 +147,7 @@ impl ServerProcess {
         ffmpeg_path: Option<&Path>,
         unload_timeout_minutes: u32,
         cpu_variant: CpuVariant,
+        info_path: Option<PathBuf>,
     ) -> Result<Self> {
         tracing::debug!(
             "spawning server at {} (cpu variant {})",
@@ -149,10 +159,14 @@ impl ServerProcess {
         } else {
             format!("{unload_timeout_minutes}m")
         };
+        // A new secret for every server, handed over through the environment: argv shows in `ps`.
+        let token = uuid::Uuid::new_v4().to_string();
+        let client = build_client(&token)?;
         let mut cmd = Command::new(binary_path);
         cmd.args(["serve", "--port", "0"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .env("VIBE_SERVER_TOKEN", &token)
             .env("VIBE_SERVER_UNLOAD_TIMEOUT", unload_timeout)
             // ggml_print_backtrace forks gdb/lldb on abort, which can hang the
             // dying child and produces nothing useful in a shipped build.
@@ -263,14 +277,22 @@ impl ServerProcess {
         };
         tracing::debug!("vibe-server ready on port {}", signal.port);
 
+        // Best effort: the app reaches its own server without the file; only outside tools need it.
+        if let Some(path) = &info_path {
+            if let Err(error) = info::write(path, signal.port, &token) {
+                tracing::warn!("could not write {}: {error:#}", path.display());
+            }
+        }
+
         Ok(Self {
             port: signal.port,
             unload_timeout_minutes,
             cpu_variant,
             child,
             exit_status: None,
-            client: build_client()?,
+            client,
             stderr_buf,
+            info_path,
         })
     }
 
@@ -396,6 +418,10 @@ impl ServerProcess {
 
     pub fn kill(&mut self) {
         tracing::debug!("killing server process");
+        // Even for a child that is already gone: its port and token mean nothing now.
+        if let Some(path) = &self.info_path {
+            info::remove_if_port(path, self.port);
+        }
         if self.exit_status().is_some() {
             return;
         }

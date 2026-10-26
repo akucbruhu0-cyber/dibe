@@ -67,6 +67,9 @@ enum Command {
         exit_with_parent: bool,
         #[arg(long, env = "VIBE_SERVER_UNLOAD_TIMEOUT", default_value = "0")]
         unload_timeout: crate::server::unload_timeout::UnloadTimeout,
+        /// Bearer token the API requires. Prefer the env var: argv shows up in `ps`.
+        #[arg(long, env = "VIBE_SERVER_TOKEN", hide_env_values = true)]
+        token: Option<String>,
     },
     Pull {
         url: String,
@@ -76,7 +79,7 @@ enum Command {
     Devices,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct AppConfig {
     verbose: bool,
     version: &'static str,
@@ -153,11 +156,12 @@ pub async fn run() -> anyhow::Result<()> {
             port,
             exit_with_parent,
             unload_timeout,
+            token,
         } => {
             if exit_with_parent {
                 crate::parent::watch();
             }
-            server::serve(host, port, model, unload_timeout, config).await
+            server::serve(host, port, model, unload_timeout, token, config).await
         }
         Command::Pull { url, output } => pull::pull_file(&url, output.as_deref()).await,
         Command::Devices => devices_command(config),
