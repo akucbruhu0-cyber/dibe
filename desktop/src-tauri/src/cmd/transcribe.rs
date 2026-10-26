@@ -3,15 +3,12 @@ use crate::server::ServerEvent;
 use crate::setup::ServerState;
 use crate::transcript::{Segment, Transcript};
 use eyre::Result;
-use futures_util::StreamExt;
+use futures_util::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
-use tauri::{Emitter, Listener, State};
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tauri::{Emitter, EventId, Listener, State};
+use tokio::sync::{Mutex, Notify};
 
 use super::{ui::set_progress_bar, CommandError};
 
@@ -79,6 +76,32 @@ async fn transcribe_error(server_state: &State<'_, Mutex<ServerState>>, error: e
     }
 }
 
+/// Releases the `abort_transcribe` listener on every way out of `transcribe`
+/// (error, completion, abort, or the command future being dropped).
+struct ListenGuard(tauri::AppHandle, EventId);
+
+impl Drop for ListenGuard {
+    fn drop(&mut self) {
+        self.0.unlisten(self.1);
+    }
+}
+
+enum Next<T> {
+    Item(T),
+    Aborted,
+}
+
+/// Next stream item, or `Aborted` as soon as `abort` is notified. Unlike checking
+/// a flag between events, this also fires while the server is silently decoding
+/// or diarizing and no event arrives. `None` means the stream ended.
+async fn next_or_abort<S: Stream + Unpin>(stream: &mut S, abort: &Notify) -> Option<Next<S::Item>> {
+    tokio::select! {
+        biased;
+        _ = abort.notified() => Some(Next::Aborted),
+        item = stream.next() => item.map(Next::Item),
+    }
+}
+
 #[tauri::command]
 pub async fn transcribe(
     app_handle: tauri::AppHandle,
@@ -109,32 +132,49 @@ pub async fn transcribe(
         (process.client(), process.base_url())
     }; // lock released here, before any I/O
 
-    let abort_atomic = Arc::new(AtomicBool::new(false));
-    let abort_atomic_c = abort_atomic.clone();
+    // `notify_one` keeps a permit, so an abort that lands before we start waiting is not lost.
+    let abort = Arc::new(Notify::new());
+    let abort_c = abort.clone();
 
     let app_handle_c = app_handle.clone();
-    app_handle.listen("abort_transcribe", move |_| {
+    let listener = app_handle.listen("abort_transcribe", move |_| {
         let _ = set_progress_bar(&app_handle_c, None);
-        abort_atomic_c.store(true, Ordering::Relaxed);
+        abort_c.notify_one();
     });
+    let _listener = ListenGuard(app_handle.clone(), listener);
 
     let start = std::time::Instant::now();
 
-    let stream = match crate::server::ServerProcess::transcribe_stream(&client, &base_url, &options).await {
-        Ok(stream) => stream,
-        Err(e) => return Err(transcribe_error(&server_state, e).await),
+    // The request (upload, then server-side decode and diarization until the first
+    // response byte) can take minutes too; dropping it on abort closes the connection.
+    let stream = tokio::select! {
+        biased;
+        _ = abort.notified() => {
+            tracing::debug!("transcription aborted by user");
+            let _ = set_progress_bar(&app_handle, None);
+            return Ok(Transcript { processing_time_sec: start.elapsed().as_secs(), segments: Vec::new() });
+        }
+        result = crate::server::ServerProcess::transcribe_stream(&client, &base_url, &options) => match result {
+            Ok(stream) => stream,
+            Err(e) => return Err(transcribe_error(&server_state, e).await),
+        },
     };
 
     tokio::pin!(stream);
 
     let mut segments = Vec::new();
     let mut completed = false;
+    let mut aborted = false;
 
-    while let Some(event_result) = stream.next().await {
-        if abort_atomic.load(Ordering::Relaxed) {
-            tracing::debug!("transcription aborted by user");
-            break;
-        }
+    while let Some(next) = next_or_abort(&mut stream, &abort).await {
+        let event_result = match next {
+            Next::Item(event_result) => event_result,
+            Next::Aborted => {
+                tracing::debug!("transcription aborted by user");
+                aborted = true;
+                break;
+            }
+        };
 
         match event_result {
             Ok(event) => match event {
@@ -179,7 +219,7 @@ pub async fn transcribe(
 
     let _ = set_progress_bar(&app_handle, None);
 
-    if !abort_atomic.load(Ordering::Relaxed) && !completed {
+    if !aborted && !completed {
         // A stream that just stops is almost always the sidecar dying under it;
         // say how it died rather than reporting a truncated stream.
         let message = crate::server::death_report(&server_state, SERVER_DIED)
@@ -198,4 +238,30 @@ pub async fn transcribe(
     };
 
     Ok(transcript)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures_util::stream;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn abort_wins_over_pending_stream() {
+        let abort = Notify::new();
+        abort.notify_one();
+        let mut stream = stream::pending::<u8>();
+        let next = tokio::time::timeout(Duration::from_millis(50), next_or_abort(&mut stream, &abort)).await;
+        assert!(matches!(next, Ok(Some(Next::Aborted))));
+    }
+
+    #[tokio::test]
+    async fn item_is_returned_when_no_abort() {
+        let abort = Notify::new();
+        let mut stream = stream::iter([7u8]);
+        let next = tokio::time::timeout(Duration::from_millis(50), next_or_abort(&mut stream, &abort)).await;
+        assert!(matches!(next, Ok(Some(Next::Item(7)))));
+        let end = next_or_abort(&mut stream, &abort).await;
+        assert!(end.is_none());
+    }
 }
