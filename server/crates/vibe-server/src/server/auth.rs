@@ -6,7 +6,7 @@
 //! second line, since a browser always sets that header and no command-line client does.
 
 use axum::extract::{Request, State};
-use axum::http::{header, StatusCode};
+use axum::http::{header, Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::Response;
 
@@ -16,7 +16,7 @@ pub(super) async fn require_token(State(state): State<AppState>, request: Reques
     let Some(expected) = state.token.as_deref() else {
         return next.run(request).await;
     };
-    if request.uri().path() == "/health" {
+    if is_public(&request) {
         return next.run(request).await;
     }
     if request.headers().contains_key(header::ORIGIN) {
@@ -35,6 +35,15 @@ pub(super) async fn require_token(State(state): State<AppState>, request: Reques
         Some(token) if constant_time_eq(token.as_bytes(), expected.as_bytes()) => next.run(request).await,
         _ => error(StatusCode::UNAUTHORIZED, "unauthorized", "missing or invalid bearer token"),
     }
+}
+
+/// What needs no token: the liveness probe, and the API documentation for a browser, which opens it
+/// by navigation and cannot send a header. Reading the docs is all that is exempt: a POST to them
+/// (Swagger's "Try it out" included) is gated like any other request.
+fn is_public(request: &Request) -> bool {
+    let path = request.uri().path();
+    path == "/health"
+        || (request.method() == Method::GET && (path == "/openapi.json" || path == "/docs" || path.starts_with("/docs/")))
 }
 
 /// Compares without stopping at the first differing byte, so response time does not tell a local
@@ -70,9 +79,13 @@ mod tests {
         })
     }
 
-    /// Status and error code (empty when the body carries none) of one request.
+    /// Status and error code (empty when the body carries none) of one GET.
     async fn call(app: axum::Router, path: &str, headers: &[(&str, &str)]) -> (StatusCode, String) {
-        let mut request = Request::builder().uri(path);
+        send(app, "GET", path, headers).await
+    }
+
+    async fn send(app: axum::Router, method: &str, path: &str, headers: &[(&str, &str)]) -> (StatusCode, String) {
+        let mut request = Request::builder().method(method).uri(path);
         for (name, value) in headers {
             request = request.header(*name, *value);
         }
@@ -131,6 +144,37 @@ mod tests {
         // `/ready` is 503 while no model is loaded: that is the handler answering, not the gate.
         let (status, code) = call(app(Some(TOKEN)), "/ready", &[("authorization", &auth)]).await;
         assert_eq!((status, code.as_str()), (StatusCode::SERVICE_UNAVAILABLE, ""));
+    }
+
+    // The Settings "Swagger docs" link opens /docs in a browser, which cannot send a bearer token.
+    #[tokio::test]
+    async fn docs_and_openapi_are_open_without_token() {
+        for path in ["/openapi.json", "/docs/", "/docs/swagger-ui.css"] {
+            let (status, code) = call(app(Some(TOKEN)), path, &[]).await;
+            assert_eq!((status, code.as_str()), (StatusCode::OK, ""), "{path}");
+        }
+        // `/docs` itself answers with a redirect to `/docs/`, not with the gate's 401.
+        let (status, _) = call(app(Some(TOKEN)), "/docs", &[]).await;
+        assert!(status.is_redirection(), "{status}");
+    }
+
+    #[tokio::test]
+    async fn post_to_docs_still_requires_token() {
+        for path in ["/docs/", "/openapi.json"] {
+            let (status, code) = send(app(Some(TOKEN)), "POST", path, &[]).await;
+            assert_eq!((status, code.as_str()), (StatusCode::UNAUTHORIZED, "unauthorized"), "{path}");
+            // What Swagger's "Try it out" sends from the page: a browser origin, so refused before the token matters.
+            let (status, code) = send(app(Some(TOKEN)), "POST", path, &[("origin", "http://127.0.0.1:1234")]).await;
+            assert_eq!((status, code.as_str()), (StatusCode::FORBIDDEN, "forbidden_origin"), "{path}");
+        }
+    }
+
+    #[tokio::test]
+    async fn the_docs_exemption_does_not_open_neighbouring_routes() {
+        for path in ["/docsx", "/openapi.json.bak", "/v1/models"] {
+            let (status, code) = call(app(Some(TOKEN)), path, &[]).await;
+            assert_eq!((status, code.as_str()), (StatusCode::UNAUTHORIZED, "unauthorized"), "{path}");
+        }
     }
 
     #[tokio::test]

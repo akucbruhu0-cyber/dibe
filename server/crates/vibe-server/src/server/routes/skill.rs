@@ -9,7 +9,7 @@ Base URL: {{base_url}}
 OpenAPI schema: {{base_url}}/openapi.json
 Swagger docs: {{base_url}}/docs
 
-If the server was started with a token (Vibe does this), every request except GET /health must send the header `Authorization: Bearer <token>`; requests that carry an Origin header are refused.
+If the server was started with a token (Vibe does this), every request except GET /health and the read-only docs (GET /docs, GET /openapi.json) must send the header `Authorization: Bearer <token>`; requests that carry an Origin header are refused.
 
 Before calling the API, fetch the OpenAPI schema from /openapi.json and use it as the source of truth for routes, request fields, response shapes, errors, and supported options.
 

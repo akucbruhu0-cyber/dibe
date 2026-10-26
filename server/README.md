@@ -80,7 +80,7 @@ When ready, vibe-server prints a single machine-readable line to stdout:
 This is intended for parent processes to detect readiness and discover the bound port.
 
 To require a bearer token, set `VIBE_SERVER_TOKEN` (or pass `--token`, which `ps` can show).
-Every request except `GET /health` must then send `Authorization: Bearer <token>`, and requests
+Every request except `GET /health` and the read-only docs (`GET /docs`, `GET /openapi.json`) must then send `Authorization: Bearer <token>`, and requests
 that carry an `Origin` header (browsers) are refused. Without a token the API is open, as before.
 
 ---
