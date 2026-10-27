@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { onNormalSession, rememberNormalSession } from './recording-session'
+import { onNormalFinishing, onNormalSession, rememberNormalSession, stopNormalSession } from './recording-session'
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
+const mocks = vi.hoisted(() => ({ invoke: vi.fn() }))
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke }))
 
 beforeEach(() => {
 	vi.restoreAllMocks()
@@ -21,6 +22,38 @@ describe('rememberNormalSession', () => {
 		expect(heard).toEqual(['s1'])
 		expect(console.error).toHaveBeenCalled()
 		unbindBroken()
+		unbind()
+	})
+})
+
+describe('stopNormalSession', () => {
+	it('is finishing from the stop until the backend saved the recording', async () => {
+		let saved = () => {}
+		mocks.invoke.mockReturnValue(new Promise<void>((resolve) => (saved = resolve)))
+		const states: boolean[] = []
+		const unbind = onNormalFinishing((finishing) => states.push(finishing))
+		rememberNormalSession('s1')
+
+		const stopping = stopNormalSession()
+		// stop_record resolves only after record_finish: the live finals and the audio are saved.
+		expect(states).toEqual([true])
+		saved()
+		await stopping
+
+		expect(mocks.invoke).toHaveBeenCalledWith('stop_record', { sessionId: 's1' })
+		expect(states).toEqual([true, false])
+		unbind()
+	})
+
+	it('stops finishing when the stop fails', async () => {
+		mocks.invoke.mockRejectedValue(new Error('gone'))
+		const states: boolean[] = []
+		const unbind = onNormalFinishing((finishing) => states.push(finishing))
+		rememberNormalSession('s1')
+
+		await expect(stopNormalSession()).rejects.toThrow('gone')
+
+		expect(states).toEqual([true, false])
 		unbind()
 	})
 })

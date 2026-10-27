@@ -7,7 +7,7 @@ import { usePersisted } from '~/lib/config-store'
 import { KEEP_AWAKE, startKeepAwake, stopKeepAwake } from '~/lib/keep-awake'
 import { liveOptions } from '~/lib/live-options'
 import { ensureSystemAudioPermission } from '~/lib/permissions'
-import { recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
+import { onNormalFinishing, recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
 import { ErrorModalContext } from '~/providers/error-modal'
 import { useModelGates } from '~/providers/model-gates'
 import { usePreferenceProvider } from '~/providers/preference'
@@ -23,6 +23,9 @@ export function useRecording(onBeforeStart: () => void) {
 	const [inputDevice, setInputDevice] = useState<AudioDevice | null>(null)
 	const [outputDevice, setOutputDevice] = useState<AudioDevice | null>(null)
 	const [isRecording, setIsRecording] = useState(false)
+	/** Stopped, and saving: the live transcript's last words, then the audio. */
+	const [isFinishing, setIsFinishing] = useState(false)
+	useEffect(() => onNormalFinishing(setIsFinishing), [])
 	const [recordingName, setRecordingName] = useState('')
 
 	function setInputDeviceAndSave(value: SetStateAction<AudioDevice | null>) {
@@ -93,6 +96,7 @@ export function useRecording(onBeforeStart: () => void) {
 		inputDevice,
 		outputDevice,
 		isRecording,
+		isFinishing,
 		setIsRecording,
 		recordingName,
 		setRecordingName,

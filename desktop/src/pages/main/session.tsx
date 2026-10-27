@@ -151,16 +151,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		if (recordingShortcut.isShortcutRecording) setPanel('record')
 	}, [recordingShortcut.isShortcutRecording])
 
+	const recordStartedAt = useRef(0)
 	useEffect(() => {
-		if (!recording.isRecording) {
-			setRecordElapsed(0)
-			return
-		}
 		setRecordElapsed(0)
-		const startedAt = Date.now()
-		const timer = window.setInterval(() => setRecordElapsed(Math.floor((Date.now() - startedAt) / 1000)), 500)
-		return () => window.clearInterval(timer)
+		recordStartedAt.current = Date.now()
 	}, [recording.isRecording])
+	// The clock stops at Stop: what follows is saving, not recording.
+	useEffect(() => {
+		if (!recording.isRecording || recording.isFinishing) return
+		const timer = window.setInterval(() => setRecordElapsed(Math.floor((Date.now() - recordStartedAt.current) / 1000)), 500)
+		return () => window.clearInterval(timer)
+	}, [recording.isRecording, recording.isFinishing])
 
 	// A finished recording becomes a durable project (see createRecordingProject).
 	useEffect(() => {
@@ -286,10 +287,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	}, [])
 
 	// Results persist the moment they exist, so closing only warns when something would
-	// actually be lost: a run in flight, or finished results that never reached disk
-	// (saving disabled or failed).
+	// actually be lost: a run in flight, finished results that never reached disk (saving
+	// disabled or failed), or a recording that is running or still being saved.
 	const hasUnsavedResults = queue.jobs.some((job) => job.status === 'done' && !job.hydrated && !job.savedPath)
-	useConfirmExit(preference.closeToTray, queue.running || hasUnsavedResults)
+	useConfirmExit(preference.closeToTray, queue.running || hasUnsavedResults || recording.isRecording)
 
 	const mode: SessionMode = queue.jobs.length === 0 ? 'idle' : queue.running || queue.jobs.some((job) => job.status === 'queued') ? 'working' : 'done'
 

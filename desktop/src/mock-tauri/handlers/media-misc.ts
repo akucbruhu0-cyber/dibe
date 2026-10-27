@@ -123,12 +123,15 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 		window.clearInterval(levelTimer)
 		if (live) window.clearInterval(live.timer)
 		const path = `${APP_LOCAL_DATA}/recording.wav`
-		setTimeout(() => {
-			virtualFs.set(path, null)
-			if (live) emitMockEvent('live_status', { sessionId, state: 'ended', message: null })
-			emitMockEvent('record_finish', { sessionId, origin, path, name: basename(path), liveSegments: live?.finals ?? null })
-		}, RECORD_FINISH_DELAY_MS)
-		return undefined
+		// Like the backend, the stop resolves once the recording is saved and record_finish is out.
+		return new Promise<undefined>((resolve) =>
+			setTimeout(() => {
+				virtualFs.set(path, null)
+				if (live) emitMockEvent('live_status', { sessionId, state: 'ended', message: null })
+				emitMockEvent('record_finish', { sessionId, origin, path, name: basename(path), liveSegments: live?.finals ?? null })
+				resolve(undefined)
+			}, RECORD_FINISH_DELAY_MS),
+		)
 	},
 
 	retry_live: (args) => {

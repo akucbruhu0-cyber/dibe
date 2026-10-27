@@ -119,9 +119,9 @@ function RecordPanel() {
 					<span className="font-mono text-2xl tracking-tight tabular-nums">{formatElapsed(recordElapsed)}</span>
 				</div>
 				<LiveTranscript live={live} />
-				<Button onClick={() => recording.stopRecord()} className="h-10 w-full rounded-xl">
-					<Square className="h-3.5 w-3.5 fill-current" />
-					{m.stopRecording()}
+				<Button onClick={() => recording.stopRecord()} disabled={recording.isFinishing} className="h-10 w-full rounded-xl disabled:opacity-60">
+					{recording.isFinishing ? <Spinner className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5 fill-current" />}
+					{recording.isFinishing ? m.finishingRecording() : m.stopRecording()}
 				</Button>
 			</div>
 		)

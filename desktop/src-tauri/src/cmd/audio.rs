@@ -388,8 +388,8 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
     crate::meeting_prompt::recording_stopped(app_handle);
 }
 
-/// Closes a session's captures, finalizes them into `out_dir` and collects its live finals, then
-/// builds the event that tells the listeners.
+/// Closes a session's captures, collects its live finals, finalizes the captures into `out_dir`,
+/// then builds the event that tells the listeners.
 fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: &Path) -> (&'static str, Value) {
     let ActiveRecording {
         session_id,
@@ -401,9 +401,10 @@ fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: 
         live,
     } = recording;
     let closed = close_captures(streams, writers, wav_paths);
-    // The writers are done, so the tap has all the audio: the live client sends the rest while the
-    // captures are merged and normalized.
-    let live = live.map(LiveClient::stop);
+    // The writers are done, so the tap has all the audio: the live client sends the rest. Its last
+    // finals are awaited before the captures are finalized, which deletes them: until then they sit
+    // in the in-progress folder, where a quit during the wait leaves them for the next launch.
+    let live_segments = live.map(LiveClient::stop).map(StoppingLive::finals);
     let wav_paths = closed.files;
     // What cut the recording short rides on it as a warning: the saved audio still becomes a project.
     let mut warnings: Vec<String> = failure.into_iter().chain(closed.failures).collect();
@@ -425,7 +426,6 @@ fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: 
     if output.is_none() {
         tracing::error!("Recording stopped without any captured audio");
     }
-    let live_segments = live.map(StoppingLive::finals);
     recording_event(&session_id, origin, output.as_deref(), warnings, live_segments)
 }
 
@@ -609,6 +609,55 @@ mod tests {
         assert_eq!(payload.get("liveSegments"), Some(&Value::Null));
         let saved = PathBuf::from(payload["path"].as_str().expect("a path"));
         assert!(saved.starts_with(&dir) && saved.is_file());
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    fn said(text: &str) -> Vec<Segment> {
+        vec![Segment {
+            start: 0,
+            stop: 100,
+            text: text.to_string(),
+            speaker: None,
+        }]
+    }
+
+    #[test]
+    fn captures_stay_recoverable_while_the_live_finals_are_awaited() {
+        let dir = std::env::temp_dir().join(format!("vibe-live-stop-{}", random_string(8)));
+        let out_dir = dir.join("out");
+        std::fs::create_dir_all(&out_dir).expect("temp dirs");
+        let path = dir.join("capture.wav");
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 48_000,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let mut recording = ActiveRecording::new("session".to_string(), RecordingOrigin::Manual, None);
+        let (mut tx, rx) = capture::ring(&spec);
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
+        capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
+        recording.writers.push(writer);
+        recording.wav_paths.push(path.clone());
+        // The stop waits for the last finals; an app quit during that wait must still find the
+        // capture in the in-progress folder, where the next launch recovers it.
+        let capture = path.clone();
+        let task = tauri::async_runtime::spawn(async move {
+            for _ in 0..100 {
+                if !capture.exists() {
+                    return said("finalized while waiting");
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+            said("recoverable")
+        });
+        recording.live = Some(LiveClient::with_task(task));
+
+        let (event, payload) = finished_event(recording, None, &out_dir);
+
+        assert_eq!(event, "record_finish");
+        assert_eq!(payload["liveSegments"][0]["text"], "recoverable");
+        assert!(!path.exists(), "finalized once the finals were in");
         std::fs::remove_dir_all(dir).ok();
     }
 }

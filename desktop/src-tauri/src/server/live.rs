@@ -267,6 +267,21 @@ impl LiveClient {
     }
 }
 
+#[cfg(test)]
+impl LiveClient {
+    /// A client whose task is `task` and whose tap feeds nothing, for tests of a recording's stop.
+    pub(crate) fn with_task(task: JoinHandle<Vec<Segment>>) -> Self {
+        let (tx, _) = mpsc::channel(1);
+        Self {
+            tap: Arc::new(Mutex::new(LiveTap::new(&[], tx))),
+            cancel: CancellationToken::new(),
+            wake: Arc::new(Notify::new()),
+            collected: Arc::default(),
+            task,
+        }
+    }
+}
+
 /// A stopped client, sending its last audio.
 pub struct StoppingLive {
     task: JoinHandle<Vec<Segment>>,

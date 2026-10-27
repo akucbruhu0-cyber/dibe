@@ -734,5 +734,6 @@
 	"afterRecording": "בסיום ההקלטה",
 	"afterRecordingInfo": "שמירה מיידית; תמלול מחדש איטי יותר ומדויק יותר.",
 	"afterRecordingKeep": "לשמור את התמלול החי",
-	"afterRecordingRetranscribe": "לתמלל מחדש לדיוק מרבי"
+	"afterRecordingRetranscribe": "לתמלל מחדש לדיוק מרבי",
+	"finishingRecording": "מסיים…"
 }

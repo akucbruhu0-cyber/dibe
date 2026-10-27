@@ -116,3 +116,29 @@ describe('starting a recording from the main screen', () => {
 		expect(result.current.isRecording).toBe(true)
 	})
 })
+
+describe('stopping a recording from the main screen', () => {
+	it('is finishing from Stop until the recording is saved', async () => {
+		const { useRecording } = await import('~/pages/home/hooks/use-recording')
+		const { rememberNormalSession } = await import('~/lib/recording-session')
+		Object.assign(mocks.preference, preference({ homeTab: 'file' } as Partial<Preference>))
+		let saved = () => {}
+		mocks.invoke.mockImplementation((command: string) =>
+			command === 'stop_record' ? new Promise<void>((resolve) => (saved = resolve)) : Promise.resolve(),
+		)
+		const { result } = renderHook(() => useRecording(() => {}))
+		rememberNormalSession('session-1')
+
+		let stopping: Promise<void> = Promise.resolve()
+		act(() => {
+			stopping = result.current.stopRecord()
+		})
+		expect(result.current.isFinishing).toBe(true)
+
+		await act(async () => {
+			saved()
+			await stopping
+		})
+		expect(result.current.isFinishing).toBe(false)
+	})
+})

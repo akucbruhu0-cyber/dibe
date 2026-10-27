@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core'
  */
 let normalSessionId: string | null = null
 const startedListeners = new Set<(sessionId: string) => void>()
+const finishingListeners = new Set<(finishing: boolean) => void>()
 
 /** Calls every listener; one that throws is logged, so it can never make a recording look failed. */
 function notify<T>(listeners: Set<(value: T) => void>, value: T) {
@@ -30,9 +31,24 @@ export function onNormalSession(listener: (sessionId: string) => void) {
 	return () => void startedListeners.delete(listener)
 }
 
-/** A session that already finished is ignored by `stop_record`, so a stale id is harmless. */
+/** Hears a stop start waiting for its recording to be saved (true), and that wait end (false). */
+export function onNormalFinishing(listener: (finishing: boolean) => void) {
+	finishingListeners.add(listener)
+	return () => void finishingListeners.delete(listener)
+}
+
+/**
+ * A session that already finished is ignored by `stop_record`, so a stale id is harmless. Resolves
+ * once the recording is saved, which waits for the live transcript's last words first.
+ */
 export async function stopNormalSession() {
-	if (normalSessionId) await invoke('stop_record', { sessionId: normalSessionId })
+	if (!normalSessionId) return
+	notify(finishingListeners, true)
+	try {
+		await invoke('stop_record', { sessionId: normalSessionId })
+	} finally {
+		notify(finishingListeners, false)
+	}
 }
 
 /** Backend errors arrive as `{ code, message }` objects, which `String()` would turn into "[object Object]". */
