@@ -20,6 +20,7 @@ mod server;
 mod setup;
 mod transcript;
 mod tray;
+mod vibe_import;
 use tauri::Emitter;
 
 #[cfg(target_os = "macos")]

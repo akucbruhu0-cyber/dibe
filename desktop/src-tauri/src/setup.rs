@@ -28,6 +28,8 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| panic!("cant create local app data directory at {}", local_app_data_dir.display()));
     fs::create_dir_all(&app_config_dir)
         .unwrap_or_else(|_| panic!("cant create app config directory at {}", app_config_dir.display()));
+    // Before anything reads the settings: the first launch copies the original Vibe's data.
+    crate::vibe_import::run(app);
 
     // Manage server state
     app.manage(Mutex::new(ServerState { process: None }));
