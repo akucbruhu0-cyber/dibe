@@ -28,14 +28,16 @@ export interface RecordingProjectDeps {
 }
 
 /**
- * The project file of a recording that just finished. Its live transcript becomes the project's when
- * the user keeps it; a live session that heard nothing leaves the usual way, transcribing the file.
+ * The project file of a recording that just finished. Its live transcript becomes the project's; it
+ * is transcribed again when the user asked for that or the live one missed some of the audio, and
+ * keeps the live words until that succeeds. A recording without live, or a kept live session that
+ * heard nothing, leaves the usual way.
  */
 export function finishedRecording(payload: RecordFinishPayload, preference: Pick<Preference, 'afterRecording'>): RecordingFile {
 	const file = { path: payload.path, name: payload.name, createdAt: new Date() }
-	if (preference.afterRecording !== 'keep') return file
-	const segments = payload.liveSegments?.length ? payload.liveSegments : undefined
-	// Live skipped or lost some of the audio: its words stay until a transcription of the file replaces them.
+	if (!payload.liveSegments) return file
+	const segments = payload.liveSegments.length ? payload.liveSegments : undefined
+	if (preference.afterRecording === 'retranscribe') return { ...file, segments, again: 'asked' }
 	return payload.liveComplete === false ? { ...file, segments, again: 'incomplete' } : { ...file, segments }
 }
 

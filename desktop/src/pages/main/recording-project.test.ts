@@ -183,13 +183,24 @@ describe('a finished recording with live transcription', () => {
 		expect(mocks.toast.info).toHaveBeenCalledWith('The live transcript was incomplete. Transcribing the recording again.', expect.anything())
 	})
 
-	it('transcribes the file again when asked to, the way a recording without live is', async () => {
-		const { current } = deps(true, 'retranscribe')
+	it('transcribes the file again when asked to, keeping the live words until then', async () => {
+		// Transcribing after recording is off by default; asking to transcribe again is enough.
+		const { current } = deps(false, 'retranscribe')
 
 		await createRecordingProject(finishedRecording(finish(liveSegments), current.preference), current)
 
+		expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }))
+		expect(current.transcribeJob).toHaveBeenCalledWith('job-1', true)
+		expect(mocks.toast.info).not.toHaveBeenCalled()
+	})
+
+	it('leaves a recording without live transcription to the usual flow', async () => {
+		const { current } = deps(false, 'retranscribe')
+
+		await createRecordingProject(finishedRecording(finish(null), current.preference), current)
+
 		expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: [] }))
-		expect(current.transcribeJob).toHaveBeenCalledWith('job-1')
+		expect(current.transcribeJob).not.toHaveBeenCalled()
 	})
 
 	it('falls back to transcribing when live transcription was off or heard nothing', async () => {
