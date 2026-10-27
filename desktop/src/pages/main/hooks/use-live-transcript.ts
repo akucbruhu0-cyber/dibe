@@ -23,6 +23,8 @@ export interface LiveStatus {
 	sessionId: string
 	state: 'starting' | 'live' | 'paused' | 'ended'
 	message?: string | null
+	/** Why it ended, for the UI to word: `unsupported` is a server from before live transcription. */
+	code?: string | null
 }
 
 export interface LiveState {
@@ -133,6 +135,7 @@ export function useLiveTranscript(): LiveView {
 				}
 			} else {
 				stopRetrying()
+				if (event.code === 'unsupported') toast.warning(m.liveUnsupported(), { id: 'live-unsupported', description: m.liveNeedsVadInfo() })
 			}
 			stateRef.current = liveReducer(stateRef.current, event)
 			setVersion((current) => current + 1)

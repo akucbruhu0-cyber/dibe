@@ -737,5 +737,6 @@
 	"afterRecordingRetranscribe": "לתמלל מחדש לדיוק מרבי",
 	"finishingRecording": "מסיים…",
 	"recordingDeviceDisconnected": "מכשיר הקלטה התנתק. ההקלטה נשמרה.",
-	"liveIncompleteRetranscribing": "התמלול החי היה חלקי. ההקלטה מתומללת מחדש."
+	"liveIncompleteRetranscribing": "התמלול החי היה חלקי. ההקלטה מתומללת מחדש.",
+	"liveUnsupported": "גרסת השרת הזו לא תומכת בתמלול חי"
 }

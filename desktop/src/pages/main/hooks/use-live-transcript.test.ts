@@ -187,6 +187,23 @@ describe('waitForLiveIdle', () => {
 		expect(idle).toBe(true)
 	})
 
+	it('says once, in the app language, that the server has no live transcription, and lets the queue go', async () => {
+		await mounted()
+		emit('live_status', status('starting'))
+		act(() => rememberNormalSession('s1'))
+		let idle = false
+		void waitForLiveIdle().then(() => (idle = true))
+
+		emit('live_status', { ...status('ended', 's1', "This server version doesn't support live transcription"), code: 'unsupported' })
+		await act(async () => {})
+
+		expect(idle).toBe(true)
+		expect(mocks.toast.warning).toHaveBeenCalledWith(
+			"This server version doesn't support live transcription",
+			expect.objectContaining({ id: 'live-unsupported' }),
+		)
+	})
+
 	it('does not wait when nothing is live', async () => {
 		await expect(waitForLiveIdle()).resolves.toBeUndefined()
 	})

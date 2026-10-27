@@ -76,6 +76,7 @@ pub async fn run_live(
                     session = Some(Session::new(id, live.position));
                     None
                 }
+                Err(error) if error.unsupported() => return live.unsupported(),
                 Err(error) => Some(error),
             },
             Some(current) => {
@@ -335,6 +336,7 @@ impl<E: Fn(&str, Value)> Live<E> {
         if session.is_none() && self.backlog_samples() > 0 {
             match api.start().await {
                 Ok(id) => session = Some(Session::new(id, self.position)),
+                Err(error) if error.unsupported() => return self.unsupported(),
                 Err(error) => trouble = Some(error.message),
             }
         }
@@ -367,6 +369,20 @@ impl<E: Fn(&str, Value)> Live<E> {
         LiveTranscript {
             finals: self.collected.lock().unwrap_or_else(PoisonError::into_inner).clone(),
             complete: self.complete,
+        }
+    }
+
+    /// The server has no live routes: ends at once, with a code the UI words in its own language.
+    /// The recording goes on; nothing it captures from now on is transcribed live.
+    fn unsupported(self) -> LiveTranscript {
+        let message = "This server version doesn't support live transcription";
+        (self.emit)(
+            "live_status",
+            json!({ "state": "ended", "message": message, "code": "unsupported" }),
+        );
+        LiveTranscript {
+            finals: self.collected.lock().unwrap_or_else(PoisonError::into_inner).clone(),
+            complete: false,
         }
     }
 }

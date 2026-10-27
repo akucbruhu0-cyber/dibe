@@ -399,3 +399,37 @@ async fn a_stop_that_cannot_send_the_rest_is_incomplete() {
     assert_eq!(transcript.finals, vec![segment(0, 30, "one")]);
     assert!(!transcript.complete);
 }
+
+#[tokio::test(start_paused = true)]
+async fn a_server_without_live_routes_ends_live_at_once() {
+    let (fake, mut calls) = Fake::new();
+    // A pinned older sidecar: no /v1/live at all.
+    fake.starts.lock().unwrap().push_back(Err(refused(404, "404 Not Found")));
+    let emitted = Emitted::default();
+    let (tx, rx) = mpsc::channel(64);
+
+    // The recording goes on (the tap stays open, nothing is cancelled), yet the client is done.
+    let run = run_live(
+        &fake,
+        rx,
+        recorder(&emitted),
+        CancellationToken::new(),
+        Arc::default(),
+        Arc::default(),
+    );
+    let transcript = tokio::time::timeout(Duration::from_secs(1), run)
+        .await
+        .expect("no retries against a server that has no live routes");
+
+    assert!(!transcript.complete);
+    assert_eq!(next(&mut calls).await, "start");
+    assert!(calls.try_recv().is_err(), "started once, closed nothing");
+    assert_eq!(states(&emitted), ["starting", "ended"]);
+    let emitted = emitted.lock().unwrap();
+    let (_, ended) = emitted.last().unwrap();
+    assert_eq!(ended["code"], "unsupported");
+    assert!(ended["message"]
+        .as_str()
+        .is_some_and(|message| message.contains("doesn't support live")));
+    drop(tx);
+}

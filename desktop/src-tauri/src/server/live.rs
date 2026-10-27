@@ -109,6 +109,11 @@ impl ApiError {
     fn untaken(&self) -> bool {
         matches!(self.status, None | Some(404 | 409))
     }
+
+    /// Asked of a session create: the server predates live transcription (a pinned older sidecar).
+    fn unsupported(&self) -> bool {
+        matches!(self.status, Some(404 | 405))
+    }
 }
 
 /// vibe-server's live routes.
@@ -183,6 +188,12 @@ async fn answer<T: DeserializeOwned>(sent: reqwest::Result<reqwest::Response>) -
         let message = serde_json::from_str::<super::ServerErrorResponse>(&body)
             .map(|parsed| parsed.error.message)
             .unwrap_or(body);
+        // A bare refusal (a route the server does not have) still says something.
+        let message = if message.trim().is_empty() {
+            status.to_string()
+        } else {
+            message
+        };
         return Err(ApiError {
             status: Some(status.as_u16()),
             message,
@@ -349,6 +360,16 @@ mod tests {
             finals: finals(text),
             complete,
         }
+    }
+
+    #[tokio::test]
+    async fn an_empty_refusal_says_its_status() {
+        let response = tauri::http::Response::builder().status(404).body("").expect("a response");
+
+        let error = answer::<Value>(Ok(response.into())).await.expect_err("refused");
+
+        assert_eq!(error.status, Some(404));
+        assert_eq!(error.message, "404 Not Found");
     }
 
     #[test]
