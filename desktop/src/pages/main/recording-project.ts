@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { toast } from 'sonner'
 import { autoProjectName } from '~/lib/project-name'
+import type { RecordFinishPayload } from '~/lib/recording-origin'
+import type { Segment } from '~/lib/transcript'
 import { notifyTranscriptsChanged, saveTranscript, TRANSCRIPT_VERSION, type TranscriptRecord } from '~/lib/transcripts-store'
 import { m } from '~/paraglide/messages.js'
 import { getLocale } from '~/paraglide/runtime.js'
@@ -13,12 +15,23 @@ export interface RecordingFile {
 	/** File name, which the project name is derived from. */
 	name: string
 	createdAt: Date
+	/** Its live transcript, kept as the project's: there is nothing left to transcribe. */
+	segments?: Segment[]
 }
 
 export interface RecordingProjectDeps {
 	preference: Preference
 	hydrate: TranscribeQueue['hydrate']
 	transcribeJob: TranscribeQueue['transcribeJob']
+}
+
+/**
+ * The project file of a recording that just finished. Its live transcript becomes the project's when
+ * the user keeps it; a live session that heard nothing leaves the usual way, transcribing the file.
+ */
+export function finishedRecording(payload: RecordFinishPayload, preference: Pick<Preference, 'afterRecording'>): RecordingFile {
+	const segments = preference.afterRecording === 'keep' && payload.liveSegments?.length ? payload.liveSegments : undefined
+	return { path: payload.path, name: payload.name, createdAt: new Date(), segments }
 }
 
 /** Mirrors `RecoveredRecording` in src-tauri/src/recording/recovery.rs. */
@@ -41,7 +54,7 @@ export async function createRecordingProject(file: RecordingFile, { preference, 
 		sourcePath: file.path,
 		projectsPath: preference.projectsPath,
 		moveSourceMedia: true,
-		segments: [],
+		segments: file.segments ?? [],
 		language: preference.modelOptions.lang,
 		modelPath: preference.modelPath,
 		createdAt: file.createdAt,
@@ -60,11 +73,11 @@ export async function createRecordingProject(file: RecordingFile, { preference, 
 		createdAt: file.createdAt.toISOString(),
 		language: preference.modelOptions.lang,
 		modelPath: preference.modelPath,
-		segments: [],
+		segments: file.segments ?? [],
 	}
 	const jobId = hydrate(record, saved.recordPath, saved.mediaPath, 'record')
 	notifyTranscriptsChanged()
-	if (preference.autoTranscribeAfterRecording && jobId) transcribeJob(jobId)
+	if (preference.autoTranscribeAfterRecording && jobId && !file.segments) transcribeJob(jobId)
 	return true
 }
 

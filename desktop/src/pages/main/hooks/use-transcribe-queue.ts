@@ -33,6 +33,7 @@ import type { NamedPath, ProjectSource } from '~/lib/types'
 import { ErrorModalContext } from '~/providers/error-modal'
 import { withoutUnsupportedOptions } from '~/lib/model'
 import { type Preference, usePreferenceProvider } from '~/providers/preference'
+import { waitForLiveIdle } from './use-live-transcript'
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'error' | 'cancelled'
 
@@ -392,6 +393,7 @@ export function useTranscribeQueue(): TranscribeQueue {
 			let onCpu = current.noGpu || gpuOutOfMemoryBefore(current.modelPath)
 			let shared: Record<string, unknown>
 			try {
+				await waitForLiveIdle() // a live session holds the server's model
 				const loadResult = await invoke<string>('load_model', {
 					modelPath: current.modelPath,
 					gpuDevice: current.gpuDevice,
@@ -408,6 +410,7 @@ export function useTranscribeQueue(): TranscribeQueue {
 			}
 
 			while (!abortAllRef.current) {
+				await waitForLiveIdle()
 				const next = jobsRef.current.find((job) => job.status === 'queued')
 				if (!next) break
 

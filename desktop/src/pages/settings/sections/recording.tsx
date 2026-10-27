@@ -5,13 +5,14 @@ import { toast } from 'sonner'
 import ShortcutRecorder from '~/components/shortcut-recorder'
 import { MeetingServiceIcons } from '~/components/meeting-service-icons'
 import { Button } from '~/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
 import { getDefaultRecordingShortcut } from '~/lib/config'
 import type { PermissionStatus } from '~/lib/permissions'
 import { m } from '~/paraglide/messages.js'
 import { useRecordingShortcut } from '~/providers/recording-shortcut'
-import { usePreferenceProvider } from '~/providers/preference'
-import { SettingsGroup, SettingsRow } from './shared'
+import { usePreferenceProvider, type AfterRecording } from '~/providers/preference'
+import { SettingsGroup, SettingsRow, rowControlClass } from './shared'
 
 type PermissionKind = 'microphone' | 'system_audio'
 
@@ -148,7 +149,8 @@ function MeetPermissionRow({ enabled }: { enabled: boolean }) {
 
 export function RecordingSection() {
 	const shortcut = useRecordingShortcut()
-	const { meetingDetectionEnabled, setMeetingDetectionEnabled, autoTranscribeAfterRecording, setAutoTranscribeAfterRecording } = usePreferenceProvider()
+	const preference = usePreferenceProvider()
+	const { meetingDetectionEnabled, setMeetingDetectionEnabled, autoTranscribeAfterRecording, setAutoTranscribeAfterRecording } = preference
 	const isMacOS = platform() === 'macos'
 
 	return (
@@ -158,6 +160,29 @@ export function RecordingSection() {
 					<Switch checked={meetingDetectionEnabled} onCheckedChange={setMeetingDetectionEnabled} aria-label={m.meetingDetection()} />
 				</SettingsRow>
 				<MeetPermissionRow enabled={meetingDetectionEnabled} />
+			</SettingsGroup>
+
+			<SettingsGroup title={m.liveTranscription()}>
+				<SettingsRow label={m.liveTranscriptionSetting()} description={m.liveTranscriptionSettingInfo()}>
+					<Switch
+						checked={preference.liveTranscription}
+						onCheckedChange={preference.setLiveTranscription}
+						aria-label={m.liveTranscriptionSetting()}
+					/>
+				</SettingsRow>
+				{preference.liveTranscription && (
+					<SettingsRow label={m.afterRecording()} description={m.afterRecordingInfo()}>
+						<Select value={preference.afterRecording} onValueChange={(value: AfterRecording) => preference.setAfterRecording(value)}>
+							<SelectTrigger className={`w-56 ${rowControlClass}`} aria-label={m.afterRecording()}>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="keep">{m.afterRecordingKeep()}</SelectItem>
+								<SelectItem value="retranscribe">{m.afterRecordingRetranscribe()}</SelectItem>
+							</SelectContent>
+						</Select>
+					</SettingsRow>
+				)}
 			</SettingsGroup>
 
 			<SettingsGroup title={m.recordingControls()}>

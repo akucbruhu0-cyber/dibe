@@ -21,7 +21,8 @@ import { useDropTarget } from './hooks/use-drop-target'
 import { useSummaries, type Summaries } from './hooks/use-summaries'
 import { useTranscribeQueue, type TranscribeQueue } from './hooks/use-transcribe-queue'
 import { useTranscribeWarnings } from './hooks/use-transcribe-warnings'
-import { createRecordingProject, recoverUnfinishedRecordings } from './recording-project'
+import { useLiveTranscript, type LiveView } from './hooks/use-live-transcript'
+import { createRecordingProject, finishedRecording, recoverUnfinishedRecordings } from './recording-project'
 
 /** Recordings that end up as a project here; dictation is handled by the hotkey provider. */
 const PROJECT_RECORDING_ORIGINS: RecordingOrigin[] = ['manual', 'shortcut', 'meeting']
@@ -43,6 +44,8 @@ export interface Session {
 	setPanel: (panel: IdlePanel) => void
 	recording: Recording
 	recordElapsed: number
+	/** The transcript of the running recording, as it is spoken. */
+	live: LiveView
 	link: AudioDownload
 	collectingFolder: boolean
 	browse: () => Promise<void>
@@ -67,6 +70,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	const queue = useTranscribeQueue()
 	const summaries = useSummaries(queue)
 	useTranscribeWarnings()
+	const live = useLiveTranscript()
 	const [panel, setPanel] = useState<IdlePanel>('none')
 	const [collectingFolder, setCollectingFolder] = useState(false)
 	const [recordElapsed, setRecordElapsed] = useState(0)
@@ -165,7 +169,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			recording.setIsRecording(false)
 			setPanel('none')
 			if (payload.warning) toast.warning(m.recordingRecoveredWarning(), { description: payload.warning, position: 'bottom-center' })
-			await createRecordingProject({ path: payload.path, name: payload.name, createdAt: new Date() }, recordingCompletionRef.current)
+			const deps = recordingCompletionRef.current
+			await createRecordingProject(finishedRecording(payload, deps.preference), deps)
 		})
 		return () => {
 			unlisten.then((fn) => fn())
@@ -299,12 +304,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			setPanel,
 			recording,
 			recordElapsed,
+			live,
 			link,
 			collectingFolder,
 			browse,
 			startNew,
 		}),
-		[mode, queue, summaries, preference, dragging, panel, recording, recordElapsed, link, collectingFolder, browse, startNew],
+		[mode, queue, summaries, preference, dragging, panel, recording, recordElapsed, live, link, collectingFolder, browse, startNew],
 	)
 
 	return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

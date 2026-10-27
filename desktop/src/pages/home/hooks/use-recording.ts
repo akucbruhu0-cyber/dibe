@@ -5,14 +5,17 @@ import { type AudioDevice, pickSavedDevice } from '~/lib/audio'
 import { CONFIG_KEYS } from '~/lib/config-keys'
 import { usePersisted } from '~/lib/config-store'
 import { KEEP_AWAKE, startKeepAwake, stopKeepAwake } from '~/lib/keep-awake'
+import { liveOptions } from '~/lib/live-options'
 import { ensureSystemAudioPermission } from '~/lib/permissions'
 import { recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
 import { ErrorModalContext } from '~/providers/error-modal'
+import { useModelGates } from '~/providers/model-gates'
 import { usePreferenceProvider } from '~/providers/preference'
 import { m } from '~/paraglide/messages.js'
 
 export function useRecording(onBeforeStart: () => void) {
 	const preference = usePreferenceProvider()
+	const { downloadVad } = useModelGates()
 	const { setState: setErrorModal } = useContext(ErrorModalContext)
 	const [devices, setDevices] = useState<AudioDevice[]>([])
 	const [savedInputDeviceId, setSavedInputDeviceId] = usePersisted<string | null>(CONFIG_KEYS.inputDeviceId, null)
@@ -62,6 +65,7 @@ export function useRecording(onBeforeStart: () => void) {
 				devices: selectedDevices,
 				recordingName: recordingName.trim() || null,
 				origin: 'manual',
+				live: await liveOptions('manual', preference, downloadVad),
 			})
 			rememberNormalSession(sessionId)
 		} catch (error) {

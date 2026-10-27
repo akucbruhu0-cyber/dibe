@@ -503,6 +503,28 @@ html.dictation-indicator-window #root {
 	.animate-in-dialog {
 		animation: enter-dialog 0.2s ease-out forwards;
 	}
+
+	/* Live transcript: a final settles from the partial's grey; the recording dot breathes. The
+	   component leaves both classes off under Reduce Motion. */
+	.live-settle {
+		animation: live-settle 150ms ease-out;
+	}
+
+	.live-pulse {
+		animation: live-pulse 1.5s ease-in-out infinite;
+	}
+}
+
+@keyframes live-settle {
+	from {
+		color: var(--muted-foreground);
+	}
+}
+
+@keyframes live-pulse {
+	50% {
+		opacity: 0.35;
+	}
 }
 
 @keyframes enter-smooth {

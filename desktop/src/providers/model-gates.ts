@@ -21,14 +21,14 @@ export function useModelGates() {
 	const progressToast = useToastProvider()
 
 	const ensureModel = useCallback(
-		async (options: { filename: string; url: string; title: string; question: string; downloading: string; integrity?: ModelIntegrity }) => {
+		/** Without a `question`, the caller already asked. */
+		async (options: { filename: string; url: string; title: string; question?: string; downloading: string; integrity?: ModelIntegrity }) => {
 			const modelsFolder = await invoke<string>('get_models_folder')
 			const modelPath = await join(modelsFolder, options.filename)
 			// A file that fails its integrity check does not count as installed — download it again.
 			if (await isModelFileUsable(modelPath)) return true
 
-			const confirmed = await ask(options.question, { title: options.title, kind: 'info' })
-			if (!confirmed) return false
+			if (options.question && !(await ask(options.question, { title: options.title, kind: 'info' }))) return false
 
 			progressToast.setMessage(options.downloading)
 			progressToast.setOpen(true)
@@ -92,5 +92,20 @@ export function useModelGates() {
 		[ensureModel, preference],
 	)
 
-	return { toggleDiarization, toggleStableTimestamps }
+	/** Live transcription needs the Silero VAD; its toast offers this, so the click is the answer. */
+	const downloadVad = useCallback(async () => {
+		try {
+			await ensureModel({
+				filename: config.vadModelFilename,
+				url: config.vadModelUrl,
+				title: m.liveTranscription(),
+				downloading: m.downloadingVadModel(),
+			})
+		} catch (error) {
+			console.error('VAD download failed:', error)
+			toast.error(String(error))
+		}
+	}, [ensureModel])
+
+	return { toggleDiarization, toggleStableTimestamps, downloadVad }
 }

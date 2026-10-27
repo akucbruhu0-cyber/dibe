@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip
 import { cn } from '~/lib/style'
 import { parseMediaLinks } from '~/lib/ytdlp'
 import { useSession, type IdlePanel } from '../session'
+import { LiveTranscript } from './live-transcript'
 import QuietRow from './quiet-row'
 
 function formatElapsed(seconds: number) {
@@ -103,7 +104,7 @@ function Segment({ active, label, onClick, children }: { active?: boolean; label
 }
 
 function RecordPanel() {
-	const { recording, recordElapsed, preference } = useSession()
+	const { recording, recordElapsed, preference, live } = useSession()
 
 	useEffect(() => {
 		// The recording hook loads audio devices for this tab only.
@@ -117,6 +118,7 @@ function RecordPanel() {
 					<LevelMeter />
 					<span className="font-mono text-2xl tracking-tight tabular-nums">{formatElapsed(recordElapsed)}</span>
 				</div>
+				<LiveTranscript live={live} />
 				<Button onClick={() => recording.stopRecord()} className="h-10 w-full rounded-xl">
 					<Square className="h-3.5 w-3.5 fill-current" />
 					{m.stopRecording()}

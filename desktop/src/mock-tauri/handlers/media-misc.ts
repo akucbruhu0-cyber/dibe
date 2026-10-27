@@ -26,8 +26,37 @@ let dictationIndicatorEnabled = false
 let meetingDetectionEnabled = false
 let meetingPromptState: { source: 'meet' | 'zoom' | 'teams' } | null = null
 // Like the real backend, only one recording session can run at a time.
-let activeRecording: { sessionId: string; origin: unknown; levelTimer: number } | null = null
+let activeRecording: { sessionId: string; origin: unknown; levelTimer: number; live: MockLive | null } | null = null
 let recordingCounter = 0
+
+const LIVE_TICK_MS = 700
+const LIVE_LINES = ['שלום לכולם, מתחילים את הפגישה', 'Quick update from John before we start', 'נפגשים שוב ב-14:30 כדי לסכם']
+
+interface MockLive {
+	timer: number
+	finals: { start: number; stop: number; text: string }[]
+}
+
+/** Stands in for the live client: a partial that grows word by word, then settles into a final. */
+function startMockLive(sessionId: string): MockLive {
+	const live: MockLive = { timer: 0, finals: [] }
+	let tick = 0
+	emitMockEvent('live_status', { sessionId, state: 'starting', message: null })
+	live.timer = window.setInterval(() => {
+		tick += 1
+		if (tick === 1) emitMockEvent('live_status', { sessionId, state: 'live', message: null })
+		const words = LIVE_LINES[live.finals.length % LIVE_LINES.length].split(' ')
+		const shown = tick % (words.length + 1)
+		const start = live.finals.length * 3
+		const event =
+			shown === 0
+				? { type: 'final', start, end: start + 2.8, text: words.join(' ') }
+				: { type: 'partial', start, end: start + 2.8, text: words.slice(0, shown).join(' ') }
+		if (shown === 0) live.finals.push({ start: start * 100, stop: (start + 2.8) * 100, text: event.text })
+		emitMockEvent('live_update', { sessionId, events: [event], lag_ms: 400 })
+	}, LIVE_TICK_MS)
+	return live
+}
 
 function sleep(ms: number) {
 	return new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -81,7 +110,7 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 		}, RECORD_LEVEL_TICK_MS)
 		recordingCounter += 1
 		const sessionId = `mock-session-${recordingCounter}`
-		activeRecording = { sessionId, origin: args?.origin, levelTimer }
+		activeRecording = { sessionId, origin: args?.origin, levelTimer, live: args?.live ? startMockLive(sessionId) : null }
 		return sessionId
 	},
 
@@ -89,15 +118,21 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 		console.info('[mock] stop_record', args)
 		// A session that is not the active one is ignored, like the real backend.
 		if (!activeRecording || activeRecording.sessionId !== args?.sessionId) return undefined
-		const { sessionId, origin, levelTimer } = activeRecording
+		const { sessionId, origin, levelTimer, live } = activeRecording
 		activeRecording = null
 		window.clearInterval(levelTimer)
+		if (live) window.clearInterval(live.timer)
 		const path = `${APP_LOCAL_DATA}/recording.wav`
 		setTimeout(() => {
 			virtualFs.set(path, null)
-			emitMockEvent('record_finish', { sessionId, origin, path, name: basename(path) })
+			if (live) emitMockEvent('live_status', { sessionId, state: 'ended', message: null })
+			emitMockEvent('record_finish', { sessionId, origin, path, name: basename(path), liveSegments: live?.finals ?? null })
 		}, RECORD_FINISH_DELAY_MS)
 		return undefined
+	},
+
+	retry_live: (args) => {
+		console.info('[mock] retry_live', args)
 	},
 
 	// No unfinished recording is left over from an earlier run.

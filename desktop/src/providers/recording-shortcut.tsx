@@ -7,12 +7,15 @@ import type { AudioDevice } from '~/lib/audio'
 import { CONFIG_KEYS } from '~/lib/config-keys'
 import { usePersisted } from '~/lib/config-store'
 import { getDefaultRecordingShortcut } from '~/lib/config'
+import { liveOptions } from '~/lib/live-options'
 import type { MeetingRecordingOptions } from '~/lib/meeting-prompt'
 import { ensureSystemAudioPermission } from '~/lib/permissions'
 import { isMine, type RecordErrorPayload, type RecordFinishPayload, type RecordingOrigin } from '~/lib/recording-origin'
 import { isAlreadyRecording, recordingErrorMessage, rememberNormalSession, stopNormalSession } from '~/lib/recording-session'
 import { m } from '~/paraglide/messages.js'
 import { useHotkeyProvider } from './hotkey'
+import { useModelGates } from './model-gates'
+import { usePreferenceProvider } from './preference'
 
 interface RecordingShortcutContextValue {
 	recordingShortcutEnabled: boolean
@@ -38,6 +41,10 @@ const DEFAULT_OPTIONS: MeetingRecordingOptions = { microphone: true, systemAudio
 
 export function RecordingShortcutProvider({ children }: { children: ReactNode }) {
 	const dictation = useHotkeyProvider()
+	// Read at start time: the callbacks below are created once.
+	const liveDeps = { preference: usePreferenceProvider(), downloadVad: useModelGates().downloadVad }
+	const liveDepsRef = useRef(liveDeps)
+	liveDepsRef.current = liveDeps
 	const dictationRecordingRef = useRef(dictation.isHotkeyRecording)
 	const [recordingShortcutEnabled, setRecordingShortcutEnabled] = usePersisted(CONFIG_KEYS.recordingShortcutEnabled, false)
 	const [recordingShortcut, setRecordingShortcut] = usePersisted(CONFIG_KEYS.recordingShortcut, getDefaultRecordingShortcut())
@@ -73,7 +80,8 @@ export function RecordingShortcutProvider({ children }: { children: ReactNode })
 				(device): device is AudioDevice => device != null,
 			)
 			if (selectedDevices.length === 0) throw new Error(m.noDefaultMicrophone())
-			rememberNormalSession(await invoke<string>('start_record', { devices: selectedDevices, recordingName: null, origin }))
+			const live = await liveOptions(origin, liveDepsRef.current.preference, liveDepsRef.current.downloadVad)
+			rememberNormalSession(await invoke<string>('start_record', { devices: selectedDevices, recordingName: null, origin, live }))
 			recordingRef.current = true
 			normalRecordingActiveRef.current = true
 			setIsShortcutRecording(true)

@@ -2,7 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Preference } from '~/providers/preference'
-import { recoverUnfinishedRecordings, type RecordingProjectDeps } from './recording-project'
+import type { RecordFinishPayload } from '~/lib/recording-origin'
+import { createRecordingProject, finishedRecording, recoverUnfinishedRecordings, type RecordingProjectDeps } from './recording-project'
 
 const mocks = vi.hoisted(() => ({
 	invoke: vi.fn(),
@@ -21,9 +22,15 @@ vi.mock('~/lib/transcripts-store', () => ({
 const recovered = { path: '/data/recordings-in-progress/2026-10-25 14-30-00.wav', name: '2026-10-25 14-30-00.wav', recordedAt: '2026-10-25T14:30:00+02:00' }
 const saved = { mediaPath: '/projects/Record-x/audio.wav', recordPath: '/projects/Record-x/transcript.vibe.json' }
 
-function deps(autoTranscribeAfterRecording = false) {
+function deps(autoTranscribeAfterRecording = false, afterRecording: Preference['afterRecording'] = 'keep') {
 	const current = {
-		preference: { projectsPath: null, modelPath: '/models/m.bin', modelOptions: { lang: 'he' }, autoTranscribeAfterRecording } as unknown as Preference,
+		preference: {
+			projectsPath: null,
+			modelPath: '/models/m.bin',
+			modelOptions: { lang: 'he' },
+			autoTranscribeAfterRecording,
+			afterRecording,
+		} as unknown as Preference,
 		hydrate: vi.fn(() => 'job-1'),
 		transcribeJob: vi.fn(),
 	} satisfies RecordingProjectDeps
@@ -140,5 +147,48 @@ describe('recoverUnfinishedRecordings', () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {})
 
 		await expect(recoverUnfinishedRecordings(deps())).resolves.toBeUndefined()
+	})
+})
+
+describe('a finished recording with live transcription', () => {
+	const liveSegments = [{ start: 0, stop: 150, text: 'שלום John, נפגשים ב-14:30' }]
+	const finish = (segments: RecordFinishPayload['liveSegments']): RecordFinishPayload => ({
+		sessionId: 's1',
+		origin: 'manual',
+		path: '/data/recordings-in-progress/2026-10-27 10-00-00.wav',
+		name: '2026-10-27 10-00-00.wav',
+		liveSegments: segments,
+	})
+
+	it('keeps the live transcript as the project transcript, without transcribing again', async () => {
+		const { current } = deps(true, 'keep')
+
+		await createRecordingProject(finishedRecording(finish(liveSegments), current.preference), current)
+
+		expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }))
+		expect(current.hydrate).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }), saved.recordPath, saved.mediaPath, 'record')
+		expect(current.transcribeJob).not.toHaveBeenCalled()
+	})
+
+	it('transcribes the file again when asked to, the way a recording without live is', async () => {
+		const { current } = deps(true, 'retranscribe')
+
+		await createRecordingProject(finishedRecording(finish(liveSegments), current.preference), current)
+
+		expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: [] }))
+		expect(current.transcribeJob).toHaveBeenCalledWith('job-1')
+	})
+
+	it('falls back to transcribing when live transcription was off or heard nothing', async () => {
+		for (const segments of [null, []]) {
+			vi.clearAllMocks()
+			mocks.saveTranscript.mockResolvedValue(saved)
+			const { current } = deps(true, 'keep')
+
+			await createRecordingProject(finishedRecording(finish(segments), current.preference), current)
+
+			expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: [] }))
+			expect(current.transcribeJob).toHaveBeenCalledWith('job-1')
+		}
 	})
 })

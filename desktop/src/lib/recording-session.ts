@@ -6,9 +6,17 @@ import { invoke } from '@tauri-apps/api/core'
  * has to be able to stop the other's session. Dictation keeps its own session id in the hotkey provider.
  */
 let normalSessionId: string | null = null
+const startedListeners = new Set<(sessionId: string) => void>()
 
 export function rememberNormalSession(sessionId: string) {
 	normalSessionId = sessionId
+	for (const listener of startedListeners) listener(sessionId)
+}
+
+/** Hears the id of each recording of this family as `start_record` returns it (the live transcript binds to it). */
+export function onNormalSession(listener: (sessionId: string) => void) {
+	startedListeners.add(listener)
+	return () => void startedListeners.delete(listener)
 }
 
 /** A session that already finished is ignored by `stop_record`, so a stale id is harmless. */

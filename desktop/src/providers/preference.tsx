@@ -22,6 +22,8 @@ export type CpuVariant = 'auto' | 'avx2' | 'baseline'
 
 type Direction = 'ltr' | 'rtl'
 export type HomeTab = 'record' | 'file' | 'link'
+/** At the end of a recording transcribed live: keep that transcript, or transcribe the file again. */
+export type AfterRecording = 'keep' | 'retranscribe'
 
 /** What the export dialog remembers between openings. Direction is deliberately not here: it is a
  * one-off override that starts from the transcript's own direction each time. */
@@ -137,6 +139,11 @@ export interface Preference {
 	setMeetingDetectionEnabled: ModifyState<boolean>
 	autoTranscribeAfterRecording: boolean
 	setAutoTranscribeAfterRecording: ModifyState<boolean>
+	/** Show the transcript while recording. Dictation never does. */
+	liveTranscription: boolean
+	setLiveTranscription: ModifyState<boolean>
+	afterRecording: AfterRecording
+	setAfterRecording: ModifyState<AfterRecording>
 }
 
 // Create the context
@@ -274,6 +281,8 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 	const [saveTranscripts, setSaveTranscripts] = usePersisted<boolean>(CONFIG_KEYS.saveTranscripts, true)
 	const [meetingDetectionEnabled, setMeetingDetectionEnabled] = usePersisted<boolean>(CONFIG_KEYS.meetingDetectionEnabled, false)
 	const [autoTranscribeAfterRecording, setAutoTranscribeAfterRecording] = usePersisted<boolean>(CONFIG_KEYS.autoTranscribeAfterRecording, false)
+	const [liveTranscription, setLiveTranscription] = usePersisted<boolean>(CONFIG_KEYS.liveTranscription, true)
+	const [afterRecording, setAfterRecording] = usePersisted<AfterRecording>(CONFIG_KEYS.afterRecording, 'keep')
 
 	const [analyticsEnabled, setAnalyticsEnabledLocal] = useState(true)
 
@@ -381,6 +390,8 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 		setAi(DEFAULT_AI)
 		setMeetingDetectionEnabled(false)
 		setAutoTranscribeAfterRecording(false)
+		setLiveTranscription(true)
+		setAfterRecording('keep')
 		message(m.successAction())
 	}
 
@@ -466,6 +477,10 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 		setMeetingDetectionEnabled,
 		autoTranscribeAfterRecording,
 		setAutoTranscribeAfterRecording,
+		liveTranscription,
+		setLiveTranscription,
+		afterRecording,
+		setAfterRecording,
 	}
 
 	return <PreferenceContext.Provider value={preference}>{children}</PreferenceContext.Provider>
