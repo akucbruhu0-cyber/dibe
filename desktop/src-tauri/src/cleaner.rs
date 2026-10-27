@@ -40,7 +40,7 @@ pub fn clean_old_files() -> Result<()> {
     // Remove suffix
     let temp_dir = temp_dir.strip_suffix('/').unwrap_or(temp_dir);
     let temp_dir = temp_dir.strip_suffix('\\').unwrap_or(temp_dir);
-    let pattern = format!("{}/vibe_temp*", temp_dir);
+    let pattern = format!("{}/dibe_temp*", temp_dir);
     tracing::debug!("searching old files in {}", pattern);
     for path in glob::glob(&pattern)? {
         let path = path?;
@@ -63,7 +63,7 @@ pub fn clean_updater_files() -> Result<()> {
     // Remove suffix
     let temp_dir = temp_dir.strip_suffix('/').unwrap_or(temp_dir);
     let temp_dir = temp_dir.strip_suffix('\\').unwrap_or(temp_dir);
-    let pattern = format!("{}/vibe*-updater*", temp_dir);
+    let pattern = format!("{}/dibe*-updater*", temp_dir);
     tracing::debug!("searching old files in {}", pattern);
     for path in glob::glob(&pattern)? {
         let path = path?;

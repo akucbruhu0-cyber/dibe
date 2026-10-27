@@ -46,7 +46,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     crate::cleaner::clean_old_logs(app.handle()).log_error();
     crate::cleaner::clean_old_files().log_error();
     crate::cleaner::clean_updater_files().log_error();
-    tracing::debug!("Vibe App Running");
+    tracing::debug!("DIBE App Running");
 
     // Re-applying an existing registration upgrades installs created before the hidden launch
     // argument was added. `enable` overwrites the platform entry while preserving its enabled
@@ -92,7 +92,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
                     .dialog()
                     .message("App crashed with error. Please register to Github and then click report.")
                     .kind(tauri_plugin_dialog::MessageDialogKind::Error)
-                    .title("Vibe Crashed")
+                    .title("DIBE Crashed")
                     .buttons(MessageDialogButtons::OkCustom("Report".into()))
                     .show(|_| {});
                 let _ = tauri_plugin_opener::open_url(get_issue_url(format!("{:?}", info)), None::<&str>);
@@ -135,7 +135,7 @@ pub fn setup(app: &App) -> Result<(), Box<dyn std::error::Error>> {
             .inner_size(800.0, 700.0)
             .min_inner_size(800.0, 700.0)
             .center()
-            .title("Vibe")
+            .title(crate::config::APP_NAME)
             .resizable(true)
             .focused(!background_launch)
             .shadow(true)

@@ -1,15 +1,15 @@
-export const aboutURL = 'https://thewh1teagle.github.io/vibe/'
-export const repoURL = 'https://github.com/thewh1teagle/vibe'
-export const updateVersionURL = 'https://github.com/thewh1teagle/vibe/releases/latest'
+/** The name people see; Rust has the same in `config::APP_NAME`. */
+export const appName = 'DIBE'
+export const repoURL = 'https://github.com/akucbruhu0-cyber/dibe'
+export const aboutURL = repoURL
+export const updateVersionURL = `${repoURL}/releases/latest`
+// Models and the community still live with the original Vibe project.
 export const modelsDocURL = 'https://thewh1teagle.github.io/vibe/docs#models'
-/**
- * Release notes. With a version it opens that release, otherwise the whole list —
- * the page falls back to English for a release this locale has not translated.
- */
-export const changelogURL = (version?: string) => `https://thewh1teagle.github.io/vibe/changelog${version ? `/${version}` : ''}`
+/** Release notes: that release's page with a version, otherwise the whole list. */
+export const changelogURL = (version?: string) => `${repoURL}/releases${version ? `/tag/v${version}` : ''}`
 export const discordURL = 'https://discord.gg/EcxWSstQN8'
-export const supportVibeURL = 'https://thewh1teagle.github.io/vibe/?action=support-vibe'
-export const privacyPolicyURL = 'https://thewh1teagle.github.io/vibe/?action=open-privacy-policy'
+export const supportVibeURL = repoURL
+export const privacyPolicyURL = `${repoURL}/blob/main/PRIVACY.md`
 export const storeFilename = 'app_config.json'
 
 /** What the catalog knows about a finished download, beyond the bytes themselves. */
@@ -21,7 +21,7 @@ export interface ModelIntegrity {
 }
 
 /** One downloadable model. Only catalog entries carry integrity metadata — a URL the user pastes
- * into settings or opens with `vibe://download/?url=` never does, and falls back to the size and
+ * into settings or opens with `dibe://download/?url=` never does, and falls back to the size and
  * magic-byte checks the backend runs on every download. */
 export interface ModelDownload extends ModelIntegrity {
 	url: string

@@ -126,7 +126,7 @@ impl PairingConfig {
             return Ok(existing.public());
         }
         if !valid_hex(invitation, 32) || !constant_time_equal(invitation, &self.invitation_token) {
-            bail!("This pairing code is no longer valid. Scan a new code from Vibe.");
+            bail!("This pairing code is no longer valid. Scan a new code from DIBE.");
         }
         if constant_time_equal(invitation, device_token) {
             bail!("Phone credential must differ from its pairing code");

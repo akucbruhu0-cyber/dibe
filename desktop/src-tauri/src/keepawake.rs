@@ -82,9 +82,9 @@ impl KeepAwake {
                     match keepawake::Builder::default()
                         .display(flags.display)
                         .idle(flags.idle)
-                        .reason("Vibe is working")
-                        .app_name("Vibe")
-                        .app_reverse_domain("github.com.thewh1teagle.vibe")
+                        .reason(&format!("{} is working", crate::config::APP_NAME))
+                        .app_name(crate::config::APP_NAME)
+                        .app_reverse_domain(crate::config::APP_ID)
                         .create()
                     {
                         Ok(awake) => guard = Some(awake),

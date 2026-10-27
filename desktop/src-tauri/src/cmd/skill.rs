@@ -40,10 +40,10 @@ pub fn get_agent_paths(app_handle: tauri::AppHandle) -> AgentPaths {
     }
 }
 
-/// Write the skill under `home`, creating `<runtime>/skills/vibe/` on the way.
+/// Write the skill under `home`, creating `<runtime>/skills/dibe/` on the way.
 /// Overwriting is intended: reinstalling is how a stale API base URL gets refreshed.
 fn write_skill(home: &Path, target: &str, contents: &str) -> Result<PathBuf> {
-    let folder = home.join(runtime_folder(target)?).join("skills").join("vibe");
+    let folder = home.join(runtime_folder(target)?).join("skills").join("dibe");
     fs::create_dir_all(&folder).context("create the agent skill folder")?;
     let path = folder.join("SKILL.md");
     fs::write(&path, contents).context("write the agent skill file")?;
@@ -82,7 +82,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&home);
 
         let path = write_skill(&home, "codex", "first").unwrap();
-        assert_eq!(path, home.join(".codex/skills/vibe/SKILL.md"));
+        assert_eq!(path, home.join(".codex/skills/dibe/SKILL.md"));
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "first");
 
         let again = write_skill(&home, "codex", "second").unwrap();

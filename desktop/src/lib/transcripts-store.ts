@@ -5,20 +5,20 @@ import type { Segment, SpeakerNames } from './transcript'
 /**
  * Transcript persistence.
  *
- * The store is *a folder of project folders*: `Documents/Vibe/<name>-<yyyyMMdd-HHmmss>/` holding
+ * The store is *a folder of project folders*: `Documents/DIBE/<name>-<yyyyMMdd-HHmmss>/` holding
  * `transcript.vibe.json` next to a copy of the media it was transcribed from (`audio.<ext>`), so a
  * saved transcript stays playable even after the original file moves or is deleted.
  *
  * There is no index and no database — listing scans the store and derives the display name and
  * creation date from the folder name, so the list never has to read (and parse) every transcript.
- * Legacy flat saves (`Documents/Vibe/<name>-<stamp>.vibe.json`) are still listed, read, renamed and
+ * Legacy flat saves (`Documents/DIBE/<name>-<stamp>.vibe.json`) are still listed, read, renamed and
  * deleted in place; only new saves use project folders.
  *
  * Every operation here is best-effort: failures are logged and reported as null/empty so a broken
  * disk, a missing folder or a corrupt file can never break the transcription flow.
  */
 
-export const TRANSCRIPTS_FOLDER = 'Vibe'
+export const TRANSCRIPTS_FOLDER = 'DIBE'
 export const TRANSCRIPT_EXTENSION = '.vibe.json'
 /** Name of the record inside a project folder. */
 export const TRANSCRIPT_FILENAME = `transcript${TRANSCRIPT_EXTENSION}`
@@ -72,9 +72,9 @@ export interface TranscriptEntry {
 export interface SaveTranscriptInput {
 	name: string
 	sourcePath: string
-	/** Custom root for project folders; null/undefined uses Documents/Vibe. */
+	/** Custom root for project folders; null/undefined uses Documents/DIBE. */
 	projectsPath?: string | null
-	/** Vibe-created media is removed only after its project copy and metadata are durable. */
+	/** DIBE-created media is removed only after its project copy and metadata are durable. */
 	moveSourceMedia?: boolean
 	segments: Segment[]
 	language?: string
@@ -248,7 +248,7 @@ async function reserveProjectFolder(root: string, name: string, createdAt: Date)
 
 /**
  * Store the transcribed media next to its record so the project folder stays self-contained.
- * Every source is copied first. Vibe-created staging media is removed only after final metadata is
+ * Every source is copied first. DIBE-created staging media is removed only after final metadata is
  * durable; imported media always remains user-owned.
  */
 async function copySourceMedia(projectFolder: string, sourcePath: string): Promise<{ audioFile: string; path: string } | undefined> {
@@ -290,7 +290,7 @@ export async function saveTranscript(input: SaveTranscriptInput): Promise<SaveTr
 			if (input.moveSourceMedia) throw error
 			console.warn('failed to copy imported media; saving its external source path:', input.sourcePath, error)
 		}
-		if (input.moveSourceMedia && !media) throw new Error(`Vibe-created media has no usable extension: ${input.sourcePath}`)
+		if (input.moveSourceMedia && !media) throw new Error(`DIBE-created media has no usable extension: ${input.sourcePath}`)
 
 		const record: TranscriptRecord = {
 			...baseRecord,
@@ -476,7 +476,7 @@ export async function deleteTranscript(path: string): Promise<boolean> {
 }
 
 /**
- * Remove every saved transcript in the projects folder. The folder itself stays — only what Vibe
+ * Remove every saved transcript in the projects folder. The folder itself stays — only what DIBE
  * put there goes, so anything else the user keeps alongside it survives.
  * @returns how many were deleted and how many resisted.
  */

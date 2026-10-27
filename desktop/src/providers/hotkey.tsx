@@ -225,7 +225,7 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 					await invoke('type_text', { text: resultText })
 				} else {
 					await clipboard.writeText(resultText)
-					await notify('Vibe', m.hotkeyTranscriptionCopied())
+					await notify(config.appName, m.hotkeyTranscriptionCopied())
 				}
 				finishIndicator('completed', { output: hotkeyOutputModeRef.current })
 			} catch (error) {
@@ -238,7 +238,7 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 					trackTranscribeFailed('hotkey', path, { errorMessage: message, userError: Boolean(code && isUserError(code)) })
 				}
 				finishIndicator('error', { message })
-				await notify('Vibe', message)
+				await notify(config.appName, message)
 			} finally {
 				isStoppingRef.current = false
 				isHotkeyRecordingRef.current = false
@@ -256,7 +256,7 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 			if (!isMine(payload, 'dictation')) return
 			const message = payload.message || m.error()
 			finishIndicator('error', { message })
-			void notify('Vibe', message)
+			void notify(config.appName, message)
 			// Release every dictation state before the next task.
 			isStartingRef.current = false
 			isStoppingRef.current = false

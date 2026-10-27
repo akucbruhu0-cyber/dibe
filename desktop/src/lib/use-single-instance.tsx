@@ -21,13 +21,13 @@ export function useSingleInstance({ setFiles }: UseSingleInstanceProps) {
 			const argv = event.payload
 			const action = argv?.[1]
 
-			// vibe://download/?url=google.com
+			// dibe://download/?url=google.com
 			// already handled in deep links in macos
-			if (action && action.startsWith('vibe://download/?') && platform != 'macos') {
-				const params = new URLSearchParams(action.replace('vibe://download/?', ''))
+			if (action && action.startsWith('dibe://download/?') && platform != 'macos') {
+				const params = new URLSearchParams(action.replace('dibe://download/?', ''))
 				const url = params.get('url')
 				if (url) {
-					const downloadURL = url.replace('vibe://download/?url=', '')
+					const downloadURL = url.replace('dibe://download/?url=', '')
 					const hostname = new URL(url).hostname
 					const confirm = await ask(`${m.askForDownloadModel()} ${hostname}?`, { title: m.downloadModel(), kind: 'info' })
 					if (confirm) {

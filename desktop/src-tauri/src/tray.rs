@@ -72,7 +72,7 @@ pub fn apply(app: &AppHandle, enabled: bool, labels: TrayLabels) -> Result<()> {
         .ok_or_else(|| eyre!("the app has no icon to put in the tray"))?;
     let tray = TrayIconBuilder::with_id("main")
         .icon(icon)
-        .tooltip("Vibe")
+        .tooltip(crate::config::APP_NAME)
         .menu(&menu)
         // macOS puts the menu on a left click; Windows and Linux expect it to open the window.
         .show_menu_on_left_click(cfg!(target_os = "macos"))

@@ -4,7 +4,7 @@ import { composeSkill, withFrontmatter, type SkillContext } from './skill'
 const context: SkillContext = {
 	baseUrl: 'http://127.0.0.1:51234',
 	serverSkill: '# Server Local Transcription API\n\nBase URL: http://127.0.0.1:51234\n',
-	transcriptsFolder: '/Users/me/Documents/Vibe',
+	transcriptsFolder: '/Users/me/Documents/DIBE',
 	configPath: '/Users/me/Library/Application Support/vibe/app_config.json',
 	dictationShortcut: 'Alt+Space',
 	serverBinary: '/Applications/vibe.app/Contents/MacOS/server',
@@ -37,8 +37,8 @@ describe('composeSkill', () => {
 
 	it('still names both transcript layouts when the folder cannot be resolved', () => {
 		const skill = composeSkill({ ...context, transcriptsFolder: null, configPath: null, serverBinary: null, vibeBinary: null, serverInfoPath: null })
-		expect(skill).toContain('$HOME/Documents/Vibe')
-		expect(skill).toContain('`server.json` in the Vibe app data folder')
+		expect(skill).toContain('$HOME/Documents/DIBE')
+		expect(skill).toContain('`server.json` in the DIBE app data folder')
 		expect(skill).toContain('Settings → API & Agents → Config file')
 		expect(skill).toContain('bundles the `server` engine')
 	})
@@ -46,6 +46,6 @@ describe('composeSkill', () => {
 
 describe('withFrontmatter', () => {
 	it('opens with the frontmatter the agent runtimes index by', () => {
-		expect(withFrontmatter(composeSkill(context)).split('\n').slice(0, 4)).toEqual(['---', 'name: vibe', expect.stringContaining('description:'), '---'])
+		expect(withFrontmatter(composeSkill(context)).split('\n').slice(0, 4)).toEqual(['---', 'name: dibe', expect.stringContaining('description:'), '---'])
 	})
 })

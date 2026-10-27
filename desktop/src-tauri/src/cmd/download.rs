@@ -41,7 +41,7 @@ enum DownloadOutcome {
 }
 
 /// What the catalog claims the finished file should be. Entries the user supplies themselves (the
-/// settings URL field, the `vibe://download/?url=` deep link) carry none of this, so every field is
+/// settings URL field, the `dibe://download/?url=` deep link) carry none of this, so every field is
 /// optional and verification degrades to the size and magic-byte checks.
 #[derive(Debug, Default, Deserialize)]
 pub struct DownloadIntegrity {

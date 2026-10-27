@@ -91,7 +91,7 @@ export async function toDocx(title: string, segments: Segment[], direction: 'rtl
 
 	const doc = new Document({
 		title,
-		description: 'Transcript exported from Vibe',
+		description: 'Transcript exported from DIBE',
 		styles: {
 			// Set on the document's default run so every paragraph, and anything the reader types
 			// afterwards, inherits the same face rather than Word's own default.

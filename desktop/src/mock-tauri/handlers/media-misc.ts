@@ -195,17 +195,17 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 		return join(dirname(src), `${stem(basename(src))}${suffix}`)
 	},
 
-	get_default_projects_path: () => `${DOCUMENTS_FOLDER}/Vibe`,
+	get_default_projects_path: () => `${DOCUMENTS_FOLDER}/DIBE`,
 
 	// Unique like the real one: several downloads in a row must not land on the same file.
 	get_temp_path: (args) => `${APP_LOCAL_DATA}/tmp-${(tempPathCounter += 1)}.${String(args?.ext ?? 'tmp')}`,
 
 	get_agent_paths: () => ({ server: `${APP_LOCAL_DATA}/server`, vibe: `${APP_LOCAL_DATA}/vibe`, serverInfo: `${APP_LOCAL_DATA}/server.json` }),
 
-	// Mirrors the Rust command: `<home>/.claude|.codex/skills/vibe/SKILL.md`, parents created.
+	// Mirrors the Rust command: `<home>/.claude|.codex/skills/dibe/SKILL.md`, parents created.
 	install_agent_skill: (args) => {
 		const folder = String(args?.target ?? 'claude') === 'codex' ? '.codex' : '.claude'
-		const path = `${HOME_FOLDER}/${folder}/skills/vibe/SKILL.md`
+		const path = `${HOME_FOLDER}/${folder}/skills/dibe/SKILL.md`
 		virtualFs.set(path, String(args?.contents ?? ''))
 		return path
 	},

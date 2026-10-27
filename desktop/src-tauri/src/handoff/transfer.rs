@@ -153,7 +153,7 @@ impl HandoffHandler {
         if devices::authorize(&self.app_handle, &header.token)?.is_none() {
             return Err(TransferError::new(
                 "unauthorized",
-                "Phone access was revoked or pairing is required. Scan a new code in Vibe.",
+                "Phone access was revoked or pairing is required. Scan a new code in DIBE.",
             ));
         }
         let token = header.token.clone();
@@ -345,7 +345,7 @@ fn audio_extension(filename: Option<&str>) -> String {
         .to_lowercase()
 }
 
-/// Stage an incoming phone recording in Vibe's temp folder until the frontend
+/// Stage an incoming phone recording in DIBE's temp folder until the frontend
 /// moves it into its project. This keeps a completed transfer available while
 /// avoiding a second permanent copy outside the project.
 ///
