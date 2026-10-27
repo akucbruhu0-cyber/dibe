@@ -1,4 +1,6 @@
+use super::CommandError;
 use crate::error::LogError;
+use crate::server::ServerApiError;
 use crate::setup::ServerState;
 use eyre::{bail, Context, ContextCompat, Result};
 use std::path::PathBuf;
@@ -70,8 +72,42 @@ pub fn resolve_ffmpeg_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     None
 }
 
+/// The server refused because a live session (or another request) holds the model: no GPU failed.
+fn is_busy(error: &eyre::Report) -> bool {
+    error
+        .downcast_ref::<ServerApiError>()
+        .is_some_and(|refusal| matches!(refusal.code.as_str(), "live_busy" | "busy"))
+}
+
+/// What the UI gets from a failed `load_model`: a busy server keeps its code, for callers that only
+/// need a model loaded and go on; anything else carries the full report, as it always did.
+fn load_error(error: eyre::Report) -> CommandError {
+    match error.downcast_ref::<ServerApiError>() {
+        Some(refusal) if is_busy(&error) => CommandError {
+            code: refusal.code.clone(),
+            message: refusal.message.clone(),
+        },
+        _ => CommandError {
+            code: "internal_error".to_string(),
+            message: format!("{error:?}"),
+        },
+    }
+}
+
 #[tauri::command]
 pub async fn load_model(
+    app_handle: tauri::AppHandle,
+    model_path: String,
+    gpu_device: Option<i32>,
+    unload_timeout_minutes: u32,
+    no_gpu: Option<bool>,
+) -> Result<String, CommandError> {
+    load(app_handle, model_path, gpu_device, unload_timeout_minutes, no_gpu)
+        .await
+        .map_err(load_error)
+}
+
+async fn load(
     app_handle: tauri::AppHandle,
     model_path: String,
     gpu_device: Option<i32>,
@@ -171,10 +207,12 @@ pub async fn load_model(
         }
     }
 
-    // Asking for the CPU is a choice rather than a failure, so there is nothing to fall back to.
+    // Asking for the CPU is a choice rather than a failure, and a live session holding the model is
+    // no GPU failure either (killing the server for it would leave the model on the CPU), so there
+    // is nothing to fall back to.
     let gpu_fallback = match load_result {
         Ok(()) => false,
-        Err(e) if no_gpu => return Err(e),
+        Err(e) if no_gpu || is_busy(&e) => return Err(e),
         Err(e) => {
             tracing::warn!("model load failed with GPU enabled, falling back to CPU: {:#}", e);
 
@@ -295,4 +333,39 @@ pub async fn stop_api_server(app_handle: tauri::AppHandle, server_state: State<'
         return Ok(true);
     }
     Ok(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::server::ServerApiError;
+
+    fn refused(code: &str) -> eyre::Report {
+        eyre::Report::new(ServerApiError {
+            code: code.to_string(),
+            message: "a live session holds the model".to_string(),
+        })
+    }
+
+    #[test]
+    fn a_busy_server_is_no_gpu_failure() {
+        assert!(is_busy(&refused("live_busy")));
+        assert!(is_busy(&refused("busy")));
+        assert!(!is_busy(&refused("gpu_out_of_memory")));
+        assert!(!is_busy(&eyre::eyre!("vibe-server load_model failed: no GPU")));
+    }
+
+    #[test]
+    fn the_ui_gets_the_busy_code_and_every_other_failure_as_before() {
+        let busy = load_error(refused("live_busy"));
+        assert_eq!(
+            (busy.code.as_str(), busy.message.as_str()),
+            ("live_busy", "a live session holds the model")
+        );
+
+        let failed = eyre::eyre!("no GPU").wrap_err("failed to load");
+        let expected = format!("{failed:?}");
+        let other = load_error(failed);
+        assert_eq!((other.code.as_str(), other.message), ("internal_error", expected));
+    }
 }

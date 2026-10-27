@@ -1,4 +1,4 @@
-use super::{info, ReadySignal, ServerProcess, StderrTail};
+use super::{info, ReadySignal, ServerApiError, ServerErrorResponse, ServerProcess, StderrTail};
 use crate::cmd::config::CpuVariant;
 use eyre::{bail, Context, ContextCompat, Result};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
@@ -399,7 +399,10 @@ impl ServerProcess {
                     tracing::debug!("vibe-server model loaded: {path}");
                     return Ok(());
                 }
-                Ok(response) => bail!("vibe-server load_model failed: {}", response.text().await.unwrap_or_default()),
+                Ok(response) => {
+                    let status = response.status().as_u16();
+                    return Err(load_refused(status, response.text().await.unwrap_or_default()));
+                }
                 Err(error) => last_error = Some(error),
             }
         }
@@ -432,6 +435,19 @@ impl ServerProcess {
     }
 }
 
+/// Why the server refused to load a model. A live session holding it (409 `live_busy`) or a busy
+/// model (429 `busy`) is a `ServerApiError` with that code: no GPU failed, so the caller must not
+/// fall back to the CPU. Anything else reads as it always did.
+fn load_refused(status: u16, body: String) -> eyre::Report {
+    match serde_json::from_str::<ServerErrorResponse>(&body) {
+        Ok(parsed) if matches!(status, 409 | 429) => eyre::Report::new(ServerApiError {
+            code: parsed.error.code.unwrap_or_else(|| "busy".to_string()),
+            message: parsed.error.message,
+        }),
+        _ => eyre::eyre!("vibe-server load_model failed: {body}"),
+    }
+}
+
 /// Give up on a child that never handed us a usable ready line, and describe how
 /// it went: its exit status if it died on its own, plus whatever it printed. The
 /// status is only worth reporting when it was not us who ended it.
@@ -458,5 +474,29 @@ fn kill_and_describe(child: &mut Child, stderr_buf: &Arc<Mutex<StderrTail>>) -> 
 impl Drop for ServerProcess {
     fn drop(&mut self) {
         self.kill();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_busy_load_is_a_typed_refusal() {
+        let body = r#"{"error":{"code":"live_busy","message":"a live session holds the model"}}"#;
+        let error = load_refused(409, body.to_string());
+        let refusal = error.downcast_ref::<ServerApiError>().expect("typed");
+        assert_eq!(
+            (refusal.code.as_str(), refusal.message.as_str()),
+            ("live_busy", "a live session holds the model")
+        );
+
+        let body = r#"{"error":{"code":"busy","message":"the model is in use"}}"#;
+        assert!(load_refused(429, body.to_string()).downcast_ref::<ServerApiError>().is_some());
+
+        // A load that failed is still the error it always was, which may send it to the CPU.
+        let failed = load_refused(500, r#"{"error":{"code":"internal_error","message":"no GPU"}}"#.to_string());
+        assert!(failed.downcast_ref::<ServerApiError>().is_none());
+        assert!(format!("{failed}").contains("no GPU"));
     }
 }

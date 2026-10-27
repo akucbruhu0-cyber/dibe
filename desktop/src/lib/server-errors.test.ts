@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isGpuOutOfMemory, serverErrorCodes } from './server-errors'
+import { isGpuOutOfMemory, loadedUnlessBusy, serverErrorCodes } from './server-errors'
 
 describe('isGpuOutOfMemory', () => {
 	it('trusts the code server reports on a failed GPU allocation', () => {
@@ -19,5 +19,18 @@ describe('isGpuOutOfMemory', () => {
 	it('does not read memory into an unrelated death or stream failure', () => {
 		expect(isGpuOutOfMemory(serverErrorCodes.INTERNAL_ERROR, 'vibe-server process died during transcription (killed by signal 9)')).toBe(false)
 		expect(isGpuOutOfMemory(serverErrorCodes.INTERNAL_ERROR, 'failed to read server event line: invalid json')).toBe(false)
+	})
+})
+
+describe('loadedUnlessBusy', () => {
+	it('lets a caller go on while a live session holds the model', () => {
+		expect(loadedUnlessBusy({ code: 'live_busy', message: 'a live session holds the model' })).toBe('live_busy')
+		expect(loadedUnlessBusy({ code: 'busy', message: 'the model is in use' })).toBe('busy')
+	})
+
+	it('keeps every other failure', () => {
+		const failed = { code: 'internal_error', message: 'no GPU' }
+		expect(() => loadedUnlessBusy(failed)).toThrow()
+		expect(() => loadedUnlessBusy('vibe-server died')).toThrow()
 	})
 })

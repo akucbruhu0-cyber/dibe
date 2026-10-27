@@ -2,6 +2,8 @@ export const serverErrorCodes = {
 	INVALID_REQUEST: 'invalid_request',
 	INVALID_AUDIO: 'invalid_audio',
 	BUSY: 'busy',
+	/** A live session holds the model until its recording stops. */
+	LIVE_BUSY: 'live_busy',
 	NO_MODEL: 'no_model',
 	/** The GPU could not allocate; reloading on the CPU is the one thing a client can do about it. */
 	GPU_OUT_OF_MEMORY: 'gpu_out_of_memory',
@@ -51,4 +53,15 @@ export function fatalRunError(code: string | undefined, message: string): FatalR
 	if (code === serverErrorCodes.NO_MODEL || message.includes('no model loaded')) return 'no_model'
 	if (message.includes(SERVER_DIED_PREFIX)) return 'engine_died'
 	return null
+}
+
+/**
+ * For `load_model(…).catch(loadedUnlessBusy)`: a live session (or another request) holding the model
+ * is no failure to a caller that only needs a model loaded. It goes on with the loaded one, and
+ * `transcribe` waits until the session lets go. Resolves to the code; every other failure stands.
+ */
+export function loadedUnlessBusy(error: unknown): string {
+	const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined
+	if (code === serverErrorCodes.LIVE_BUSY || code === serverErrorCodes.BUSY) return code
+	throw error
 }

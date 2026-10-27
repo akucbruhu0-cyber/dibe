@@ -14,7 +14,7 @@ import { createClient, fillPrompt } from '~/lib/ai'
 import { withoutUnsupportedOptions } from '~/lib/model'
 import { isMine, type RecordErrorPayload, type RecordFinishPayload } from '~/lib/recording-origin'
 import { isAlreadyRecording } from '~/lib/recording-session'
-import { isUserError } from '~/lib/server-errors'
+import { isUserError, loadedUnlessBusy } from '~/lib/server-errors'
 import * as transcript from '~/lib/transcript'
 import { usePreferenceProvider } from '~/providers/preference'
 import { m } from '~/paraglide/messages.js'
@@ -190,7 +190,7 @@ export function HotkeyProvider({ children }: { children: ReactNode }) {
 					gpuDevice: preferenceRef.current.gpuDevice,
 					noGpu: preferenceRef.current.noGpu || gpuOutOfMemoryBefore(modelPath),
 					unloadTimeoutMinutes: preferenceRef.current.unloadTimeoutMinutes,
-				})
+				}).catch(loadedUnlessBusy)
 				const requiresVad = preferenceRef.current.modelMetadata?.capabilities.requires_vad ?? false
 				const modelsFolder = requiresVad ? await invoke<string>('get_models_folder') : null
 				const options = {

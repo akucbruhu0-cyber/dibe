@@ -14,7 +14,7 @@ import { openPath } from '~/lib/app'
 import { notify } from '~/lib/notify'
 import { autoProjectName } from '~/lib/project-name'
 import { gpuOutOfMemoryBefore, rememberGpuOutOfMemory } from '~/lib/gpu-memory'
-import { fatalRunError, isGpuOutOfMemory, isUserError, serverErrorCodes } from '~/lib/server-errors'
+import { fatalRunError, isGpuOutOfMemory, isUserError, loadedUnlessBusy, serverErrorCodes } from '~/lib/server-errors'
 import type { Segment, SpeakerNames, Transcript } from '~/lib/transcript'
 import {
 	notifyTranscriptsChanged,
@@ -399,7 +399,7 @@ export function useTranscribeQueue(): TranscribeQueue {
 					gpuDevice: current.gpuDevice,
 					noGpu: onCpu,
 					unloadTimeoutMinutes: current.unloadTimeoutMinutes,
-				})
+				}).catch(loadedUnlessBusy)
 				if (loadResult === 'gpu_fallback') toast.warning(m.gpuFallbackToCpu(), { position: 'bottom-center', duration: 8000 })
 				shared = await buildSharedOptions(current)
 			} catch (error) {

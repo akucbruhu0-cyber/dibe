@@ -28,7 +28,7 @@ vi.mock('./use-live-transcript', () => ({ waitForLiveIdle: async () => {} }))
 vi.mock('~/lib/transcripts-store', () => ({
 	notifyTranscriptsChanged: vi.fn(),
 	renameTranscript: vi.fn(),
-	saveTranscript: vi.fn(),
+	saveTranscript: vi.fn(async () => null),
 	updateTranscriptSegments: mocks.updateTranscriptSegments,
 	updateTranscriptSpeakerNames: vi.fn(),
 	updateTranscriptSummary: vi.fn(),
@@ -102,5 +102,22 @@ describe('transcribing a project again over its transcript', () => {
 
 		await waitFor(() => expect(result.current.jobs[0]).toMatchObject({ status: 'done', segments: live }))
 		expect(mocks.updateTranscriptSegments).not.toHaveBeenCalledWith('/p/transcript.vibe.json', [])
+	})
+})
+
+describe('loading the model while a live session holds it', () => {
+	it('transcribes anyway, without an error or a GPU fallback', async () => {
+		const fresh = [{ start: 0, stop: 150, text: 'שלום' }]
+		const toast = (await import('sonner')).toast
+		mocks.invoke.mockImplementation(async (command: string) => {
+			if (command === 'load_model') throw { code: 'live_busy', message: 'a live session holds the model' }
+			if (command === 'transcribe') return { segments: fresh }
+		})
+		const { result } = renderHook(() => useTranscribeQueue())
+
+		act(() => result.current.enqueue([{ name: 'talk.wav', path: '/r/talk.wav' }]))
+
+		await waitFor(() => expect(result.current.jobs[0]).toMatchObject({ status: 'done', segments: fresh }))
+		expect(toast.warning).not.toHaveBeenCalled()
 	})
 })
