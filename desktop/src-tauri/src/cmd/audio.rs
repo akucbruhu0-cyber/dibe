@@ -216,7 +216,7 @@ fn start_streams(
         recording.writers.push(writer);
         recording.wav_paths.push(path);
 
-        let on_error = end_on_stream_error(app_handle, &recording.session_id);
+        let on_error = end_on_stream_error(app_handle, &recording.session_id, device_index);
         let stream = build_capture(&device, config, tx, meter.clone(), dropped, on_error)?;
         stream.play()?;
         tracing::debug!("Stream started playing");
@@ -247,7 +247,7 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
         return Ok(());
     };
     // Merging and normalizing shell out to ffmpeg, which must not block the async runtime.
-    tauri::async_runtime::spawn_blocking(move || finish_recording(&app_handle, recording, None)).await?;
+    tauri::async_runtime::spawn_blocking(move || finish_recording(&app_handle, recording)).await?;
     Ok(())
 }
 
@@ -273,10 +273,11 @@ pub fn forget_recovered(app_handle: AppHandle, path: String) -> Result<(), Comma
     Ok(recovery::forget(&recovered, Path::new(&path))?)
 }
 
-/// cpal's error callback for a session's streams. A device that stops delivering audio (e.g.
-/// AirPods unplugged mid-meeting) ends the session; what was captured until then still becomes a
-/// recording, with the failure as its warning.
-fn end_on_stream_error(app_handle: &AppHandle, session_id: &str) -> impl FnMut(cpal::Error) + Send + 'static {
+/// cpal's error callback for device `device` of a session. A device that stops delivering audio
+/// (AirPods unplugged mid-meeting, or switched to the call profile) keeps what it captured; the
+/// other devices go on recording, and once none is left the session ends and becomes a recording,
+/// with the failures as its warning.
+fn end_on_stream_error(app_handle: &AppHandle, session_id: &str, device: usize) -> impl FnMut(cpal::Error) + Send + 'static {
     let app_handle = app_handle.clone();
     let session_id = session_id.to_string();
     move |error| {
@@ -284,10 +285,13 @@ fn end_on_stream_error(app_handle: &AppHandle, session_id: &str) -> impl FnMut(c
         let session_id = session_id.clone();
         // Finishing joins the writer threads and runs ffmpeg, so it must not run on cpal's thread.
         tauri::async_runtime::spawn_blocking(move || {
-            // Only the first failure finds the session; a second device or a racing stop_record is a no-op.
-            if let Some(recording) = app_handle.state::<RecordingState>().take(&session_id) {
-                let failure = format!("The recording device stopped ({error}); the recording was saved up to that point");
-                finish_recording(&app_handle, recording, Some(failure));
+            let warning = format!("A recording device stopped ({error}); what it captured until then was saved");
+            // A repeated error of the same device, or a racing stop_record, finds nothing to end.
+            if let Some(recording) = app_handle
+                .state::<RecordingState>()
+                .device_failed(&session_id, device, warning)
+            {
+                finish_recording(&app_handle, recording);
             }
         });
     }
@@ -345,13 +349,15 @@ fn close_captures(streams: Vec<StreamHandle>, writers: Vec<WriterHandle>, wav_pa
 }
 
 /// The event that ends a session for its listeners: `record_finish` whenever audio was saved, so
-/// the UI keeps it as a project and shows `warnings` (a failed device or writer included), with the
-/// live transcription's finals when it had one; `record_error` only when there is no `output` to keep.
+/// the UI keeps it as a project and shows `warnings` (a failed device or writer included, with
+/// `device_disconnected` set when a device stopped), with the live transcription's finals when it
+/// had one; `record_error` only when there is no `output` to keep.
 fn recording_event(
     session_id: &str,
     origin: RecordingOrigin,
     output: Option<&Path>,
     warnings: Vec<String>,
+    device_disconnected: bool,
     live_segments: Option<Vec<Segment>>,
 ) -> (&'static str, Value) {
     let Some(output) = output else {
@@ -373,16 +379,16 @@ fn recording_event(
             "path": output.to_string_lossy(),
             "name": output.file_name().map(|name| name.to_string_lossy()).unwrap_or_default(),
             "warning": warning,
+            "deviceDisconnected": device_disconnected,
             "liveSegments": live_segments,
         }),
     )
 }
 
-/// Ends a session: saves its audio, merges and normalizes it, and tells the listeners. `failure`
-/// is why it ended on its own, when it did. Blocks on the writers, ffmpeg and the live client's
-/// last finals, so it runs off the async runtime.
-fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure: Option<String>) {
-    let (event, payload) = finished_event(recording, failure, &get_vibe_temp_folder());
+/// Ends a session: saves its audio, merges and normalizes it, and tells the listeners. Blocks on
+/// the writers, ffmpeg and the live client's last finals, so it runs off the async runtime.
+fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording) {
+    let (event, payload) = finished_event(recording, &get_vibe_temp_folder());
     tracing::debug!("Emitting {event} event");
     app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
     crate::meeting_prompt::recording_stopped(app_handle);
@@ -390,7 +396,7 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
 
 /// Closes a session's captures, collects its live finals, finalizes the captures into `out_dir`,
 /// then builds the event that tells the listeners.
-fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: &Path) -> (&'static str, Value) {
+fn finished_event(recording: ActiveRecording, out_dir: &Path) -> (&'static str, Value) {
     let ActiveRecording {
         session_id,
         origin,
@@ -399,6 +405,7 @@ fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: 
         writers,
         wav_paths,
         live,
+        failed_devices,
     } = recording;
     let closed = close_captures(streams, writers, wav_paths);
     // The writers are done, so the tap has all the audio: the live client sends the rest. Its last
@@ -406,8 +413,11 @@ fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: 
     // in the in-progress folder, where a quit during the wait leaves them for the next launch.
     let live_segments = live.map(LiveClient::stop).map(StoppingLive::finals);
     let wav_paths = closed.files;
-    // What cut the recording short rides on it as a warning: the saved audio still becomes a project.
-    let mut warnings: Vec<String> = failure.into_iter().chain(closed.failures).collect();
+    // What cut a device or the recording short rides on it as a warning: the saved audio still
+    // becomes a project.
+    let device_disconnected = !failed_devices.is_empty();
+    let device_warnings = failed_devices.into_iter().map(|(_, warning)| warning);
+    let mut warnings: Vec<String> = device_warnings.chain(closed.failures).collect();
     if closed.dropped > 0 {
         let message = format!(
             "{} audio samples were dropped because the disk could not keep up",
@@ -426,7 +436,14 @@ fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: 
     if output.is_none() {
         tracing::error!("Recording stopped without any captured audio");
     }
-    recording_event(&session_id, origin, output.as_deref(), warnings, live_segments)
+    recording_event(
+        &session_id,
+        origin,
+        output.as_deref(),
+        warnings,
+        device_disconnected,
+        live_segments,
+    )
 }
 
 fn get_output_device_and_config(host: &cpal::Host, audio_device: &AudioDevice) -> Result<(Device, SupportedStreamConfig)> {

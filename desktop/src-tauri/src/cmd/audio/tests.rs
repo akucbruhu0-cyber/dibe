@@ -2,6 +2,7 @@ use super::*;
 use crate::ffmpeg::random_string;
 use crate::recording::finalize::best_raw_capture;
 use std::str::FromStr;
+use std::sync::atomic::AtomicU64;
 
 fn sample_names() -> Vec<String> {
     ["MacBook Mic", "Speakers", "AirPods"].map(String::from).to_vec()
@@ -105,13 +106,15 @@ fn stream_error_finishes_session_with_audio() {
     recording.wav_paths.push(path.clone());
     assert!(state.install(recording).is_ok());
 
-    // What the error callback does: take the session, close its captures, keep what was saved
-    // and carry the failure as a warning.
-    let recording = state.take(&session_id).expect("the failure ends the active session");
+    // What the error callback does: the only device failed, so the session ends; its captures
+    // are closed, what was saved is kept and the failure rides on it as a warning.
+    let failure = "The recording device stopped (Device disconnected)".to_string();
+    let recording = state
+        .device_failed(&session_id, 0, failure.clone())
+        .expect("the failure ends the active session");
     let closed = close_captures(recording.streams, recording.writers, recording.wav_paths);
     let saved = best_raw_capture(&closed.files).expect("the audio before the failure was saved");
-    let failure = "The recording device stopped (Device disconnected)".to_string();
-    let (event, payload) = recording_event(&session_id, recording.origin, Some(&saved), vec![failure.clone()], None);
+    let (event, payload) = recording_event(&session_id, recording.origin, Some(&saved), vec![failure.clone()], true, None);
 
     assert_eq!(closed.files, vec![(path.clone(), 4_800)]);
     assert_eq!(hound::WavReader::open(&path).expect("saved WAV").len(), 4_800);
@@ -121,15 +124,63 @@ fn stream_error_finishes_session_with_audio() {
     assert!(payload["warning"]
         .as_str()
         .is_some_and(|warning| warning.contains("Device disconnected")));
-    // A second failing device finds no session left to end.
-    assert!(state.take(&session_id).is_none());
+    // A second error from it finds no session left to end.
+    assert!(state.device_failed(&session_id, 0, failure.clone()).is_none());
     // Had the device failed before delivering any audio, there would be no project: an error says why.
-    let (event, payload) = recording_event(&session_id, recording.origin, None, vec![failure], None);
+    let (event, payload) = recording_event(&session_id, recording.origin, None, vec![failure], true, None);
     assert_eq!(event, "record_error");
     assert!(payload["message"]
         .as_str()
         .is_some_and(|message| message.contains("Device disconnected")));
     std::fs::remove_file(path).ok();
+}
+
+#[test]
+fn a_failed_device_leaves_the_other_recording_until_the_stop() {
+    let dir = std::env::temp_dir().join(format!("vibe-device-failed-{}", random_string(8)));
+    std::fs::create_dir_all(&dir).expect("temp dir");
+    let spec = hound::WavSpec {
+        channels: 1,
+        sample_rate: 48_000,
+        bits_per_sample: 32,
+        sample_format: hound::SampleFormat::Float,
+    };
+    let state = RecordingState::default();
+    let session_id = state.try_begin(RecordingOrigin::Meeting).expect("begin");
+    let mut recording = ActiveRecording::new(session_id.clone(), RecordingOrigin::Meeting, None);
+    let mut rings = Vec::new();
+    for device in 0..2 {
+        let path = dir.join(format!("{device}.wav"));
+        let (tx, rx) = capture::ring(&spec);
+        recording
+            .writers
+            .push(spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn"));
+        recording.wav_paths.push(path);
+        rings.push(tx);
+    }
+    let dropped = recording.writers[1].dropped.clone();
+    let (mic, system) = (dir.join("0.wav"), dir.join("1.wav"));
+    assert!(state.install(recording).is_ok());
+
+    // The mic (AirPods) delivers 0.1 s and goes away; the system audio goes on.
+    capture::push_samples(&[0.5f32; 4_800], 1, &mut rings[0], &AtomicU64::new(0));
+    let failure = "A recording device stopped (Device disconnected)".to_string();
+    assert!(state.device_failed(&session_id, 0, failure).is_none(), "the session goes on");
+    capture::push_samples(&[0.5f32; 9_600], 1, &mut rings[1], &dropped);
+
+    // The user's Stop: what the mic saved and its failure ride on the recording.
+    let recording = state.take(&session_id).expect("still recording");
+    let (event, payload) = finished_event(recording, &dir);
+
+    assert_eq!(event, "record_finish");
+    assert_eq!(payload["deviceDisconnected"], true);
+    assert!(payload["warning"]
+        .as_str()
+        .is_some_and(|warning| warning.contains("Device disconnected")));
+    let saved = PathBuf::from(payload["path"].as_str().expect("a path"));
+    assert!(saved.is_file());
+    assert!(!mic.exists() && !system.exists(), "both captures went into the recording");
+    std::fs::remove_dir_all(dir).ok();
 }
 
 #[test]
@@ -153,7 +204,7 @@ fn recording_without_live_finishes_as_before() {
     recording.writers.push(writer);
     recording.wav_paths.push(path);
 
-    let (event, payload) = finished_event(recording, None, &dir);
+    let (event, payload) = finished_event(recording, &dir);
 
     assert_eq!(event, "record_finish");
     assert_eq!(payload.get("liveSegments"), Some(&Value::Null));
@@ -203,7 +254,7 @@ fn captures_stay_recoverable_while_the_live_finals_are_awaited() {
     });
     recording.live = Some(LiveClient::with_task(task));
 
-    let (event, payload) = finished_event(recording, None, &out_dir);
+    let (event, payload) = finished_event(recording, &out_dir);
 
     assert_eq!(event, "record_finish");
     assert_eq!(payload["liveSegments"][0]["text"], "recoverable");

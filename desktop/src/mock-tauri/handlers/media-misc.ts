@@ -128,7 +128,14 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 			setTimeout(() => {
 				virtualFs.set(path, null)
 				if (live) emitMockEvent('live_status', { sessionId, state: 'ended', message: null })
-				emitMockEvent('record_finish', { sessionId, origin, path, name: basename(path), liveSegments: live?.finals ?? null })
+				emitMockEvent('record_finish', {
+					sessionId,
+					origin,
+					path,
+					name: basename(path),
+					deviceDisconnected: false,
+					liveSegments: live?.finals ?? null,
+				})
 				resolve(undefined)
 			}, RECORD_FINISH_DELAY_MS),
 		)

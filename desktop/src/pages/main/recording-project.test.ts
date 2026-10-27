@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Preference } from '~/providers/preference'
 import type { RecordFinishPayload } from '~/lib/recording-origin'
-import { createRecordingProject, finishedRecording, recoverUnfinishedRecordings, type RecordingProjectDeps } from './recording-project'
+import { createRecordingProject, finishedRecording, finishWarningTitle, recoverUnfinishedRecordings, type RecordingProjectDeps } from './recording-project'
 
 const mocks = vi.hoisted(() => ({
 	invoke: vi.fn(),
@@ -190,5 +190,17 @@ describe('a finished recording with live transcription', () => {
 			expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: [] }))
 			expect(current.transcribeJob).toHaveBeenCalledWith('job-1')
 		}
+	})
+})
+
+describe('the warning of a finished recording', () => {
+	const finish = { sessionId: 's1', origin: 'meeting', path: '/r.wav', name: 'r.wav', warning: 'A recording device stopped' } as const
+
+	it('says a device disconnected when one did', () => {
+		expect(finishWarningTitle({ ...finish, deviceDisconnected: true })).toBe('A recording device disconnected. The recording was saved.')
+	})
+
+	it('keeps the general title for anything else', () => {
+		expect(finishWarningTitle({ ...finish, deviceDisconnected: false })).toBe('Recording saved with reduced processing')
 	})
 })

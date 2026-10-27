@@ -735,5 +735,6 @@
 	"afterRecordingInfo": "Keeping is instant; transcribing again is slower and more accurate.",
 	"afterRecordingKeep": "Keep the live transcript",
 	"afterRecordingRetranscribe": "Transcribe again for best accuracy",
-	"finishingRecording": "Finishing…"
+	"finishingRecording": "Finishing…",
+	"recordingDeviceDisconnected": "A recording device disconnected. The recording was saved."
 }

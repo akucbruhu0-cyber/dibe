@@ -34,6 +34,11 @@ export function finishedRecording(payload: RecordFinishPayload, preference: Pick
 	return { path: payload.path, name: payload.name, createdAt: new Date(), segments }
 }
 
+/** The title of a finished recording's warning; the backend's text goes under it. */
+export function finishWarningTitle(payload: RecordFinishPayload): string {
+	return payload.deviceDisconnected ? m.recordingDeviceDisconnected() : m.recordingRecoveredWarning()
+}
+
 /** Mirrors `RecoveredRecording` in src-tauri/src/recording/recovery.rs. */
 interface RecoveredRecording {
 	path: string

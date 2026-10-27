@@ -39,6 +39,9 @@ pub struct ActiveRecording {
     pub wav_paths: Vec<PathBuf>,
     /// Live transcription, when the recording asked for it.
     pub live: Option<LiveClient>,
+    /// Devices whose stream stopped while the others went on, each with why; their files keep
+    /// what they captured until then.
+    pub failed_devices: Vec<(usize, String)>,
 }
 
 impl ActiveRecording {
@@ -51,6 +54,7 @@ impl ActiveRecording {
             writers: Vec::new(),
             wav_paths: Vec::new(),
             live: None,
+            failed_devices: Vec::new(),
         }
     }
 }
@@ -101,6 +105,20 @@ impl RecordingState {
         }
     }
 
+    /// Notes that device `device` of `session_id` stopped delivering audio. The session goes on while
+    /// another device records; once none does, it is released and returned, to be finished.
+    pub fn device_failed(&self, session_id: &str, device: usize, warning: String) -> Option<ActiveRecording> {
+        let mut slot = self.slot();
+        let active = slot.as_mut().filter(|active| active.session_id == session_id)?;
+        if !active.failed_devices.iter().any(|(failed, _)| *failed == device) {
+            active.failed_devices.push((device, warning));
+        }
+        if active.failed_devices.len() < active.wav_paths.len() {
+            return None;
+        }
+        slot.take()
+    }
+
     /// Releases the slot and returns the session, or `None` when `session_id` is not the active one.
     pub fn take(&self, session_id: &str) -> Option<ActiveRecording> {
         let mut slot = self.slot();
@@ -129,6 +147,43 @@ mod tests {
         assert!(state.take("not-the-session").is_none());
         // The wrong id must not have released the real session.
         assert!(state.take(&session_id).is_some());
+    }
+
+    fn two_device_session(state: &RecordingState) -> String {
+        let session_id = state.try_begin(RecordingOrigin::Meeting).expect("begin");
+        let mut recording = ActiveRecording::new(session_id.clone(), RecordingOrigin::Meeting, None);
+        recording.wav_paths = vec![PathBuf::from("mic.wav"), PathBuf::from("system.wav")];
+        assert!(state.install(recording).is_ok());
+        session_id
+    }
+
+    #[test]
+    fn one_failed_device_keeps_the_session_recording() {
+        let state = RecordingState::default();
+        let session_id = two_device_session(&state);
+
+        // AirPods switched to the call profile: the system audio keeps recording.
+        assert!(state.device_failed(&session_id, 0, "mic stopped".to_string()).is_none());
+        // cpal may report the same dead stream again; it is still one device.
+        assert!(state.device_failed(&session_id, 0, "mic stopped again".to_string()).is_none());
+
+        let recording = state.take(&session_id).expect("the session is still active");
+        assert_eq!(recording.failed_devices, vec![(0, "mic stopped".to_string())]);
+    }
+
+    #[test]
+    fn session_ends_when_every_device_failed() {
+        let state = RecordingState::default();
+        let session_id = two_device_session(&state);
+
+        assert!(state.device_failed(&session_id, 1, "system stopped".to_string()).is_none());
+        let recording = state
+            .device_failed(&session_id, 0, "mic stopped".to_string())
+            .expect("no device is left recording");
+
+        assert_eq!(recording.failed_devices.len(), 2);
+        assert!(state.take(&session_id).is_none(), "the slot is free again");
+        assert!(state.device_failed("not-the-session", 0, String::new()).is_none());
     }
 
     #[test]

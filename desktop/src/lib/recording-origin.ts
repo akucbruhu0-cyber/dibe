@@ -10,6 +10,8 @@ export interface RecordFinishPayload {
 	path: string
 	name: string
 	warning?: string | null
+	/** A device stopped mid-recording (the others went on); `warning` says which and why. */
+	deviceDisconnected?: boolean
 	/** The live transcription's finals, in centiseconds; null when the recording had none. */
 	liveSegments?: Segment[] | null
 }

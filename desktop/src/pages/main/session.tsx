@@ -22,7 +22,7 @@ import { useSummaries, type Summaries } from './hooks/use-summaries'
 import { useTranscribeQueue, type TranscribeQueue } from './hooks/use-transcribe-queue'
 import { useTranscribeWarnings } from './hooks/use-transcribe-warnings'
 import { useLiveTranscript, type LiveView } from './hooks/use-live-transcript'
-import { createRecordingProject, finishedRecording, recoverUnfinishedRecordings } from './recording-project'
+import { createRecordingProject, finishedRecording, finishWarningTitle, recoverUnfinishedRecordings } from './recording-project'
 
 /** Recordings that end up as a project here; dictation is handled by the hotkey provider. */
 const PROJECT_RECORDING_ORIGINS: RecordingOrigin[] = ['manual', 'shortcut', 'meeting']
@@ -169,7 +169,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			if (!isMine(payload, PROJECT_RECORDING_ORIGINS)) return
 			recording.setIsRecording(false)
 			setPanel('none')
-			if (payload.warning) toast.warning(m.recordingRecoveredWarning(), { description: payload.warning, position: 'bottom-center' })
+			if (payload.warning) toast.warning(finishWarningTitle(payload), { description: payload.warning, position: 'bottom-center' })
 			const deps = recordingCompletionRef.current
 			await createRecordingProject(finishedRecording(payload, deps.preference), deps)
 		})
