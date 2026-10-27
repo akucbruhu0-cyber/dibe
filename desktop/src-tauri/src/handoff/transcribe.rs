@@ -313,7 +313,6 @@ pub(super) fn model_settings(app_handle: &tauri::AppHandle) -> Option<ModelSetti
 
 #[cfg(test)]
 mod tests {
-    use super::super::protocol::MAX_AUDIO_BYTES;
     use super::*;
 
     #[test]
