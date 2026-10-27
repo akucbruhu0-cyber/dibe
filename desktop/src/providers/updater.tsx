@@ -75,6 +75,7 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
 		// Check for new updates
 		async function checkForUpdates() {
 			try {
+				// The fork ships without update endpoints, so this check fails quietly (caught below) and no update UI appears.
 				const newUpdate = await checkUpdate()
 				if (newUpdate) {
 					setAvailableUpdate(newUpdate?.available)
