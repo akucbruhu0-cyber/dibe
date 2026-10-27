@@ -166,6 +166,7 @@
 	"leftover": "Left",
 	"light": "Light",
 	"llmApiKey": "Claude API key",
+	"geminiApiKey": "Gemini API key",
 	"llmCurrentCost": "Usage costs",
 	"llmModel": "Model",
 	"llmPlatform": "Platform",

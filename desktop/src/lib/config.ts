@@ -70,6 +70,8 @@ export const llmApiKeyUrl = 'https://console.anthropic.com/settings/keys'
 export const llmDefaultMaxTokens = 8192 // https://docs.anthropic.com/en/docs/about-claude/models
 export const llmLimitsUrl = 'https://console.anthropic.com/settings/limits'
 export const llmCostUrl = 'https://console.anthropic.com/settings/cost'
+export const geminiApiKeyUrl = 'https://aistudio.google.com/apikey'
+export const geminiModelsUrl = 'https://ai.google.dev/gemini-api/docs/models'
 
 export const ytDlpAssetNames: Record<string, string> = {
 	'windows-x86_64': 'yt-dlp.exe',

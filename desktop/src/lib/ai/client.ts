@@ -155,14 +155,22 @@ class Ollama implements AiClient {
 	}
 }
 
+/** Google serves Gemini behind an OpenAI-compatible API, so it shares this client. */
+export const GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai'
+
 class OpenAICompatible implements AiClient {
-	constructor(private connection: AiConnection) {}
+	constructor(
+		private connection: AiConnection,
+		private baseUrl: string,
+		private apiKey: string,
+		private label: string,
+	) {}
 	private url() {
-		return `${(this.connection.openaiBaseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '')}/chat/completions`
+		return `${this.baseUrl.replace(/\/+$/, '')}/chat/completions`
 	}
 	private headers() {
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-		if (this.connection.openaiApiKey) headers.Authorization = `Bearer ${this.connection.openaiApiKey}`
+		if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`
 		return headers
 	}
 	private body(prompt: string, stream: boolean) {
@@ -175,12 +183,12 @@ class OpenAICompatible implements AiClient {
 	}
 	async ask(prompt: string) {
 		const response = await fetch(this.url(), { method: 'POST', headers: this.headers(), body: this.body(prompt, false) })
-		if (!response.ok) throw await failure('OpenAI', response)
+		if (!response.ok) throw await failure(this.label, response)
 		return (await response.json()).choices?.[0]?.message?.content ?? ''
 	}
 	async stream(prompt: string, onToken: (text: string) => void) {
 		const response = await fetch(this.url(), { method: 'POST', headers: this.headers(), body: this.body(prompt, true) })
-		if (!response.ok) throw await failure('OpenAI', response)
+		if (!response.ok) throw await failure(this.label, response)
 		let text = ''
 		await readLines(response, (line) => {
 			if (!line.startsWith('data:')) return
@@ -241,7 +249,9 @@ class Claude implements AiClient {
 
 export function createClient(connection: AiConnection): AiClient {
 	if (connection.platform === 'ollama') return new Ollama(connection)
-	if (connection.platform === 'openai') return new OpenAICompatible(connection)
+	if (connection.platform === 'openai')
+		return new OpenAICompatible(connection, connection.openaiBaseUrl || 'https://api.openai.com/v1', connection.openaiApiKey, 'OpenAI')
+	if (connection.platform === 'gemini') return new OpenAICompatible(connection, GEMINI_OPENAI_BASE_URL, connection.geminiApiKey ?? '', 'Gemini')
 	return new Claude(connection)
 }
 

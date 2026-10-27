@@ -1,6 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { Check, ChevronRight, Copy, ExternalLink } from 'lucide-react'
-import { siClaude, siOllama } from 'simple-icons'
+import { siClaude, siGooglegemini, siOllama } from 'simple-icons'
 import { OPENAI_PATH } from '~/components/brand-glyph'
 import { m } from '~/paraglide/messages.js'
 import { ReactComponent as LinkIcon } from '~/icons/link.svg'
@@ -32,7 +32,10 @@ const platformIcons: Record<AiPlatform, { path: string; title: string }> = {
 	claude: { path: siClaude.path, title: siClaude.title },
 	ollama: { path: siOllama.path, title: siOllama.title },
 	openai: { path: OPENAI_PATH, title: 'OpenAI' },
+	gemini: { path: siGooglegemini.path, title: 'Gemini' },
 }
+
+const platformNames: Partial<Record<AiPlatform, string>> = { openai: 'OpenAI Compatible', gemini: 'Gemini' }
 
 function PlatformOption({ platform }: { platform: AiPlatform }) {
 	const icon = platformIcons[platform]
@@ -41,7 +44,7 @@ function PlatformOption({ platform }: { platform: AiPlatform }) {
 			<svg viewBox="0 0 24 24" role="img" aria-hidden className="h-4 w-4 shrink-0">
 				<path d={icon.path} fill="currentColor" />
 			</svg>
-			<span className="capitalize">{platform === 'openai' ? 'OpenAI Compatible' : platform}</span>
+			<span className="capitalize">{platformNames[platform] ?? platform}</span>
 		</span>
 	)
 }
@@ -102,7 +105,7 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							{(['claude', 'ollama', 'openai'] as const).map((name) => (
+							{(['claude', 'gemini', 'ollama', 'openai'] as const).map((name) => (
 								<SelectItem key={name} value={name}>
 									<PlatformOption platform={name} />
 								</SelectItem>
@@ -136,6 +139,30 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 								value={connection.model}
 								onChange={(e) => setConnection({ model: e.target.value })}
 								placeholder={defaultModel('claude')}
+								className={`w-64 ${rowControlClass}`}
+							/>
+						</SettingsRow>
+					</>
+				)}
+
+				{connection.platform === 'gemini' && (
+					<>
+						<SettingsRow
+							label={<LabelWithLink label={m.geminiApiKey()} tooltip={m.findHere()} onClick={() => openUrl(config.geminiApiKeyUrl)} />}
+							description={m.infoLlmApiKey()}>
+							<Input
+								value={connection.geminiApiKey ?? ''}
+								onChange={(e) => setConnection({ geminiApiKey: e.target.value })}
+								placeholder={m.pasteApiKey()}
+								type="password"
+								className={`w-64 ${rowControlClass}`}
+							/>
+						</SettingsRow>
+						<SettingsRow label={<LabelWithLink label={m.llmModel()} tooltip={m.findHere()} onClick={() => openUrl(config.geminiModelsUrl)} />}>
+							<Input
+								value={connection.model}
+								onChange={(e) => setConnection({ model: e.target.value })}
+								placeholder={defaultModel('gemini')}
 								className={`w-64 ${rowControlClass}`}
 							/>
 						</SettingsRow>

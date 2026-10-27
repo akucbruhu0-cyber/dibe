@@ -166,6 +166,7 @@
 	"leftover": "נשארו",
 	"light": "בהיר",
 	"llmApiKey": "מפתח API של קלוד",
+	"geminiApiKey": "מפתח API של Gemini",
 	"llmCurrentCost": "עלויות שימוש",
 	"llmModel": "מודל",
 	"llmPlatform": "פלטפורמה",

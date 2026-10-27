@@ -20,7 +20,7 @@ export interface LegacyLlmConfig {
  * does to a sentence. Prompts belong to tasks, so changing the platform keeps them.
  */
 
-export type AiPlatform = 'ollama' | 'claude' | 'openai'
+export type AiPlatform = 'ollama' | 'claude' | 'openai' | 'gemini'
 
 export interface AiConnection {
 	platform: AiPlatform
@@ -30,6 +30,8 @@ export interface AiConnection {
 	ollamaBaseUrl: string
 	openaiBaseUrl: string
 	openaiApiKey: string
+	/** Absent in settings saved before Gemini was added; read it as `?? ''`. */
+	geminiApiKey: string
 }
 
 export interface AiTask {
@@ -119,6 +121,7 @@ export const DEFAULT_AI: AiSettings = {
 		ollamaBaseUrl: 'http://localhost:11434',
 		openaiBaseUrl: 'https://api.openai.com/v1',
 		openaiApiKey: '',
+		geminiApiKey: '',
 	},
 	tasks: {
 		summary: { enabled: false, autoOnFinish: false, preset: 'summary', prompt: presetPrompt('summary') },
@@ -128,7 +131,13 @@ export const DEFAULT_AI: AiSettings = {
 
 /** The default model for a platform, so switching platforms never leaves a Claude model on Ollama. */
 export function defaultModel(platform: AiPlatform) {
-	return platform === 'ollama' ? 'gemma4:e2b' : platform === 'openai' ? 'gpt-5.6-luna' : 'claude-sonnet-5'
+	const models: Record<AiPlatform, string> = {
+		ollama: 'gemma4:e2b',
+		openai: 'gpt-5.6-luna',
+		claude: 'claude-sonnet-5',
+		gemini: 'gemini-3.8-flash',
+	}
+	return models[platform]
 }
 
 /** Old `%s` prompts become `{transcript}` or `{text}`; anything else is left alone. */
@@ -156,6 +165,7 @@ export function migrateLegacy(legacy: LegacyLlmConfig | null | undefined, autoSu
 			ollamaBaseUrl: legacy.ollamaBaseUrl || DEFAULT_AI.connection.ollamaBaseUrl,
 			openaiBaseUrl: legacy.openaiBaseUrl || DEFAULT_AI.connection.openaiBaseUrl,
 			openaiApiKey: legacy.openaiApiKey ?? '',
+			geminiApiKey: '',
 		},
 		tasks: {
 			summary: {

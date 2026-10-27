@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_AI, migrateLegacy, modernizePrompt, presetPrompt } from './config'
+import { DEFAULT_AI, defaultModel, migrateLegacy, modernizePrompt, presetPrompt } from './config'
 import { chunkLines, createClient, fillPrompt, inputBudgetBytes, testConnection } from './client'
 
 const fetchMock = vi.fn()
@@ -85,6 +85,25 @@ describe('createClient', () => {
 		const text = await createClient({ ...DEFAULT_AI.connection, platform: 'openai', openaiApiKey: 'k' }).stream('p', () => {})
 		expect(text).toBe('ab')
 		expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer k')
+	})
+
+	it('streams Gemini through its OpenAI-compatible endpoint with its own key', async () => {
+		fetchMock.mockResolvedValue(streamResponse(['data: {"choices":[{"delta":{"content":"שלום"}}]}', 'data: [DONE]']))
+		const connection = { ...DEFAULT_AI.connection, platform: 'gemini' as const, model: defaultModel('gemini'), geminiApiKey: 'g', openaiApiKey: 'other' }
+		const text = await createClient(connection).stream('p', () => {})
+		expect(text).toBe('שלום')
+		expect(fetchMock.mock.calls[0][0]).toBe('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')
+		expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer g')
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ model: 'gemini-3.8-flash', stream: true })
+	})
+
+	it('names Gemini in its errors and survives settings saved before Gemini existed', async () => {
+		fetchMock.mockResolvedValue({ ok: false, status: 400, statusText: 'Bad Request', text: async () => '{"error":{"message":"API key not valid"}}' })
+		const saved = { ...DEFAULT_AI.connection, platform: 'gemini' as const } as Partial<typeof DEFAULT_AI.connection>
+		delete saved.geminiApiKey
+		const result = await testConnection(saved as typeof DEFAULT_AI.connection)
+		expect(result).toMatchObject({ ok: false, error: 'Gemini: 400 Bad Request · API key not valid' })
+		expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined()
 	})
 
 	it('streams Claude content deltas only', async () => {
