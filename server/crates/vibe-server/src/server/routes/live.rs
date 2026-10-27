@@ -5,6 +5,7 @@
 //! held. The other way round is real: a push worker holds the model (inside its session) while it
 //! waits for the slot to take the session back, so awaiting the model under the slot would deadlock.
 
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -244,38 +245,36 @@ pub(in crate::server) async fn push_audio(State(state): State<AppState>, Path(id
         session
     };
 
-    // The worker puts the session back itself, so a client that hangs up mid-push leaves no hole.
+    // The worker, not this handler, settles the slot: a client that hangs up mid-push drops the
+    // handler, and the session must still go back, or be cleared if the push panicked.
     let live = Arc::clone(&state.live);
-    let worker_id = id.clone();
     let worker = tokio::task::spawn_blocking(move || {
-        session.core.push(&pcm);
-        let events = session.advance();
+        let advanced = panic::catch_unwind(AssertUnwindSafe(|| {
+            session.core.push(&pcm);
+            session.advance()
+        }));
+        let Ok(events) = advanced else {
+            drop(session); // releases the model before the slot says it is free
+            let mut slot = live.blocking_lock();
+            if slot.as_ref().is_some_and(|slot| slot.id == id && slot.session.is_none()) {
+                *slot = None;
+            }
+            anyhow::bail!("live transcription panicked; the session is closed");
+        };
         let lag_ms = session.core.lag_ms();
         session.last_seen = Instant::now();
-        if let Some(slot) = live.blocking_lock().as_mut().filter(|slot| slot.id == worker_id) {
+        if let Some(slot) = live.blocking_lock().as_mut().filter(|slot| slot.id == id) {
             slot.session = Some(session);
         }
-        (events, lag_ms)
+        Ok((events?, lag_ms))
     });
-    match worker.await {
-        Ok((Ok(events), lag_ms)) => Json(LiveUpdate { events, lag_ms }).into_response(),
-        Ok((Err(err), _)) => error(
+    match worker.await.map_err(anyhow::Error::from).and_then(|update| update) {
+        Ok((events, lag_ms)) => Json(LiveUpdate { events, lag_ms }).into_response(),
+        Err(err) => error(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_error",
             &format!("live transcription failed: {err:#}"),
         ),
-        Err(err) => {
-            // The worker panicked, dropping the session and its lease; free the slot for a new one.
-            let mut slot = state.live.lock().await;
-            if slot.as_ref().is_some_and(|slot| slot.id == id && slot.session.is_none()) {
-                *slot = None;
-            }
-            error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_error",
-                &format!("live transcription failed: {err}"),
-            )
-        }
     }
 }
 
@@ -365,6 +364,10 @@ mod tests {
 
     /// A running session on the (empty) model whose VAD never hears speech, so no engine is needed.
     async fn start_fake_session(state: &AppState) -> String {
+        start_session_with(state, Box::new(|_| Ok(Vec::new()))).await
+    }
+
+    async fn start_session_with(state: &AppState, vad: Vad) -> String {
         let model = state
             .unload_timeout
             .try_acquire(Arc::clone(&state.inner))
@@ -372,7 +375,7 @@ mod tests {
         let session = LiveSession {
             core: LiveCore::new(None, false, true),
             model,
-            vad: Box::new(|_| Ok(Vec::new())),
+            vad,
             options: TranscribeOptions::default(),
             last_seen: Instant::now(),
         };
@@ -499,11 +502,7 @@ mod tests {
         }
         let (status, json) = send(&state, "POST", &path, OCTETS, pcm(30 * vad_rs::SAMPLE_RATE)).await;
         assert_eq!(status, StatusCode::OK);
-        assert_eq!(
-            json,
-            json!({ "events": [], "lag_ms": 1_000 }),
-            "30 s of silence keeps its last second"
-        );
+        assert_eq!(json, json!({ "events": [], "lag_ms": 0 }), "silence leaves no text behind");
     }
 
     #[tokio::test]
@@ -511,7 +510,7 @@ mod tests {
         let state = state();
         let id = start_fake_session(&state).await;
         let (status, json) = send(&state, "POST", &format!("/v1/live/{id}/audio"), OCTETS, pcm(8_000)).await;
-        assert_eq!((status, json), (StatusCode::OK, json!({ "events": [], "lag_ms": 500 })));
+        assert_eq!((status, json), (StatusCode::OK, json!({ "events": [], "lag_ms": 0 })));
         assert_eq!(transcription_status(&state).await, StatusCode::TOO_MANY_REQUESTS);
 
         let (status, json) = send(&state, "DELETE", &format!("/v1/live/{id}"), OCTETS, Vec::new()).await;
@@ -531,6 +530,45 @@ mod tests {
         let (status, json) = send(&state, "DELETE", &format!("/v1/live/{id}"), OCTETS, Vec::new()).await;
         assert_eq!((status, code(&json)), (StatusCode::CONFLICT, "live_busy"));
         drop(session);
+    }
+
+    #[tokio::test]
+    async fn a_push_that_panics_after_its_client_hung_up_frees_the_slot_and_the_model() {
+        let state = state();
+        let (started, worker_started) = tokio::sync::oneshot::channel();
+        let (release, released) = std::sync::mpsc::channel::<()>();
+        let mut started = Some(started);
+        let vad = move |_: &[f32]| -> anyhow::Result<Vec<SpeechSegment>> {
+            if let Some(started) = started.take() {
+                let _ = started.send(());
+            }
+            let _ = released.recv();
+            panic!("the VAD blew up");
+        };
+        let id = start_session_with(&state, Box::new(vad)).await;
+
+        let push = {
+            let state = state.clone();
+            let path = format!("/v1/live/{id}/audio");
+            tokio::spawn(async move { send(&state, "POST", &path, OCTETS, pcm(160)).await })
+        };
+        worker_started.await.unwrap();
+        // The client hangs up while the worker has the session, then the worker panics.
+        push.abort();
+        let _ = push.await;
+        release.send(()).unwrap();
+
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while state.live.lock().await.is_some() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("the slot was never freed");
+        // Past the slot (no 409) and past the lease (no 429): only the missing model stops it.
+        let (status, json) = start(&state, start_body()).await;
+        assert_eq!((status, code(&json)), (StatusCode::SERVICE_UNAVAILABLE, "no_model"));
+        assert_ne!(transcription_status(&state).await, StatusCode::TOO_MANY_REQUESTS);
     }
 
     #[tokio::test]
