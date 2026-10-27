@@ -8,9 +8,20 @@ import { invoke } from '@tauri-apps/api/core'
 let normalSessionId: string | null = null
 const startedListeners = new Set<(sessionId: string) => void>()
 
+/** Calls every listener; one that throws is logged, so it can never make a recording look failed. */
+function notify<T>(listeners: Set<(value: T) => void>, value: T) {
+	for (const listener of listeners) {
+		try {
+			listener(value)
+		} catch (error) {
+			console.error('a recording session listener failed:', error)
+		}
+	}
+}
+
 export function rememberNormalSession(sessionId: string) {
 	normalSessionId = sessionId
-	for (const listener of startedListeners) listener(sessionId)
+	notify(startedListeners, sessionId)
 }
 
 /** Hears the id of each recording of this family as `start_record` returns it (the live transcript binds to it). */
