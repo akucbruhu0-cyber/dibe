@@ -144,6 +144,7 @@ async fn main() -> Result<()> {
             cmd::audio::get_audio_devices,
             cmd::audio::start_record,
             cmd::audio::stop_record,
+            cmd::audio::retry_live,
             cmd::audio::take_recovered_recordings,
             cmd::audio::forget_recovered,
             cmd::app::get_models_folder,

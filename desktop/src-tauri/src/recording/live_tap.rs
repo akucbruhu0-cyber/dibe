@@ -126,7 +126,6 @@ pub struct LiveTap {
 impl LiveTap {
     /// One `(sample rate, channels)` per recording device; `push` names a device by its index here.
     /// `tx` is the live client's bounded channel (the caller makes it 64 chunks deep).
-    #[allow(dead_code)] // Task 12 builds the tap in `start_record`.
     pub fn new(devices: &[(u32, u16)], tx: Sender<Vec<f32>>) -> Self {
         let now = Instant::now();
         let sources = devices
@@ -164,9 +163,16 @@ impl LiveTap {
         self.drop_surplus();
     }
 
-    #[allow(dead_code)] // Task 12 reports it to the live client.
     pub fn dropped_ms(&self) -> u64 {
         self.dropped_ms
+    }
+
+    /// Sends what the devices still hold, the last chunk padded with silence: the recording ended,
+    /// so nothing is coming to complete it.
+    pub fn flush(&mut self) {
+        while !self.closed && self.sources.iter().any(|source| !source.buffered.is_empty()) {
+            self.send_chunk();
+        }
     }
 
     /// Sends a chunk for as long as every device has one, or has gone quiet.
@@ -178,23 +184,28 @@ impl LiveTap {
                 .iter()
                 .all(|source| source.has_chunk() || now.saturating_duration_since(source.last_delivery) >= STALL_AFTER)
         {
-            // ponytail: start-time offset between mic and system audio is not corrected.
-            let mut mixed = vec![0.0f32; CHUNK_SAMPLES];
-            for source in &mut self.sources {
-                // A quiet device may have less than a chunk: the rest of its part is silence.
-                let take = source.buffered.len().min(CHUNK_SAMPLES);
-                for (out, sample) in mixed.iter_mut().zip(source.buffered.drain(..take)) {
-                    *out += sample;
-                }
+            self.send_chunk();
+        }
+    }
+
+    /// Mixes the next 100 ms of every device into one chunk and sends it.
+    fn send_chunk(&mut self) {
+        // ponytail: start-time offset between mic and system audio is not corrected.
+        let mut mixed = vec![0.0f32; CHUNK_SAMPLES];
+        for source in &mut self.sources {
+            // A quiet device may have less than a chunk: the rest of its part is silence.
+            let take = source.buffered.len().min(CHUNK_SAMPLES);
+            for (out, sample) in mixed.iter_mut().zip(source.buffered.drain(..take)) {
+                *out += sample;
             }
-            for sample in &mut mixed {
-                *sample = sample.clamp(-1.0, 1.0);
-            }
-            match self.tx.try_send(mixed) {
-                Ok(()) => {}
-                Err(TrySendError::Full(_)) => self.dropped_ms += CHUNK_MS,
-                Err(TrySendError::Closed(_)) => self.closed = true,
-            }
+        }
+        for sample in &mut mixed {
+            *sample = sample.clamp(-1.0, 1.0);
+        }
+        match self.tx.try_send(mixed) {
+            Ok(()) => {}
+            Err(TrySendError::Full(_)) => self.dropped_ms += CHUNK_MS,
+            Err(TrySendError::Closed(_)) => self.closed = true,
         }
     }
 
@@ -366,6 +377,24 @@ mod tests {
         tap.push(0, &frames);
 
         assert_eq!(levels(&received(&mut rx)), [0.5]);
+    }
+
+    #[test]
+    fn flush_sends_the_rest_padded_with_silence() {
+        let (mut tap, mut rx) = tap_16k(2, 8);
+        tap.push(0, &[0.5; CHUNK + 400]);
+        tap.push(1, &[0.25; CHUNK]);
+        assert_eq!(levels(&received(&mut rx)), [0.75]);
+
+        tap.flush();
+
+        let rest = received(&mut rx);
+        assert_eq!(rest.len(), 1);
+        assert_eq!(rest[0].len(), CHUNK);
+        assert!(rest[0][..400].iter().all(|&sample| sample == 0.5));
+        assert!(rest[0][400..].iter().all(|&sample| sample == 0.0));
+        tap.flush();
+        assert!(received(&mut rx).is_empty(), "nothing is left to send twice");
     }
 
     #[test]

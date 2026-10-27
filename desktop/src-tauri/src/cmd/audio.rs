@@ -17,6 +17,8 @@ use crate::recording::recovery::{
 };
 use crate::recording::session::{ActiveRecording, AlreadyRecording, RecordingOrigin, RecordingState, StreamHandle};
 use crate::recording::writer::{spawn_writer, WriterHandle, CHECKPOINT_EVERY};
+use crate::server::live::{LiveClient, LiveOptions, StoppingLive};
+use crate::transcript::Segment;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -127,19 +129,22 @@ impl From<AlreadyRecording> for CommandError {
 #[tauri::command]
 /// Record audio from the given devices into wav files and return the session id that `stop_record`
 /// needs. Only one recording can run at a time; a second call fails with code `already_recording`.
+/// With `live`, the audio is also transcribed as it is recorded (`live_update` / `live_status`);
+/// that never makes the recording fail, whatever happens to it.
 pub async fn start_record(
     app_handle: AppHandle,
     state: State<'_, RecordingState>,
     devices: Vec<AudioDevice>,
     recording_name: Option<String>,
     origin: RecordingOrigin,
+    live: Option<LiveOptions>,
 ) -> Result<String, CommandError> {
     if devices.is_empty() {
         return Err(eyre!("At least one audio device is required").into());
     }
     let session_id = state.try_begin(origin)?;
     let mut recording = ActiveRecording::new(session_id.clone(), origin, recording_name);
-    if let Err(error) = start_streams(&app_handle, devices, &mut recording) {
+    if let Err(error) = start_streams(&app_handle, devices, &mut recording, live) {
         // Free the slot for the next attempt and stop the streams that did start.
         state.take(&session_id);
         discard_recording(recording);
@@ -161,10 +166,19 @@ pub async fn start_record(
 /// folder, it would be recovered at the next launch as if the app had crashed.
 fn discard_recording(recording: ActiveRecording) {
     let closed = close_captures(recording.streams, recording.writers, recording.wav_paths);
+    // Its task closes any session it opened; nothing waits for it.
+    if let Some(live) = recording.live {
+        live.stop();
+    }
     remove_files(closed.files.into_iter().map(|(path, _)| path));
 }
 
-fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &mut ActiveRecording) -> Result<()> {
+fn start_streams(
+    app_handle: &AppHandle,
+    devices: Vec<AudioDevice>,
+    recording: &mut ActiveRecording,
+    live: Option<LiveOptions>,
+) -> Result<()> {
     let host = cpal::default_host();
     // One meter for the whole session: every stream raises its peak and every writer's tick may
     // emit it, so the UI sees the max of all devices under a single throttled `record_level` event.
@@ -172,18 +186,20 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
     // Not the temp folder: it is wiped on the next day's launch, which a crash would never outlive.
     let dir = in_progress_dir(app_handle);
 
-    for (device_index, device) in devices.into_iter().enumerate() {
-        tracing::debug!("Recording from device: {}", device.name);
-        tracing::debug!("Device ID: {}", device.id);
+    // Every device first: the live tap mixes them all, so it needs every format before any writer.
+    let devices = devices
+        .iter()
+        .map(|device| open_device(&host, device))
+        .collect::<Result<Vec<_>>>()?;
+    if let Some(options) = live {
+        let formats: Vec<(u32, u16)> = devices
+            .iter()
+            .map(|(_, config)| (config.sample_rate(), config.channels()))
+            .collect();
+        recording.live = Some(LiveClient::start(app_handle, &recording.session_id, options, &formats));
+    }
 
-        let is_input = device.is_input;
-        let (device, config) = if is_input {
-            let dev = find_device(&host, &device)?;
-            let config = dev.default_input_config().context("Failed to get default input config")?;
-            (dev, config)
-        } else {
-            get_output_device_and_config(&host, &device)?
-        };
+    for (device_index, (device, config)) in devices.into_iter().enumerate() {
         let spec = capture::wav_spec(&config);
 
         let path = capture_path(&dir, &recording.session_id, device_index);
@@ -194,7 +210,8 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
             let (meter, app_handle) = (meter.clone(), app_handle.clone());
             move || meter.emit_if_due(&app_handle)
         };
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, emit_level, None)?;
+        let live = recording.live.as_ref().map(|live| live.feed(device_index));
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, emit_level, live)?;
         let dropped = writer.dropped.clone();
         recording.writers.push(writer);
         recording.wav_paths.push(path);
@@ -206,6 +223,18 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
         recording.streams.push(StreamHandle(stream));
     }
     Ok(())
+}
+
+/// A device `start_record` was asked for, and the format it records in.
+fn open_device(host: &cpal::Host, device: &AudioDevice) -> Result<(Device, SupportedStreamConfig)> {
+    tracing::debug!("Recording from device: {}", device.name);
+    tracing::debug!("Device ID: {}", device.id);
+    if !device.is_input {
+        return get_output_device_and_config(host, device);
+    }
+    let found = find_device(host, device)?;
+    let config = found.default_input_config().context("Failed to get default input config")?;
+    Ok((found, config))
 }
 
 #[tauri::command]
@@ -220,6 +249,12 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
     // Merging and normalizing shell out to ffmpeg, which must not block the async runtime.
     tauri::async_runtime::spawn_blocking(move || finish_recording(&app_handle, recording, None)).await?;
     Ok(())
+}
+
+#[tauri::command]
+/// Retries a paused live transcription of `session_id` now, instead of after its backoff.
+pub fn retry_live(state: State<'_, RecordingState>, session_id: String) {
+    state.retry_live(&session_id);
 }
 
 #[tauri::command]
@@ -310,13 +345,14 @@ fn close_captures(streams: Vec<StreamHandle>, writers: Vec<WriterHandle>, wav_pa
 }
 
 /// The event that ends a session for its listeners: `record_finish` whenever audio was saved, so
-/// the UI keeps it as a project and shows `warnings` (a failed device or writer included);
-/// `record_error` only when there is no `output` to keep.
+/// the UI keeps it as a project and shows `warnings` (a failed device or writer included), with the
+/// live transcription's finals when it had one; `record_error` only when there is no `output` to keep.
 fn recording_event(
     session_id: &str,
     origin: RecordingOrigin,
     output: Option<&Path>,
     warnings: Vec<String>,
+    live_segments: Option<Vec<Segment>>,
 ) -> (&'static str, Value) {
     let Some(output) = output else {
         let mut message = "Recording stopped without any captured audio".to_string();
@@ -337,13 +373,24 @@ fn recording_event(
             "path": output.to_string_lossy(),
             "name": output.file_name().map(|name| name.to_string_lossy()).unwrap_or_default(),
             "warning": warning,
+            "liveSegments": live_segments,
         }),
     )
 }
 
 /// Ends a session: saves its audio, merges and normalizes it, and tells the listeners. `failure`
-/// is why it ended on its own, when it did.
+/// is why it ended on its own, when it did. Blocks on the writers, ffmpeg and the live client's
+/// last finals, so it runs off the async runtime.
 fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure: Option<String>) {
+    let (event, payload) = finished_event(recording, failure, &get_vibe_temp_folder());
+    tracing::debug!("Emitting {event} event");
+    app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
+    crate::meeting_prompt::recording_stopped(app_handle);
+}
+
+/// Closes a session's captures, finalizes them into `out_dir` and collects its live finals, then
+/// builds the event that tells the listeners.
+fn finished_event(recording: ActiveRecording, failure: Option<String>, out_dir: &Path) -> (&'static str, Value) {
     let ActiveRecording {
         session_id,
         origin,
@@ -351,8 +398,12 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
         streams,
         writers,
         wav_paths,
+        live,
     } = recording;
     let closed = close_captures(streams, writers, wav_paths);
+    // The writers are done, so the tap has all the audio: the live client sends the rest while the
+    // captures are merged and normalized.
+    let live = live.map(LiveClient::stop);
     let wav_paths = closed.files;
     // What cut the recording short rides on it as a warning: the saved audio still becomes a project.
     let mut warnings: Vec<String> = failure.into_iter().chain(closed.failures).collect();
@@ -370,18 +421,12 @@ fn finish_recording(app_handle: &AppHandle, recording: ActiveRecording, failure:
         .map(crate::cmd::files::sanitize_filename_stem)
         .filter(|name| !name.is_empty())
         .unwrap_or_else(get_local_time);
-    let Some(output) = finalize_captures(&wav_paths, &get_vibe_temp_folder(), &recording_stem, &mut warnings) else {
+    let output = finalize_captures(&wav_paths, out_dir, &recording_stem, &mut warnings);
+    if output.is_none() {
         tracing::error!("Recording stopped without any captured audio");
-        let (event, payload) = recording_event(&session_id, origin, None, warnings);
-        app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
-        crate::meeting_prompt::recording_stopped(app_handle);
-        return;
-    };
-
-    let (event, payload) = recording_event(&session_id, origin, Some(&output), warnings);
-    tracing::debug!("Emitting {event} event");
-    app_handle.emit(event, payload).map_err(|e| eyre!("{e:?}")).log_error();
-    crate::meeting_prompt::recording_stopped(app_handle);
+    }
+    let live_segments = live.map(StoppingLive::finals);
+    recording_event(&session_id, origin, output.as_deref(), warnings, live_segments)
 }
 
 fn get_output_device_and_config(host: &cpal::Host, audio_device: &AudioDevice) -> Result<(Device, SupportedStreamConfig)> {
@@ -516,7 +561,7 @@ mod tests {
         let closed = close_captures(recording.streams, recording.writers, recording.wav_paths);
         let saved = best_raw_capture(&closed.files).expect("the audio before the failure was saved");
         let failure = "The recording device stopped (Device disconnected)".to_string();
-        let (event, payload) = recording_event(&session_id, recording.origin, Some(&saved), vec![failure.clone()]);
+        let (event, payload) = recording_event(&session_id, recording.origin, Some(&saved), vec![failure.clone()], None);
 
         assert_eq!(closed.files, vec![(path.clone(), 4_800)]);
         assert_eq!(hound::WavReader::open(&path).expect("saved WAV").len(), 4_800);
@@ -529,11 +574,41 @@ mod tests {
         // A second failing device finds no session left to end.
         assert!(state.take(&session_id).is_none());
         // Had the device failed before delivering any audio, there would be no project: an error says why.
-        let (event, payload) = recording_event(&session_id, recording.origin, None, vec![failure]);
+        let (event, payload) = recording_event(&session_id, recording.origin, None, vec![failure], None);
         assert_eq!(event, "record_error");
         assert!(payload["message"]
             .as_str()
             .is_some_and(|message| message.contains("Device disconnected")));
         std::fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn recording_without_live_finishes_as_before() {
+        let dir = std::env::temp_dir().join(format!("vibe-no-live-{}", random_string(8)));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let path = dir.join("capture.wav");
+        let spec = hound::WavSpec {
+            channels: 1,
+            sample_rate: 48_000,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let mut recording = ActiveRecording::new("session".to_string(), RecordingOrigin::Manual, Some("talk".to_string()));
+        // What start_streams hands each writer when the recording did not ask for live.
+        let live = recording.live.as_ref().map(|live| live.feed(0));
+        assert!(live.is_none(), "no client, so no tap");
+        let (mut tx, rx) = capture::ring(&spec);
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, live).expect("spawn");
+        capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
+        recording.writers.push(writer);
+        recording.wav_paths.push(path);
+
+        let (event, payload) = finished_event(recording, None, &dir);
+
+        assert_eq!(event, "record_finish");
+        assert_eq!(payload.get("liveSegments"), Some(&Value::Null));
+        let saved = PathBuf::from(payload["path"].as_str().expect("a path"));
+        assert!(saved.starts_with(&dir) && saved.is_file());
+        std::fs::remove_dir_all(dir).ok();
     }
 }

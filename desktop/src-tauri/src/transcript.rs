@@ -6,7 +6,7 @@ pub struct Transcript {
     pub segments: Vec<Segment>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Segment {
     pub start: i64,
     pub stop: i64,

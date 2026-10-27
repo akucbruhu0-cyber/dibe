@@ -1,3 +1,5 @@
+import type { Segment } from '~/lib/transcript'
+
 /** Who started a recording; mirrors `RecordingOrigin` in src-tauri/src/recording/session.rs. */
 export type RecordingOrigin = 'manual' | 'shortcut' | 'dictation' | 'meeting'
 
@@ -8,6 +10,8 @@ export interface RecordFinishPayload {
 	path: string
 	name: string
 	warning?: string | null
+	/** The live transcription's finals, in centiseconds; null when the recording had none. */
+	liveSegments?: Segment[] | null
 }
 
 export interface RecordErrorPayload {

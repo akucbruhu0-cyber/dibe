@@ -4,6 +4,7 @@
 //! must present that id. A stop for another session (or for one that already finished) is a no-op,
 //! so one caller can never end a recording that belongs to someone else.
 use super::writer::WriterHandle;
+use crate::server::live::LiveClient;
 use cpal::Stream;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -36,6 +37,8 @@ pub struct ActiveRecording {
     pub streams: Vec<StreamHandle>,
     pub writers: Vec<WriterHandle>,
     pub wav_paths: Vec<PathBuf>,
+    /// Live transcription, when the recording asked for it.
+    pub live: Option<LiveClient>,
 }
 
 impl ActiveRecording {
@@ -47,6 +50,7 @@ impl ActiveRecording {
             streams: Vec::new(),
             writers: Vec::new(),
             wav_paths: Vec::new(),
+            live: None,
         }
     }
 }
@@ -85,6 +89,15 @@ impl RecordingState {
                 tracing::error!("recording session {} was released before it started", recording.session_id);
                 Err(Box::new(recording))
             }
+        }
+    }
+
+    /// Wakes the live client of `session_id` from its wait between attempts; nothing otherwise.
+    pub fn retry_live(&self, session_id: &str) {
+        let slot = self.slot();
+        let active = slot.as_ref().filter(|active| active.session_id == session_id);
+        if let Some(live) = active.and_then(|active| active.live.as_ref()) {
+            live.retry();
         }
     }
 
