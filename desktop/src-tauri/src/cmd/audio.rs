@@ -194,7 +194,7 @@ fn start_streams(app_handle: &AppHandle, devices: Vec<AudioDevice>, recording: &
             let (meter, app_handle) = (meter.clone(), app_handle.clone());
             move || meter.emit_if_due(&app_handle)
         };
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, emit_level)?;
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, emit_level, None)?;
         let dropped = writer.dropped.clone();
         recording.writers.push(writer);
         recording.wav_paths.push(path);
@@ -475,7 +475,7 @@ mod tests {
             sample_format: hound::SampleFormat::Float,
         };
         let (mut tx, rx) = capture::ring(&spec);
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}).expect("spawn");
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
         // A first device was already recording when the second one failed to start.
         capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
         let mut recording = ActiveRecording::new("session".to_string(), RecordingOrigin::Meeting, None);
@@ -498,7 +498,7 @@ mod tests {
             sample_format: hound::SampleFormat::Float,
         };
         let (mut tx, rx) = capture::ring(&spec);
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}).expect("spawn");
+        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
         let state = RecordingState::default();
         let session_id = state.try_begin(RecordingOrigin::Meeting).expect("begin");
         // The device delivered 0.1 s of audio and was unplugged: cpal calls the error callback and
