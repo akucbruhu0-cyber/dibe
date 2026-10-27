@@ -736,5 +736,6 @@
 	"afterRecordingKeep": "לשמור את התמלול החי",
 	"afterRecordingRetranscribe": "לתמלל מחדש לדיוק מרבי",
 	"finishingRecording": "מסיים…",
-	"recordingDeviceDisconnected": "מכשיר הקלטה התנתק. ההקלטה נשמרה."
+	"recordingDeviceDisconnected": "מכשיר הקלטה התנתק. ההקלטה נשמרה.",
+	"liveIncompleteRetranscribing": "התמלול החי היה חלקי. ההקלטה מתומללת מחדש."
 }

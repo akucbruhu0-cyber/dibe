@@ -135,6 +135,7 @@ export const mediaMiscHandlers: CommandHandlerMap = {
 					name: basename(path),
 					deviceDisconnected: false,
 					liveSegments: live?.finals ?? null,
+					liveComplete: live ? true : null,
 				})
 				resolve(undefined)
 			}, RECORD_FINISH_DELAY_MS),

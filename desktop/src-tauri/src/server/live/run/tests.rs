@@ -140,10 +140,15 @@ fn gap_is_reported_once_per_gap() {
             .count()
     };
 
-    for _ in 0..610 {
+    for _ in 0..600 {
+        live.receive(vec![0.0; CHUNK]);
+    }
+    assert!(live.complete, "a minute fits in the backlog");
+    for _ in 0..10 {
         live.receive(vec![0.0; CHUNK]);
     }
     assert_eq!(gaps(), 1);
+    assert!(!live.complete, "the skipped audio was never transcribed");
     assert_eq!(live.position, 10 * CHUNK as u64, "the clock keeps counting the audio dropped");
 
     // The server takes audio again: the next drop is a new gap.
@@ -169,7 +174,10 @@ fn finals_are_collected_in_centiseconds() {
     };
 
     // This session started 1 s into the recording.
-    live.deliver(update(vec![final_(1.25, 2.5, "שלום"), partial, warning]), 16_000);
+    live.deliver(update(vec![final_(1.25, 2.5, "שלום"), partial]), 16_000);
+    assert!(live.complete);
+    live.deliver(update(vec![warning]), 16_000);
+    assert!(!live.complete, "the server could not transcribe some of the audio");
 
     assert_eq!(*collected.lock().unwrap(), vec![segment(225, 350, "שלום")]);
     let emitted = emitted.lock().unwrap();
@@ -180,7 +188,10 @@ fn finals_are_collected_in_centiseconds() {
         (Some(2.25), Some(3.5))
     );
     assert_eq!(payload["events"][1]["start"].as_f64(), Some(3.5), "partials move too");
-    assert_eq!(payload["events"][2]["code"], "transcription_failed", "warnings are forwarded");
+    assert_eq!(
+        emitted[1].1["events"][0]["code"], "transcription_failed",
+        "warnings are forwarded"
+    );
 }
 
 #[tokio::test]
@@ -214,10 +225,11 @@ async fn session_is_flushed_and_closed_on_cancel() {
         assert_eq!(next(&mut calls).await, "stop s1");
     };
     let run = run_live(&fake, rx, recorder(&emitted), cancel, Arc::default(), Arc::clone(&collected));
-    let (finals, ()) = tokio::join!(run, driver);
+    let (transcript, ()) = tokio::join!(run, driver);
 
     let expected = vec![segment(0, 30, "one"), segment(30, 60, "two"), segment(60, 70, "three")];
-    assert_eq!(finals, expected);
+    assert_eq!(transcript.finals, expected);
+    assert!(transcript.complete, "every sample was answered");
     assert_eq!(*collected.lock().unwrap(), expected);
     assert_eq!(states(&emitted), ["starting", "live", "ended"]);
 }
@@ -287,13 +299,14 @@ async fn push_error_pauses_and_resumes() {
         stop.cancel();
         assert_eq!(next(&mut calls).await, "stop s2");
     };
-    let (finals, ()) = tokio::join!(
+    let (transcript, ()) = tokio::join!(
         run_live(&fake, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
         driver
     );
 
     // The second session's clock starts 0.3 s into the recording.
-    assert_eq!(finals, vec![segment(0, 30, "one"), segment(30, 60, "two")]);
+    assert_eq!(transcript.finals, vec![segment(0, 30, "one"), segment(30, 60, "two")]);
+    assert!(transcript.complete, "the reaped session's audio went to the new one");
     assert_eq!(states(&emitted), ["starting", "live", "paused", "live", "ended"]);
 }
 
@@ -318,13 +331,71 @@ async fn delete_retried_on_409() {
         assert_eq!(next(&mut calls).await, "stop s1");
         assert_eq!(next(&mut calls).await, "stop s1");
     };
-    let (finals, ()) = tokio::join!(
+    let (transcript, ()) = tokio::join!(
         run_live(&fake, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
         driver
     );
 
-    assert_eq!(finals, vec![segment(0, 30, "last")]);
+    assert_eq!(transcript.finals, vec![segment(0, 30, "last")]);
+    assert!(transcript.complete);
     let emitted = emitted.lock().unwrap();
     let (_, ended) = emitted.last().unwrap();
     assert_eq!((ended["state"].as_str(), ended["message"].is_null()), (Some("ended"), true));
+}
+
+#[tokio::test(start_paused = true)]
+async fn audio_the_server_lost_makes_the_transcript_incomplete() {
+    let (fake, mut calls) = Fake::new();
+    // The server took the audio and failed it: those finals never come.
+    fake.pushes.lock().unwrap().push_back(Err(refused(500, "engine failed")));
+    let emitted = Emitted::default();
+    let (tx, rx) = mpsc::channel(64);
+    let cancel = CancellationToken::new();
+    let stop = cancel.clone();
+
+    let driver = async move {
+        send(&tx, 3).await;
+        assert_eq!(next(&mut calls).await, "start");
+        assert_eq!(next(&mut calls).await, "push s1 4800");
+        drop(tx);
+        stop.cancel();
+        assert_eq!(next(&mut calls).await, "stop s1");
+    };
+    let (transcript, ()) = tokio::join!(
+        run_live(&fake, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        driver
+    );
+
+    assert!(!transcript.complete);
+}
+
+#[tokio::test]
+async fn a_stop_that_cannot_send_the_rest_is_incomplete() {
+    let (fake, mut calls) = Fake::new();
+    fake.pushes
+        .lock()
+        .unwrap()
+        .extend([Ok(update(vec![final_(0.0, 0.3, "one")])), Err(refused(500, "engine failed"))]);
+    let emitted = Emitted::default();
+    let (tx, rx) = mpsc::channel(64);
+    let cancel = CancellationToken::new();
+    let stop = cancel.clone();
+
+    let driver = async move {
+        send(&tx, 3).await;
+        assert_eq!(next(&mut calls).await, "start");
+        assert_eq!(next(&mut calls).await, "push s1 4800");
+        // The last 100 ms go out at the stop, and that push fails.
+        send(&tx, 1).await;
+        drop(tx);
+        stop.cancel();
+        assert_eq!(next(&mut calls).await, "push s1 1600");
+    };
+    let (transcript, ()) = tokio::join!(
+        run_live(&fake, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        driver
+    );
+
+    assert_eq!(transcript.finals, vec![segment(0, 30, "one")]);
+    assert!(!transcript.complete);
 }

@@ -14,6 +14,8 @@ export interface RecordFinishPayload {
 	deviceDisconnected?: boolean
 	/** The live transcription's finals, in centiseconds; null when the recording had none. */
 	liveSegments?: Segment[] | null
+	/** Whether those finals cover all of the audio; null when the recording had no live transcription. */
+	liveComplete?: boolean | null
 }
 
 export interface RecordErrorPayload {

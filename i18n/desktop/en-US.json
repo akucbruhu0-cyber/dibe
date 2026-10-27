@@ -736,5 +736,6 @@
 	"afterRecordingKeep": "Keep the live transcript",
 	"afterRecordingRetranscribe": "Transcribe again for best accuracy",
 	"finishingRecording": "Finishing…",
-	"recordingDeviceDisconnected": "A recording device disconnected. The recording was saved."
+	"recordingDeviceDisconnected": "A recording device disconnected. The recording was saved.",
+	"liveIncompleteRetranscribing": "The live transcript was incomplete. Transcribing the recording again."
 }

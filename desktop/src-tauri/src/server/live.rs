@@ -78,6 +78,16 @@ pub struct LiveUpdate {
     pub lag_ms: u64,
 }
 
+/// What a recording's live transcription made of its audio.
+#[derive(Debug, Default, PartialEq)]
+pub struct LiveTranscript {
+    /// Every final, in order, on the recording's clock.
+    pub finals: Vec<Segment>,
+    /// The finals cover all of the audio: none of it was skipped, dropped, failed or left
+    /// unanswered at the stop.
+    pub complete: bool,
+}
+
 /// A failed call: the HTTP status when the server answered, `None` when it could not be reached.
 #[derive(Debug)]
 pub struct ApiError {
@@ -191,7 +201,7 @@ pub struct LiveClient {
     wake: Arc<Notify>,
     /// Every final so far, shared with the task so a stop that stops waiting still has them.
     collected: Arc<Mutex<Vec<Segment>>>,
-    task: JoinHandle<Vec<Segment>>,
+    task: JoinHandle<LiveTranscript>,
 }
 
 impl LiveClient {
@@ -247,7 +257,7 @@ impl LiveClient {
     /// token tells the task to send what is left and close the session. Waits for none of it.
     pub fn stop(self) -> StoppingLive {
         let deadline = Instant::now() + STOP_WAIT;
-        {
+        let tap_complete = {
             let mut tap = self.tap.lock().unwrap_or_else(PoisonError::into_inner);
             tap.flush();
             if tap.dropped_ms() > 0 {
@@ -256,13 +266,15 @@ impl LiveClient {
                     tap.dropped_ms()
                 );
             }
-        }
+            tap.dropped_ms() == 0
+        };
         drop(self.tap);
         self.cancel.cancel();
         StoppingLive {
             task: self.task,
             collected: self.collected,
             deadline,
+            tap_complete,
         }
     }
 }
@@ -270,7 +282,7 @@ impl LiveClient {
 #[cfg(test)]
 impl LiveClient {
     /// A client whose task is `task` and whose tap feeds nothing, for tests of a recording's stop.
-    pub(crate) fn with_task(task: JoinHandle<Vec<Segment>>) -> Self {
+    pub(crate) fn with_task(task: JoinHandle<LiveTranscript>) -> Self {
         let (tx, _) = mpsc::channel(1);
         Self {
             tap: Arc::new(Mutex::new(LiveTap::new(&[], tx))),
@@ -284,29 +296,38 @@ impl LiveClient {
 
 /// A stopped client, sending its last audio.
 pub struct StoppingLive {
-    task: JoinHandle<Vec<Segment>>,
+    task: JoinHandle<LiveTranscript>,
     collected: Arc<Mutex<Vec<Segment>>>,
     deadline: Instant,
+    /// The tap sent the client everything the writers gave it.
+    tap_complete: bool,
 }
 
 impl StoppingLive {
     /// The recording's finals, in order: all of them once the task is done, or those it had
-    /// `STOP_WAIT` after the stop. Blocks, so it runs off the async runtime, where recordings end.
-    pub fn finals(self) -> Vec<Segment> {
+    /// `STOP_WAIT` after the stop, which leaves the transcript incomplete. Blocks, so it runs off
+    /// the async runtime, where recordings end.
+    pub fn finals(self) -> LiveTranscript {
         let Self {
             task,
             collected,
             deadline,
+            tap_complete,
         } = self;
         let wait = deadline.saturating_duration_since(Instant::now());
         // The timer is made inside the runtime: built out here it would panic with no reactor.
         match tauri::async_runtime::block_on(async move { tokio::time::timeout(wait, task).await }) {
-            Ok(Ok(finals)) => return finals,
+            Ok(Ok(transcript)) => {
+                return LiveTranscript {
+                    complete: transcript.complete && tap_complete,
+                    ..transcript
+                }
+            }
             Ok(Err(error)) => tracing::error!("live transcription stopped unexpectedly: {error}"),
             Err(_) => tracing::warn!("live transcription was still sending after {STOP_WAIT:?}; keeping the finals so far"),
         }
         let finals = collected.lock().unwrap_or_else(PoisonError::into_inner).clone();
-        finals
+        LiveTranscript { finals, complete: false }
     }
 }
 
@@ -323,22 +344,41 @@ mod tests {
         }]
     }
 
+    fn transcript(text: &str, complete: bool) -> LiveTranscript {
+        LiveTranscript {
+            finals: finals(text),
+            complete,
+        }
+    }
+
     #[test]
     fn stop_waits_for_the_task_then_keeps_the_finals_so_far() {
         let collected = Arc::new(Mutex::new(finals("so far")));
         let done = StoppingLive {
-            task: tauri::async_runtime::spawn(async { finals("all") }),
+            task: tauri::async_runtime::spawn(async { transcript("all", true) }),
             collected: Arc::clone(&collected),
             deadline: Instant::now() + Duration::from_secs(5),
+            tap_complete: true,
         };
-        assert_eq!(done.finals(), finals("all"));
+        assert_eq!(done.finals(), transcript("all", true));
 
-        // Still sending at the deadline: the recording goes on with what the task collected.
+        // Still sending at the deadline: the recording goes on with what the task collected, which
+        // is missing the rest.
         let late = StoppingLive {
             task: tauri::async_runtime::spawn(std::future::pending()),
-            collected,
+            collected: Arc::clone(&collected),
             deadline: Instant::now(),
+            tap_complete: true,
         };
-        assert_eq!(late.finals(), finals("so far"));
+        assert_eq!(late.finals(), transcript("so far", false));
+
+        // The tap dropped audio that came faster than it was sent: the server never heard it.
+        let dropped = StoppingLive {
+            task: tauri::async_runtime::spawn(async { transcript("all", true) }),
+            collected,
+            deadline: Instant::now() + Duration::from_secs(5),
+            tap_complete: false,
+        };
+        assert_eq!(dropped.finals(), transcript("all", false));
     }
 }

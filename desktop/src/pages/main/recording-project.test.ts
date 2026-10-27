@@ -152,12 +152,13 @@ describe('recoverUnfinishedRecordings', () => {
 
 describe('a finished recording with live transcription', () => {
 	const liveSegments = [{ start: 0, stop: 150, text: 'שלום John, נפגשים ב-14:30' }]
-	const finish = (segments: RecordFinishPayload['liveSegments']): RecordFinishPayload => ({
+	const finish = (segments: RecordFinishPayload['liveSegments'], liveComplete: boolean | null = segments ? true : null): RecordFinishPayload => ({
 		sessionId: 's1',
 		origin: 'manual',
 		path: '/data/recordings-in-progress/2026-10-27 10-00-00.wav',
 		name: '2026-10-27 10-00-00.wav',
 		liveSegments: segments,
+		liveComplete,
 	})
 
 	it('keeps the live transcript as the project transcript, without transcribing again', async () => {
@@ -168,6 +169,18 @@ describe('a finished recording with live transcription', () => {
 		expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }))
 		expect(current.hydrate).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }), saved.recordPath, saved.mediaPath, 'record')
 		expect(current.transcribeJob).not.toHaveBeenCalled()
+	})
+
+	it('keeps an incomplete live transcript and transcribes the recording to replace it', async () => {
+		const { current } = deps(false, 'keep')
+
+		await createRecordingProject(finishedRecording(finish(liveSegments, false), current.preference), current)
+
+		// The live words stay the project's until a transcription of the file succeeds.
+		expect(mocks.saveTranscript).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }))
+		expect(current.hydrate).toHaveBeenCalledWith(expect.objectContaining({ segments: liveSegments }), saved.recordPath, saved.mediaPath, 'record')
+		expect(current.transcribeJob).toHaveBeenCalledWith('job-1', true)
+		expect(mocks.toast.info).toHaveBeenCalledWith('The live transcript was incomplete. Transcribing the recording again.', expect.anything())
 	})
 
 	it('transcribes the file again when asked to, the way a recording without live is', async () => {

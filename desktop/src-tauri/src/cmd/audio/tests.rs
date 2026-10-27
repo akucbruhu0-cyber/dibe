@@ -1,6 +1,7 @@
 use super::*;
 use crate::ffmpeg::random_string;
 use crate::recording::finalize::best_raw_capture;
+use crate::transcript::Segment;
 use std::str::FromStr;
 use std::sync::atomic::AtomicU64;
 
@@ -208,18 +209,22 @@ fn recording_without_live_finishes_as_before() {
 
     assert_eq!(event, "record_finish");
     assert_eq!(payload.get("liveSegments"), Some(&Value::Null));
+    assert_eq!(payload.get("liveComplete"), Some(&Value::Null), "null when live was off");
     let saved = PathBuf::from(payload["path"].as_str().expect("a path"));
     assert!(saved.starts_with(&dir) && saved.is_file());
     std::fs::remove_dir_all(dir).ok();
 }
 
-fn said(text: &str) -> Vec<Segment> {
-    vec![Segment {
-        start: 0,
-        stop: 100,
-        text: text.to_string(),
-        speaker: None,
-    }]
+fn said(text: &str) -> LiveTranscript {
+    LiveTranscript {
+        finals: vec![Segment {
+            start: 0,
+            stop: 100,
+            text: text.to_string(),
+            speaker: None,
+        }],
+        complete: true,
+    }
 }
 
 #[test]
@@ -258,6 +263,7 @@ fn captures_stay_recoverable_while_the_live_finals_are_awaited() {
 
     assert_eq!(event, "record_finish");
     assert_eq!(payload["liveSegments"][0]["text"], "recoverable");
+    assert_eq!(payload["liveComplete"], true);
     assert!(!path.exists(), "finalized once the finals were in");
     std::fs::remove_dir_all(dir).ok();
 }

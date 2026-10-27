@@ -15,8 +15,10 @@ export interface RecordingFile {
 	/** File name, which the project name is derived from. */
 	name: string
 	createdAt: Date
-	/** Its live transcript, kept as the project's: there is nothing left to transcribe. */
+	/** Its live transcript, kept as the project's until a transcription of the file replaces it. */
 	segments?: Segment[]
+	/** Transcribe the file even though it has a live transcript: the user asked to, or that one is incomplete. */
+	again?: 'asked' | 'incomplete'
 }
 
 export interface RecordingProjectDeps {
@@ -30,8 +32,11 @@ export interface RecordingProjectDeps {
  * the user keeps it; a live session that heard nothing leaves the usual way, transcribing the file.
  */
 export function finishedRecording(payload: RecordFinishPayload, preference: Pick<Preference, 'afterRecording'>): RecordingFile {
-	const segments = preference.afterRecording === 'keep' && payload.liveSegments?.length ? payload.liveSegments : undefined
-	return { path: payload.path, name: payload.name, createdAt: new Date(), segments }
+	const file = { path: payload.path, name: payload.name, createdAt: new Date() }
+	if (preference.afterRecording !== 'keep') return file
+	const segments = payload.liveSegments?.length ? payload.liveSegments : undefined
+	// Live skipped or lost some of the audio: its words stay until a transcription of the file replaces them.
+	return payload.liveComplete === false ? { ...file, segments, again: 'incomplete' } : { ...file, segments }
 }
 
 /** The title of a finished recording's warning; the backend's text goes under it. */
@@ -82,7 +87,10 @@ export async function createRecordingProject(file: RecordingFile, { preference, 
 	}
 	const jobId = hydrate(record, saved.recordPath, saved.mediaPath, 'record')
 	notifyTranscriptsChanged()
-	if (preference.autoTranscribeAfterRecording && jobId && !file.segments) transcribeJob(jobId)
+	if (!jobId) return true
+	if (file.again === 'incomplete') toast.info(m.liveIncompleteRetranscribing(), { position: 'bottom-center' })
+	if (file.again) transcribeJob(jobId, true)
+	else if (preference.autoTranscribeAfterRecording && !file.segments) transcribeJob(jobId)
 	return true
 }
 

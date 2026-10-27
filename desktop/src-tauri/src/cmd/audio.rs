@@ -17,8 +17,7 @@ use crate::recording::recovery::{
 };
 use crate::recording::session::{ActiveRecording, AlreadyRecording, RecordingOrigin, RecordingState, StreamHandle};
 use crate::recording::writer::{spawn_writer, WriterHandle, CHECKPOINT_EVERY};
-use crate::server::live::{LiveClient, LiveOptions, StoppingLive};
-use crate::transcript::Segment;
+use crate::server::live::{LiveClient, LiveOptions, LiveTranscript, StoppingLive};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -350,15 +349,16 @@ fn close_captures(streams: Vec<StreamHandle>, writers: Vec<WriterHandle>, wav_pa
 
 /// The event that ends a session for its listeners: `record_finish` whenever audio was saved, so
 /// the UI keeps it as a project and shows `warnings` (a failed device or writer included, with
-/// `device_disconnected` set when a device stopped), with the live transcription's finals when it
-/// had one; `record_error` only when there is no `output` to keep.
+/// `device_disconnected` set when a device stopped), with the live transcription's finals and
+/// whether they cover all of the audio when it had one; `record_error` only when there is no
+/// `output` to keep.
 fn recording_event(
     session_id: &str,
     origin: RecordingOrigin,
     output: Option<&Path>,
     warnings: Vec<String>,
     device_disconnected: bool,
-    live_segments: Option<Vec<Segment>>,
+    live: Option<LiveTranscript>,
 ) -> (&'static str, Value) {
     let Some(output) = output else {
         let mut message = "Recording stopped without any captured audio".to_string();
@@ -380,7 +380,8 @@ fn recording_event(
             "name": output.file_name().map(|name| name.to_string_lossy()).unwrap_or_default(),
             "warning": warning,
             "deviceDisconnected": device_disconnected,
-            "liveSegments": live_segments,
+            "liveSegments": live.as_ref().map(|live| &live.finals),
+            "liveComplete": live.map(|live| live.complete),
         }),
     )
 }
@@ -411,7 +412,7 @@ fn finished_event(recording: ActiveRecording, out_dir: &Path) -> (&'static str, 
     // The writers are done, so the tap has all the audio: the live client sends the rest. Its last
     // finals are awaited before the captures are finalized, which deletes them: until then they sit
     // in the in-progress folder, where a quit during the wait leaves them for the next launch.
-    let live_segments = live.map(LiveClient::stop).map(StoppingLive::finals);
+    let live = live.map(LiveClient::stop).map(StoppingLive::finals);
     let wav_paths = closed.files;
     // What cut a device or the recording short rides on it as a warning: the saved audio still
     // becomes a project.
@@ -436,14 +437,7 @@ fn finished_event(recording: ActiveRecording, out_dir: &Path) -> (&'static str, 
     if output.is_none() {
         tracing::error!("Recording stopped without any captured audio");
     }
-    recording_event(
-        &session_id,
-        origin,
-        output.as_deref(),
-        warnings,
-        device_disconnected,
-        live_segments,
-    )
+    recording_event(&session_id, origin, output.as_deref(), warnings, device_disconnected, live)
 }
 
 fn get_output_device_and_config(host: &cpal::Host, audio_device: &AudioDevice) -> Result<(Device, SupportedStreamConfig)> {

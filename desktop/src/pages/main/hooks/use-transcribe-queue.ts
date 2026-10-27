@@ -102,8 +102,8 @@ export interface TranscribeQueue {
 	hasResults: boolean
 	selectJob: (id: string) => void
 	enqueue: (files: EnqueueItem[]) => void
-	/** Transcribe the media already attached to a hydrated project with no transcript. */
-	transcribeJob: (jobId: string) => void
+	/** Transcribe the media of a hydrated project with no transcript, or `again` over the one it keeps unless this one finishes. */
+	transcribeJob: (jobId: string, again?: boolean) => void
 	/**
 	 * Replace the session with a transcript loaded from the store, shown as a finished job.
 	 * `audioPath` is the media copy kept in the project folder, when it still has one; it becomes the
@@ -430,6 +430,8 @@ export function useTranscribeQueue(): TranscribeQueue {
 							...shared,
 						},
 					})
+					// A cancelled run over a transcript (`next.segments`, from before it started) leaves that transcript as it was.
+					if (next.segments.length && (abortCurrentRef.current || abortAllRef.current)) result.segments = next.segments
 					const seconds = Math.round((performance.now() - startedAt) / 1000)
 					patch(next.id, { status: 'done', progress: 100, segments: result.segments, seconds })
 					completedAny = true
@@ -465,10 +467,10 @@ export function useTranscribeQueue(): TranscribeQueue {
 							trackGpuOutOfMemory('main', { signal: code === serverErrorCodes.GPU_OUT_OF_MEMORY ? 'error_code' : 'process_death' })
 							toast.warning(m.gpuFallbackToCpu(), { position: 'bottom-center', duration: 8000 })
 							// Back to the queue for one more try; on the CPU an overflow is the plain error.
-							patch(next.id, { status: 'queued', progress: 0 })
+							patch(next.id, { status: 'queued', progress: 0, segments: next.segments })
 							continue
 						}
-						patch(next.id, { status: 'error', progress: 0, error: message })
+						patch(next.id, { status: 'error', progress: 0, error: message, ...(next.segments.length > 0 && { segments: next.segments }) })
 						const userError = Boolean(code && isUserError(code))
 						trackTranscribeFailed('main', next.path, { errorMessage: message, userError })
 						if (userError) {
@@ -560,9 +562,9 @@ export function useTranscribeQueue(): TranscribeQueue {
 	const dismissBatchSummary = useCallback(() => setBatchSummary(null), [])
 
 	const transcribeJob = useCallback(
-		(jobId: string) => {
+		(jobId: string, again = false) => {
 			const job = jobsRef.current.find((candidate) => candidate.id === jobId)
-			if (!job?.hydrated || !job.savedPath || !job.path || !['done', 'error', 'cancelled'].includes(job.status) || job.segments.length > 0) return
+			if (!job?.hydrated || !job.savedPath || !job.path || !['done', 'error', 'cancelled'].includes(job.status) || (job.segments.length && !again)) return
 			pinnedRef.current = true
 			commit(jobsRef.current.map((candidate) => (candidate.id === jobId ? { ...candidate, status: 'queued', progress: 0, error: undefined } : candidate)))
 			select(jobId)

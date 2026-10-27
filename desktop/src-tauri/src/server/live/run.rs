@@ -14,7 +14,7 @@ use tokio::sync::mpsc::Receiver;
 use tokio::sync::Notify;
 use tokio_util::sync::CancellationToken;
 
-use super::{LiveApi, LiveEvent, LiveUpdate};
+use super::{LiveApi, LiveEvent, LiveTranscript, LiveUpdate};
 use crate::transcript::Segment;
 
 const LIVE_HZ: usize = 16_000;
@@ -54,8 +54,9 @@ pub fn cap_backlog(backlog: &mut VecDeque<Vec<f32>>, max_samples: usize) -> u64 
 }
 
 /// Runs a recording's live transcription until `cancel`, then sends what is left, closes the
-/// session and returns every final, in order (also kept in `collected` as they come). `emit` sends
-/// `live_update` and `live_status`; `wake` cuts a wait between attempts short.
+/// session and returns every final, in order (also kept in `collected` as they come), and whether
+/// they cover all of the audio. `emit` sends `live_update` and `live_status`; `wake` cuts a wait
+/// between attempts short.
 pub async fn run_live(
     api: impl LiveApi,
     rx: Receiver<Vec<f32>>,
@@ -63,7 +64,7 @@ pub async fn run_live(
     cancel: CancellationToken,
     wake: Arc<Notify>,
     collected: Arc<Mutex<Vec<Segment>>>,
-) -> Vec<Segment> {
+) -> LiveTranscript {
     let mut live = Live::new(rx, emit, collected);
     let mut session: Option<Session> = None;
     let mut failures = 0;
@@ -104,7 +105,9 @@ pub async fn run_live(
                         if error.untaken() {
                             live.requeue(batch);
                         } else {
+                            // The server had it and its finals are lost.
                             current.sent(at, batch.len());
+                            live.complete = false;
                         }
                         if error.lost_session() {
                             session = None;
@@ -189,6 +192,8 @@ struct Live<E> {
     in_gap: bool,
     /// The tap is gone: no more audio is coming.
     closed: bool,
+    /// No audio was skipped, lost or failed so far.
+    complete: bool,
     /// The last `live_status` sent.
     status: Option<(&'static str, Option<String>)>,
 }
@@ -203,6 +208,7 @@ impl<E: Fn(&str, Value)> Live<E> {
             position: 0,
             in_gap: false,
             closed: false,
+            complete: true,
             status: None,
         }
     }
@@ -232,6 +238,7 @@ impl<E: Fn(&str, Value)> Live<E> {
     fn cap(&mut self) {
         let dropped = cap_backlog(&mut self.backlog, MAX_BACKLOG_SAMPLES);
         self.position += dropped;
+        self.complete &= dropped == 0;
         if dropped > 0 && !self.in_gap {
             self.in_gap = true;
             let message = "Live transcription fell a minute behind and skipped some audio; the recording has all of it";
@@ -278,8 +285,10 @@ impl<E: Fn(&str, Value)> Live<E> {
     }
 
     /// Hands the server's answer to the UI, and keeps its finals, both on the recording's clock
-    /// (`offset` samples ahead of the session's). The lag counts the audio not sent yet, too.
+    /// (`offset` samples ahead of the session's). The lag counts the audio not sent yet, too. A
+    /// warning means the server could not transcribe some of the audio.
     fn deliver(&mut self, mut update: LiveUpdate, offset: u64) {
+        self.complete &= !update.events.iter().any(|event| matches!(event, LiveEvent::Warning { .. }));
         let shift = offset as f64 / LIVE_HZ as f64;
         for event in &mut update.events {
             if let LiveEvent::Final { start, end, .. } | LiveEvent::Partial { start, end, .. } = event {
@@ -318,7 +327,7 @@ impl<E: Fn(&str, Value)> Live<E> {
     }
 
     /// The stop: sends what is left, at most 30 s a push, closes the session and returns every final.
-    async fn finish(mut self, api: &impl LiveApi, mut session: Option<Session>) -> Vec<Segment> {
+    async fn finish(mut self, api: &impl LiveApi, mut session: Option<Session>) -> LiveTranscript {
         while let Ok(chunk) = self.rx.try_recv() {
             self.receive(chunk);
         }
@@ -352,8 +361,13 @@ impl<E: Fn(&str, Value)> Live<E> {
                 }
             }
         }
+        // Audio left unsent, or finals never answered.
+        self.complete &= trouble.is_none();
         self.status("ended", trouble);
-        self.collected.lock().unwrap_or_else(PoisonError::into_inner).clone()
+        LiveTranscript {
+            finals: self.collected.lock().unwrap_or_else(PoisonError::into_inner).clone(),
+            complete: self.complete,
+        }
     }
 }
 
