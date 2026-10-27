@@ -1,8 +1,6 @@
 {
 	"aborting": "중단 중",
 	"advanced": "고급",
-	"analyticsEnabled": "익명 사용 통계",
-	"analyticsDisabledWarning": "문제를 더 빨리 찾아 해결할 수 있도록 켜 두시길 권장합니다.",
 	"apiAgentsDescription": "DIBE의 로컬 API로 스크립트, CLI 도구, AI 에이전트에서 트랜스크립션을 실행할 수 있습니다.",
 	"apiAndAgents": "API 및 에이전트",
 	"apiServerOff": "API 서버가 꺼져 있습니다",

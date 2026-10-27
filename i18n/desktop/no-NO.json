@@ -1,8 +1,6 @@
 {
 	"aborting": "Avbryter",
 	"advanced": "Avansert",
-	"analyticsEnabled": "Anonym statistikk",
-	"analyticsDisabledWarning": "Vi anbefaler sterkt å la dette være på, slik at vi kan finne og fikse feil raskere.",
 	"apiAgentsDescription": "Kjør transkribering fra skript, kommandolinjeverktøy eller AI-agenter med DIBEs lokale API.",
 	"apiAndAgents": "API og agenter",
 	"apiServerOff": "API-serveren er av",

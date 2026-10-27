@@ -1,8 +1,6 @@
 {
 	"aborting": "Stoppando",
 	"advanced": "Avanza",
-	"analyticsEnabled": "Statistiche anonime",
-	"analyticsDisabledWarning": "Consigliamo vivamente di lasciarla attiva per individuare e correggere i problemi più rapidamente.",
 	"apiAgentsDescription": "Esegui trascrizioni da script, strumenti a riga di comando o agenti IA tramite l'API locale di DIBE.",
 	"apiAndAgents": "API e agenti",
 	"apiServerOff": "Il server API è spento",

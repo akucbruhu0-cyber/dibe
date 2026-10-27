@@ -1,8 +1,6 @@
 {
 	"aborting": "Aborting",
 	"advanced": "Advanced",
-	"analyticsEnabled": "Anonymous analytics",
-	"analyticsDisabledWarning": "Recommended — it helps us find and fix issues faster.",
 	"apiAgentsDescription": "Run transcription from scripts, CLI tools, or AI agents.",
 	"apiAndAgents": "API & Agents",
 	"apiServerOff": "API server is off",

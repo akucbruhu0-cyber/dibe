@@ -1,8 +1,6 @@
 {
 	"aborting": "Прерывание процесса",
 	"advanced": "Расширенные",
-	"analyticsEnabled": "Анонимная аналитика",
-	"analyticsDisabledWarning": "Настоятельно рекомендуем оставить включённым — так мы быстрее находим и исправляем ошибки.",
 	"apiAgentsDescription": "Запускайте транскрипцию из скриптов, CLI и ИИ-агентов через локальный API DIBE.",
 	"apiAndAgents": "API и агенты",
 	"apiServerOff": "Сервер API выключен",

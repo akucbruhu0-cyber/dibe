@@ -1,8 +1,6 @@
 {
 	"aborting": "Hủy bỏ",
 	"advanced": "Nâng cao",
-	"analyticsEnabled": "Dữ liệu ẩn danh",
-	"analyticsDisabledWarning": "Chúng tôi khuyến khích bạn giữ tùy chọn này để phát hiện và khắc phục sự cố nhanh hơn.",
 	"apiAgentsDescription": "Chạy phiên âm từ script, công cụ CLI hoặc AI agent bằng API cục bộ của DIBE.",
 	"apiAndAgents": "API và Agent",
 	"apiServerOff": "Máy chủ API đang tắt",

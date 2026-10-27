@@ -1,8 +1,6 @@
 {
 	"aborting": "Avortant",
 	"advanced": "Avançat",
-	"analyticsEnabled": "Analítiques anònimes",
-	"analyticsDisabledWarning": "Recomanem mantenir-ho activat per poder trobar i solucionar problemes més ràpidament.",
 	"apiAgentsDescription": "Executa transcripcions des d'scripts, eines de terminal o agents d'IA amb l'API local de DIBE.",
 	"apiAndAgents": "API i agents",
 	"apiServerOff": "El servidor de l'API està aturat",

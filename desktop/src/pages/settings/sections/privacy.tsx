@@ -9,9 +9,6 @@ export function PrivacySection({ vm }: { vm: SettingsViewModel }) {
 	return (
 		<div className="space-y-6">
 			<SettingsGroup>
-				<SettingsRow label={m.analyticsEnabled()} description={!vm.preference.analyticsEnabled ? m.analyticsDisabledWarning() : undefined}>
-					<Switch checked={vm.preference.analyticsEnabled} onCheckedChange={vm.preference.setAnalyticsEnabled} />
-				</SettingsRow>
 				<SettingsRow label={m.saveProjects()} description={m.saveProjectsInfo()}>
 					<Switch checked={vm.preference.saveTranscripts} onCheckedChange={vm.preference.setSaveTranscripts} />
 				</SettingsRow>

@@ -1,8 +1,6 @@
 {
 	"aborting": "מבטל",
 	"advanced": "מתקדם",
-	"analyticsEnabled": "אנליטיקה אנונימית",
-	"analyticsDisabledWarning": "מומלץ — זה עוזר לנו לאתר ולתקן תקלות מהר יותר.",
 	"apiAgentsDescription": "הפעלת תמלול מסקריפטים, מכלי שורת פקודה או מסוכני AI.",
 	"apiAndAgents": "API וסוכנים",
 	"apiServerOff": "שרת ה-API כבוי",

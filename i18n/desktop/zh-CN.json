@@ -1,8 +1,6 @@
 {
 	"aborting": "正在中止操作",
 	"advanced": "高级设置",
-	"analyticsEnabled": "匿名使用统计",
-	"analyticsDisabledWarning": "强烈建议保持开启，以便我们更快地发现并修复问题。",
 	"apiAgentsDescription": "通过 DIBE 的本地 API，在脚本、命令行工具或 AI 智能体中调用转录。",
 	"apiAndAgents": "API 与智能体",
 	"apiServerOff": "API 服务已关闭",

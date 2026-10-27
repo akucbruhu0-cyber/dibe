@@ -1,8 +1,6 @@
 {
 	"aborting": "रद्द कर रहा है",
 	"advanced": "उन्नत",
-	"analyticsEnabled": "गुमनाम आँकड़े",
-	"analyticsDisabledWarning": "इसे चालू रखने की सलाह दी जाती है, ताकि हम समस्याएँ जल्दी ढूँढ़कर ठीक कर सकें।",
 	"apiAgentsDescription": "DIBE के लोकल API से स्क्रिप्ट, CLI टूल या AI एजेंट के ज़रिए ट्रांसक्रिप्शन चलाएँ।",
 	"apiAndAgents": "API और एजेंट",
 	"apiServerOff": "API सर्वर बंद है",

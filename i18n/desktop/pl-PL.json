@@ -1,8 +1,6 @@
 {
 	"aborting": "Przerywanie",
 	"advanced": "Zaawansowane",
-	"analyticsEnabled": "Anonimowe statystyki",
-	"analyticsDisabledWarning": "Zalecamy pozostawienie tej opcji włączonej — dzięki temu szybciej znajdujemy i naprawiamy błędy.",
 	"apiAgentsDescription": "Uruchamiaj transkrypcję ze skryptów, narzędzi CLI lub agentów AI przez lokalne API DIBE.",
 	"apiAndAgents": "API i agenci",
 	"apiServerOff": "Serwer API wyłączony",

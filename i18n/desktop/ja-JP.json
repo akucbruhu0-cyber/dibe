@@ -1,8 +1,6 @@
 {
 	"aborting": "中止しています",
 	"advanced": "詳細設定",
-	"analyticsEnabled": "匿名の利用状況データ",
-	"analyticsDisabledWarning": "問題をより早く発見・修正できるよう、有効のままにしておくことを強くおすすめします。",
 	"apiAgentsDescription": "DIBEのローカル APIを使って、スクリプトやCLIツール、AIエージェントから文字起こしを実行できます。",
 	"apiAndAgents": "APIとエージェント",
 	"apiServerOff": "APIサーバーは停止中です",

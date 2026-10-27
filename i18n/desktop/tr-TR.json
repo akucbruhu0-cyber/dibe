@@ -1,8 +1,6 @@
 {
 	"aborting": "iptal ediliyor",
 	"advanced": "Gelişmiş",
-	"analyticsEnabled": "Anonim analiz",
-	"analyticsDisabledWarning": "Sorunları daha hızlı bulup düzeltebilmemiz için bunu açık bırakmanızı önemle öneririz.",
 	"apiAgentsDescription": "DIBE'ın yerel API'sini kullanarak betiklerden, CLI araçlarından veya yapay zekâ ajanlarından transkripsiyon çalıştırın.",
 	"apiAndAgents": "API ve Ajanlar",
 	"apiServerOff": "API sunucusu kapalı",
