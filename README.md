@@ -14,7 +14,12 @@ DIBE is a fork of [Vibe](https://github.com/thewh1teagle/vibe) by [thewh1teagle]
 
 ## What DIBE adds
 
-- 🔴 **Live transcription while recording** — finished sentences appear within about a second or two of when they are said, with a grey line for the sentence still being spoken. Keep the live transcript when you stop, or transcribe the recording again for the best accuracy (automatic if the live text was incomplete).
+- 🔴 **Live transcription while recording** — finished sentences appear within a second or a few of when they are said, with a grey line for the sentence still being spoken. Keep the live transcript when you stop, or transcribe the recording again for the best accuracy (automatic if the live text was incomplete).
+- 📖 **A live transcript to work from** — it fills the window at the text size you choose, as timed lines or one block of prose; edit it while it is still being written, copy without the times, and download everything so far without stopping.
+- ⏯️ **Pause and resume** a recording, and get back to its live transcript from any screen with one click.
+- 🔋 **Easy on the battery** — live transcription sends audio every few seconds instead of four times a second; turn off the words-as-spoken preview for the largest saving.
+- 📄 **Exports that look right** — AI summaries come out with real headings, bold text and lists in Word, PDF and HTML, not Markdown marks.
+- 🗑️ **Delete the recording only** — free the disk space and keep the transcript and summary.
 - 💾 **Recordings that survive crashes** — audio is written off the real-time thread, checkpointed every 5 seconds, and an unfinished recording is recovered as a project on the next launch.
 - 🎧 **Two devices, one recording** — if one device disconnects (for example AirPods switching to a call), the others keep recording.
 - ✨ **Google Gemini** for summaries and dictation clean-up, beside Claude, any OpenAI-compatible API and Ollama.

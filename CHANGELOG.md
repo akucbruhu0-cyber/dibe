@@ -1,5 +1,31 @@
 # Changelog
 
+## DIBE 1.1.0 — 2026-10-28
+
+A live transcript to follow a lecture or a meeting with, and copy from, for hours.
+
+### New
+
+- **A recording screen made for reading.** The live transcript fills the window and grows with it, at a text size of your choosing, justified to both edges, as timed lines or as one block of prose without times.
+- **Edit while it is being written.** The live transcript is one editable document: Cmd+A, the arrow keys, selection and Backspace cross from sentence to sentence, and new sentences are added at the end without touching what you are editing. Your edits are kept in downloads and in the recording's project.
+- **Copy without times.** Times are drawn beside the text, so a copy takes only the words.
+- **Download the transcript so far** in the middle of a recording (`.txt`, `.srt`, `.vtt`), while it goes on.
+- **Pause and resume**, besides stop. A paused recording saves and transcribes nothing; one second of silence marks the pause so the last sentence before it is transcribed in full.
+- **Back to the live transcription** — a button over any other screen while a recording runs; switching screens never stops it.
+- **Transcript and Summary tabs** in the toolbar once a transcript has an AI summary.
+- **Delete the recording only** — in a project's menu: frees the disk the audio takes and keeps the transcript and summary. An imported original file is never touched.
+
+### Battery
+
+- Live transcription uses far less battery. Whisper always processes a full 30-second window, so asking it four times a second cost about 25–30 times the work of transcribing the same file. Audio now goes to the engine every 3 seconds while words are shown as they are spoken, and every second otherwise.
+- New setting: Settings → Recording → Live transcription → **Show words while they are spoken**. Off saves the most battery; each sentence then appears about a second after it ends.
+
+### Fixes
+
+- **Exports show the summary's formatting, not its Markdown.** Word documents get real headings, bold and italic, lists and a rule instead of `###`, `**` and `---`; PDF and HTML likewise; plain text and subtitles get the words with bullets. Automatic exports included.
+- In PDF exports, a right-to-left sentence with bold words kept its final period at the wrong end of the line.
+- After a long pause, live transcription reconnects quietly instead of showing "Live transcription paused".
+
 ## DIBE 1.0.0 — 2026-10-28
 
 The first release of DIBE, forked from [Vibe 3.2.2](https://github.com/thewh1teagle/vibe/releases/tag/v3.2.2).
