@@ -48,6 +48,12 @@ export const CONFIG_KEYS = {
 	meetingDetectionEnabled: 'recording.meetingDetectionEnabled',
 	autoTranscribeAfterRecording: 'recording.autoTranscribeAfterRecording',
 	liveTranscription: 'recording.liveTranscription',
+	/** The sentence being spoken shows before it ends: costs battery, every 3 s. */
+	livePartials: 'recording.livePartials',
+	/** The live transcript's text size, in px. */
+	liveFontSize: 'recording.liveFontSize',
+	/** The live transcript as one block of prose, without times. */
+	liveAsBlock: 'recording.liveAsBlock',
 	afterRecording: 'recording.afterRecording',
 
 	// Reading the transcript

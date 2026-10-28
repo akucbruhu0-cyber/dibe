@@ -16,7 +16,10 @@ export interface LiveOptions {
 	vadModel: string
 }
 
-type LivePreference = Pick<Preference, 'liveTranscription' | 'modelPath' | 'gpuDevice' | 'noGpu' | 'unloadTimeoutMinutes' | 'modelOptions' | 'recentLanguages'>
+type LivePreference = Pick<
+	Preference,
+	'liveTranscription' | 'livePartials' | 'modelPath' | 'gpuDevice' | 'noGpu' | 'unloadTimeoutMinutes' | 'modelOptions' | 'recentLanguages'
+>
 
 /**
  * Live detection jumps between languages on short utterances, so a live session runs in one: the
@@ -56,7 +59,7 @@ export async function liveOptions(origin: RecordingOrigin, preference: LivePrefe
 			})
 			return null
 		}
-		return { language: liveLanguage(preference), partials: true, vadModel }
+		return { language: liveLanguage(preference), partials: preference.livePartials, vadModel }
 	} catch (error) {
 		console.error('live transcription is off for this recording:', error)
 		toast.warning(m.liveUnavailable(), { description: recordingErrorMessage(error) })

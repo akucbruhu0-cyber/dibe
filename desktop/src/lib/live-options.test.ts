@@ -21,6 +21,7 @@ vi.mock('~/providers/model-gates', () => ({ useModelGates: () => ({ downloadVad:
 function preference(overrides: Partial<Preference> = {}) {
 	return {
 		liveTranscription: true,
+		livePartials: true,
 		modelPath: '/models/ivrit.bin',
 		gpuDevice: null,
 		noGpu: false,
@@ -50,6 +51,12 @@ describe('liveOptions', () => {
 
 		expect(live).toEqual({ language: 'he', partials: true, vadModel: '/models/ggml-silero-v6.2.0.bin' })
 		expect(mocks.invoke).toHaveBeenCalledWith('load_model', { modelPath: '/models/ivrit.bin', gpuDevice: null, noGpu: false, unloadTimeoutMinutes: 5 })
+	})
+
+	it('asks for no live text when it is turned off, to save battery', async () => {
+		const live = await liveOptions('manual', preference({ livePartials: false }), mocks.downloadVad)
+
+		expect(live?.partials).toBe(false)
 	})
 
 	it('is off when the preference is off', async () => {

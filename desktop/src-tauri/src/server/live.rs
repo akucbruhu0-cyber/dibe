@@ -1,5 +1,5 @@
 //! The live transcription client: while a recording runs, the live tap's 16 kHz audio goes to a
-//! vibe-server live session in pushes of at least 250 ms, and each push's answer reaches the UI as
+//! vibe-server live session in pushes of a second or more (see `run::push_samples`), and each push's answer reaches the UI as
 //! `live_update`. The stop sends the rest, closes the session and hands its finals to
 //! `record_finish`.
 //!
@@ -24,7 +24,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{mpsc, Notify};
 use tokio_util::sync::CancellationToken;
 
-use run::run_live;
+use run::{push_samples, run_live};
 
 use crate::error::LogError;
 use crate::recording::live_tap::LiveTap;
@@ -220,6 +220,7 @@ impl LiveClient {
     /// channels), in device order. Never fails: the task finds the server and opens the session,
     /// and reports any trouble as `live_status`.
     pub fn start(app: &AppHandle, session_id: &str, options: LiveOptions, formats: &[(u32, u16)]) -> Self {
+        let min_push = push_samples(options.partials);
         let api = HttpLive {
             app: app.clone(),
             options,
@@ -238,6 +239,7 @@ impl LiveClient {
         let collected = Arc::new(Mutex::new(Vec::new()));
         let task = tauri::async_runtime::spawn(run_live(
             api,
+            min_push,
             rx,
             emit,
             cancel.clone(),

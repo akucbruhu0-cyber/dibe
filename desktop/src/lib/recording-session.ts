@@ -51,6 +51,12 @@ export async function stopNormalSession() {
 	}
 }
 
+/** Pauses (true) or resumes the running recording: nothing is saved or transcribed in between. */
+export async function pauseNormalSession(paused: boolean) {
+	if (!normalSessionId) return
+	await invoke('pause_record', { sessionId: normalSessionId, paused })
+}
+
 /** Backend errors arrive as `{ code, message }` objects, which `String()` would turn into "[object Object]". */
 export function recordingErrorMessage(error: unknown): string {
 	if (error instanceof Error) return error.message

@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
 import { cn } from '~/lib/style'
 import {
+	deleteProjectAudio,
 	deleteTranscript,
 	listTranscripts,
 	readTranscript,
@@ -145,6 +146,8 @@ interface RowMenuState {
 	/** media to re-transcribe: the original file, else the project folder's copy; null when neither */
 	sourcePath: string | null
 	sourceExists: boolean
+	/** The project folder holds its own copy of the audio, which can be deleted on its own. */
+	hasAudio: boolean
 }
 
 function RecentRow({
@@ -163,7 +166,7 @@ function RecentRow({
 	onRenamed: () => void
 }) {
 	const { queue } = useSession()
-	const [menu, setMenu] = useState<RowMenuState>({ sourcePath: null, sourceExists: false })
+	const [menu, setMenu] = useState<RowMenuState>({ sourcePath: null, sourceExists: false, hasAudio: false })
 	const [renaming, setRenaming] = useState(false)
 	const [retranscribing, setRetranscribing] = useState(false)
 	const [draftName, setDraftName] = useState(entry.name)
@@ -174,9 +177,10 @@ function RecentRow({
 	const loadSource = useCallback(async () => {
 		const record = await readTranscript(entry.path)
 		if (!record) {
-			setMenu({ sourcePath: null, sourceExists: false })
+			setMenu({ sourcePath: null, sourceExists: false, hasAudio: false })
 			return
 		}
+		const copy = await resolveProjectAudio(entry.path, record)
 		let sourceExists = false
 		try {
 			sourceExists = !!record.sourcePath && (await fs.exists(record.sourcePath))
@@ -184,11 +188,10 @@ function RecentRow({
 			console.warn('failed to check source file:', error)
 		}
 		if (sourceExists) {
-			setMenu({ sourcePath: record.sourcePath, sourceExists: true })
+			setMenu({ sourcePath: record.sourcePath, sourceExists: true, hasAudio: !!copy })
 			return
 		}
-		const copy = await resolveProjectAudio(entry.path, record)
-		setMenu({ sourcePath: copy ?? (record.sourcePath || null), sourceExists: !!copy })
+		setMenu({ sourcePath: copy ?? (record.sourcePath || null), sourceExists: !!copy, hasAudio: !!copy })
 	}, [entry.path])
 
 	async function reveal() {
@@ -207,6 +210,17 @@ function RecentRow({
 		if (!confirmed) return
 		await deleteTranscript(entry.path)
 		onDeleted()
+	}
+
+	/** Frees the disk the audio takes; the transcript, its summary and everything else stay. */
+	async function removeAudio() {
+		const confirmed = await dialog.ask(m.deleteRecordingOnlyBody({ name: entry.name }), {
+			title: m.deleteRecordingOnly(),
+			kind: 'warning',
+		})
+		if (!confirmed || !(await deleteProjectAudio(entry.path))) return
+		// An open project would go on offering to play the file that is gone.
+		if (active) onOpen()
 	}
 
 	function retranscribe() {
@@ -281,6 +295,9 @@ function RecentRow({
 					</DropdownMenuItem>
 					<DropdownMenuItem onSelect={() => void reveal()}>{m.showInFolder()}</DropdownMenuItem>
 					<DropdownMenuSeparator />
+					<DropdownMenuItem className="text-destructive focus:text-destructive" disabled={!menu.hasAudio} onSelect={() => void removeAudio()}>
+						{m.deleteRecordingOnly()}
+					</DropdownMenuItem>
 					<DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => void remove()}>
 						{m.delete()}
 					</DropdownMenuItem>

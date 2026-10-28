@@ -18,8 +18,6 @@ use super::{LiveApi, LiveEvent, LiveTranscript, LiveUpdate};
 use crate::transcript::Segment;
 
 const LIVE_HZ: usize = 16_000;
-/// 250 ms: the least audio worth a push.
-const MIN_PUSH_SAMPLES: usize = LIVE_HZ / 4;
 /// The most the server takes in one push.
 const MAX_PUSH_SAMPLES: usize = 30 * LIVE_HZ;
 /// Audio kept while the server cannot take it; beyond this the oldest is dropped, as a gap.
@@ -41,6 +39,18 @@ pub async fn drain_batch(rx: &mut Receiver<Vec<f32>>, min_samples: usize) -> Vec
     batch
 }
 
+/// The least audio worth a push. Every push runs the server's VAD over all of its open audio, and
+/// with live text on it may run the engine once more for the sentence being spoken (whose interval
+/// the server fixes at a second, but no push, no run): so a push is a battery cost, not a free
+/// refresh. Live text every 3 s; finals alone a second late at most.
+pub fn push_samples(partials: bool) -> usize {
+    if partials {
+        3 * LIVE_HZ
+    } else {
+        LIVE_HZ
+    }
+}
+
 /// Drops the oldest chunks until `backlog` holds at most `max_samples`; returns the samples dropped.
 pub fn cap_backlog(backlog: &mut VecDeque<Vec<f32>>, max_samples: usize) -> u64 {
     let mut kept: usize = backlog.iter().map(Vec::len).sum();
@@ -55,10 +65,11 @@ pub fn cap_backlog(backlog: &mut VecDeque<Vec<f32>>, max_samples: usize) -> u64 
 
 /// Runs a recording's live transcription until `cancel`, then sends what is left, closes the
 /// session and returns every final, in order (also kept in `collected` as they come), and whether
-/// they cover all of the audio. `emit` sends `live_update` and `live_status`; `wake` cuts a wait
-/// between attempts short.
+/// they cover all of the audio. Audio goes out `min_push` samples at a time (see [`push_samples`]).
+/// `emit` sends `live_update` and `live_status`; `wake` cuts a wait between attempts short.
 pub async fn run_live(
     api: impl LiveApi,
+    min_push: usize,
     rx: Receiver<Vec<f32>>,
     emit: impl Fn(&str, Value),
     cancel: CancellationToken,
@@ -80,7 +91,7 @@ pub async fn run_live(
                 Err(error) => Some(error),
             },
             Some(current) => {
-                let missing = MIN_PUSH_SAMPLES.saturating_sub(live.backlog_samples());
+                let missing = min_push.saturating_sub(live.backlog_samples());
                 if missing > 0 {
                     // A stop closes the channel before it cancels, so this wait ends with the last
                     // audio; the token only matters should the tap outlive the stop.
@@ -100,6 +111,13 @@ pub async fn run_live(
                     Ok(update) => {
                         current.sent(at, batch.len());
                         live.deliver(update, current.offset);
+                        None
+                    }
+                    // Reaped after a quiet spell (a paused recording): a new session takes over,
+                    // which is no trouble to report. A new session refused at once still is.
+                    Err(error) if error.status == Some(404) && current.sent > 0 => {
+                        live.requeue(batch);
+                        session = None;
                         None
                     }
                     Err(error) => {

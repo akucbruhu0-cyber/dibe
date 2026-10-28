@@ -10,6 +10,7 @@ import * as config from '~/lib/config'
 import { pathToNamedPath } from '~/lib/fs'
 import { cleanupPartialDownloads, listInstalledModels, type InstalledModel } from '~/lib/model'
 import { isMine, type RecordErrorPayload, type RecordFinishPayload, type RecordingOrigin } from '~/lib/recording-origin'
+import { pauseNormalSession, recordingErrorMessage } from '~/lib/recording-session'
 import type { NamedPath, ProjectSource } from '~/lib/types'
 import { useConfirmExit } from '~/lib/use-confirm-exit'
 import { useRecordingShortcut } from '~/providers/recording-shortcut'
@@ -21,7 +22,7 @@ import { useDropTarget } from './hooks/use-drop-target'
 import { useSummaries, type Summaries } from './hooks/use-summaries'
 import { useTranscribeQueue, type TranscribeQueue } from './hooks/use-transcribe-queue'
 import { useTranscribeWarnings } from './hooks/use-transcribe-warnings'
-import { useLiveTranscript, type LiveView } from './hooks/use-live-transcript'
+import { applyLiveEdits, takeLiveEdits, useLiveTranscript, type LiveView } from './hooks/use-live-transcript'
 import { createRecordingProject, finishedRecording, finishWarningTitle, recoverUnfinishedRecordings } from './recording-project'
 
 /** Recordings that end up as a project here; dictation is handled by the hotkey provider. */
@@ -43,7 +44,14 @@ export interface Session {
 	panel: IdlePanel
 	setPanel: (panel: IdlePanel) => void
 	recording: Recording
+	/** Seconds recorded, pauses left out. */
 	recordElapsed: number
+	recordPaused: boolean
+	toggleRecordPause: () => Promise<void>
+	/** The running recording's screen is on top, though a transcript is open behind it. */
+	liveInFront: boolean
+	/** Brings the running recording's screen back, leaving the open transcript as it is. */
+	showLive: () => void
 	/** The transcript of the running recording, as it is spoken. */
 	live: LiveView
 	link: AudioDownload
@@ -74,6 +82,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	const [panel, setPanel] = useState<IdlePanel>('none')
 	const [collectingFolder, setCollectingFolder] = useState(false)
 	const [recordElapsed, setRecordElapsed] = useState(0)
+	const [recordPaused, setRecordPaused] = useState(false)
+	const [liveInFront, setLiveInFront] = useState(false)
 
 	const enqueueRef = useRef(queue.enqueue)
 	useEffect(() => {
@@ -151,17 +161,40 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		if (recordingShortcut.isShortcutRecording) setPanel('record')
 	}, [recordingShortcut.isShortcutRecording])
 
-	const recordStartedAt = useRef(0)
+	/** Milliseconds recorded before the clock's current run. */
+	const recordedBefore = useRef(0)
 	useEffect(() => {
 		setRecordElapsed(0)
-		recordStartedAt.current = Date.now()
+		setRecordPaused(false)
+		recordedBefore.current = 0
 	}, [recording.isRecording])
-	// The clock stops at Stop: what follows is saving, not recording.
+	// The clock stops at Stop, what follows is saving, and at a pause, which records nothing.
 	useEffect(() => {
-		if (!recording.isRecording || recording.isFinishing) return
-		const timer = window.setInterval(() => setRecordElapsed(Math.floor((Date.now() - recordStartedAt.current) / 1000)), 500)
-		return () => window.clearInterval(timer)
-	}, [recording.isRecording, recording.isFinishing])
+		if (!recording.isRecording || recording.isFinishing || recordPaused) return
+		const runningSince = Date.now()
+		const timer = window.setInterval(() => setRecordElapsed(Math.floor((recordedBefore.current + Date.now() - runningSince) / 1000)), 500)
+		return () => {
+			window.clearInterval(timer)
+			recordedBefore.current += Date.now() - runningSince
+		}
+	}, [recording.isRecording, recording.isFinishing, recordPaused])
+
+	// Opening a transcript (every open is a new job) puts it in front; so does the recording's end.
+	useEffect(() => setLiveInFront(false), [queue.selectedId, recording.isRecording])
+	const showLive = useCallback(() => {
+		setPanel('record')
+		setLiveInFront(true)
+	}, [])
+
+	const toggleRecordPause = useCallback(async () => {
+		try {
+			await pauseNormalSession(!recordPaused)
+			setRecordPaused(!recordPaused)
+		} catch (error) {
+			console.error('pause_record failed:', error)
+			toast.error(recordingErrorMessage(error))
+		}
+	}, [recordPaused])
 
 	// A finished recording becomes a durable project (see createRecordingProject).
 	useEffect(() => {
@@ -171,7 +204,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			setPanel('none')
 			if (payload.warning) toast.warning(finishWarningTitle(payload), { description: payload.warning, position: 'bottom-center' })
 			const deps = recordingCompletionRef.current
-			await createRecordingProject(finishedRecording(payload, deps.preference), deps)
+			// What the reader corrected while it was live is what the project keeps.
+			const edits = takeLiveEdits(payload.sessionId)
+			const liveSegments = payload.liveSegments && applyLiveEdits(payload.liveSegments, edits)
+			await createRecordingProject(finishedRecording({ ...payload, liveSegments }, deps.preference), deps)
 		})
 		return () => {
 			unlisten.then((fn) => fn())
@@ -305,13 +341,35 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			setPanel,
 			recording,
 			recordElapsed,
+			recordPaused,
+			toggleRecordPause,
+			liveInFront,
+			showLive,
 			live,
 			link,
 			collectingFolder,
 			browse,
 			startNew,
 		}),
-		[mode, queue, summaries, preference, dragging, panel, recording, recordElapsed, live, link, collectingFolder, browse, startNew],
+		[
+			mode,
+			queue,
+			summaries,
+			preference,
+			dragging,
+			panel,
+			recording,
+			recordElapsed,
+			recordPaused,
+			toggleRecordPause,
+			liveInFront,
+			showLive,
+			live,
+			link,
+			collectingFolder,
+			browse,
+			startNew,
+		],
 	)
 
 	return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

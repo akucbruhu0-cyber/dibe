@@ -210,7 +210,15 @@ fn start_streams(
             move || meter.emit_if_due(&app_handle)
         };
         let live = recording.live.as_ref().map(|live| live.feed(device_index));
-        let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, emit_level, live)?;
+        let writer = spawn_writer(
+            path.clone(),
+            spec,
+            rx,
+            CHECKPOINT_EVERY,
+            emit_level,
+            live,
+            recording.paused.clone(),
+        )?;
         let dropped = writer.dropped.clone();
         recording.writers.push(writer);
         recording.wav_paths.push(path);
@@ -248,6 +256,15 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
     // Merging and normalizing shell out to ffmpeg, which must not block the async runtime.
     tauri::async_runtime::spawn_blocking(move || finish_recording(&app_handle, recording)).await?;
     Ok(())
+}
+
+#[tauri::command]
+/// Pauses or resumes the recording `session_id`: while paused nothing is saved or transcribed, and
+/// the pause shows in the file as one second of silence. Ignored for a session that is not active.
+pub fn pause_record(state: State<'_, RecordingState>, session_id: String, paused: bool) {
+    if !state.set_paused(&session_id, paused) {
+        tracing::debug!("pause_record ignored: session {session_id} is not active");
+    }
 }
 
 #[tauri::command]
@@ -407,6 +424,7 @@ fn finished_event(recording: ActiveRecording, out_dir: &Path) -> (&'static str, 
         wav_paths,
         live,
         failed_devices,
+        paused: _,
     } = recording;
     let closed = close_captures(streams, writers, wav_paths);
     // The writers are done, so the tap has all the audio: the live client sends the rest. Its last

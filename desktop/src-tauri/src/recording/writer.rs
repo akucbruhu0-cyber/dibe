@@ -12,7 +12,7 @@ use eyre::{bail, eyre, Result};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -22,6 +22,9 @@ use std::time::{Duration, Instant};
 pub const CHECKPOINT_EVERY: Duration = Duration::from_secs(5);
 /// How often the writer empties the ring.
 const DRAIN_EVERY: Duration = Duration::from_millis(20);
+/// Silence written where a pause begins: it marks the pause in the file, and it is the quiet that
+/// lets live transcription close the sentence that was being spoken (it needs 600 ms).
+const PAUSE_GAP: Duration = Duration::from_secs(1);
 /// A WAV stores its sizes in 32 bits; stop before the data chunk of f32 samples outgrows them.
 // ponytail: ~3.1 h of 48 kHz stereo; RF64 or rolling files if recordings get longer.
 const MAX_SAMPLES: u64 = (u32::MAX as u64 - 1024) / 4;
@@ -49,6 +52,7 @@ pub struct WriterHandle {
 /// Creates the WAV at `path` and starts the thread that fills it from `rx`, calling `on_tick`
 /// after every drain. With a `live` tap, every drained chunk is also copied to it once the WAV has
 /// it; the tap never holds the WAV up, and a broken one is dropped without touching the file.
+/// While `paused` is set the drained audio goes nowhere; the pause starts with `PAUSE_GAP` of silence.
 /// A handle dropped without `finish` still stops the thread, which then finalizes the file on its own.
 pub fn spawn_writer(
     path: PathBuf,
@@ -57,6 +61,7 @@ pub fn spawn_writer(
     checkpoint_every: Duration,
     on_tick: impl FnMut() + Send + 'static,
     live: Option<LiveFeed>,
+    paused: Arc<AtomicBool>,
 ) -> Result<WriterHandle> {
     let wav = hound::WavWriter::create(&path, spec)?;
     let (stop, stopped) = mpsc::channel();
@@ -67,7 +72,7 @@ pub fn spawn_writer(
     });
     let thread = std::thread::Builder::new()
         .name("vibe-wav-writer".into())
-        .spawn(move || write_until_stopped(wav, rx, &stopped, checkpoint_every, on_tick, forward))?;
+        .spawn(move || write_until_stopped(wav, rx, &stopped, checkpoint_every, on_tick, forward, &paused))?;
     Ok(WriterHandle {
         dropped: Arc::default(),
         stop,
@@ -95,11 +100,21 @@ fn write_until_stopped(
     checkpoint_every: Duration,
     mut on_tick: impl FnMut(),
     mut forward: Option<Forward>,
+    paused: &AtomicBool,
 ) -> Result<u64> {
     let mut last_checkpoint = Instant::now();
+    let mut was_paused = false;
     loop {
         let stopping = !matches!(stopped.recv_timeout(DRAIN_EVERY), Err(RecvTimeoutError::Timeout));
-        drain(&mut rx, &mut wav, &mut forward)?;
+        let pausing = paused.load(Ordering::Relaxed);
+        // The first drain of a pause still writes: it was captured before the click.
+        drain(&mut rx, &mut wav, &mut forward, was_paused && pausing)?;
+        if pausing && !was_paused {
+            let spec = wav.spec();
+            let gap = PAUSE_GAP.as_millis() as usize * spec.sample_rate as usize / 1_000 * usize::from(spec.channels);
+            write(&mut wav, &mut forward, &vec![0.0; gap], &[])?;
+        }
+        was_paused = pausing;
         if stopping {
             break;
         }
@@ -139,23 +154,32 @@ impl Forward {
     }
 }
 
-/// Writes everything the callback has queued so far, and copies it to the live tap if there is one.
-fn drain(rx: &mut rtrb::Consumer<f32>, wav: &mut Wav, forward: &mut Option<Forward>) -> Result<()> {
+/// Writes everything the callback has queued so far (or, with `discard`, throws it away), and
+/// copies it to the live tap if there is one.
+fn drain(rx: &mut rtrb::Consumer<f32>, wav: &mut Wav, forward: &mut Option<Forward>, discard: bool) -> Result<()> {
     // Never asks for more than is queued, so this cannot fail.
     let Ok(chunk) = rx.read_chunk(rx.slots()) else {
         return Ok(());
     };
-    if u64::from(wav.len()) + chunk.len() as u64 > MAX_SAMPLES {
+    if !discard {
+        let (first, second) = chunk.as_slices();
+        write(wav, forward, first, second)?;
+    }
+    chunk.commit_all();
+    Ok(())
+}
+
+/// Appends the two slices to the WAV, then hands them to the live tap.
+fn write(wav: &mut Wav, forward: &mut Option<Forward>, first: &[f32], second: &[f32]) -> Result<()> {
+    if u64::from(wav.len()) + (first.len() + second.len()) as u64 > MAX_SAMPLES {
         bail!("the recording reached the 4 GiB size limit of a WAV file");
     }
-    let (first, second) = chunk.as_slices();
     for &sample in first.iter().chain(second) {
         wav.write_sample(sample)?;
     }
     if forward.as_mut().is_some_and(|forward| !forward.send(first, second)) {
         *forward = None;
     }
-    chunk.commit_all();
     Ok(())
 }
 
@@ -185,7 +209,7 @@ mod tests {
     fn checkpoint_makes_file_readable_while_writing() {
         let path = temp_wav("checkpoint");
         let (mut tx, rx) = rtrb::RingBuffer::new(48_000);
-        let writer = spawn_writer(path.clone(), mono_spec(), rx, Duration::ZERO, || {}, None).expect("spawn");
+        let writer = spawn_writer(path.clone(), mono_spec(), rx, Duration::ZERO, || {}, None, Arc::default()).expect("spawn");
         push(&mut tx, 48_000);
 
         // The recording is still running: only a checkpoint can have put the length in the header.
@@ -205,7 +229,7 @@ mod tests {
     fn finish_reports_samples_and_drops() {
         let path = temp_wav("finish");
         let (mut tx, rx) = rtrb::RingBuffer::new(1_000);
-        let writer = spawn_writer(path.clone(), mono_spec(), rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
+        let writer = spawn_writer(path.clone(), mono_spec(), rx, CHECKPOINT_EVERY, || {}, None, Arc::default()).expect("spawn");
         push(&mut tx, 600);
         // What the audio callback adds when the ring is full.
         writer.dropped.fetch_add(7, Ordering::Relaxed);
@@ -235,7 +259,16 @@ mod tests {
         let path = temp_wav("live");
         let (mut tx, rx) = rtrb::RingBuffer::new(48_000);
         let (tap, mut live_rx) = live_tap();
-        let writer = spawn_writer(path.clone(), mono_spec(), rx, CHECKPOINT_EVERY, || {}, Some((tap, 0))).expect("spawn");
+        let writer = spawn_writer(
+            path.clone(),
+            mono_spec(),
+            rx,
+            CHECKPOINT_EVERY,
+            || {},
+            Some((tap, 0)),
+            Arc::default(),
+        )
+        .expect("spawn");
         push(&mut tx, 9_600);
 
         let report = writer.finish().expect("finish");
@@ -248,6 +281,58 @@ mod tests {
         assert!(chunks
             .iter()
             .all(|chunk| chunk.len() == 1_600 && chunk.iter().all(|&sample| sample == 0.25)));
+        std::fs::remove_file(path).ok();
+    }
+
+    /// Waits until the writer has emptied the ring, so a flag flip after it is a new moment.
+    fn drained(tx: &rtrb::Producer<f32>) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while tx.slots() < tx.buffer().capacity() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    #[test]
+    fn a_pause_keeps_its_audio_out_and_leaves_a_second_of_silence() {
+        let path = temp_wav("pause");
+        let (mut tx, rx) = rtrb::RingBuffer::new(48_000);
+        let (tap, mut live_rx) = live_tap();
+        let paused = Arc::new(AtomicBool::new(false));
+        let writer = spawn_writer(
+            path.clone(),
+            mono_spec(),
+            rx,
+            CHECKPOINT_EVERY,
+            || {},
+            Some((tap, 0)),
+            paused.clone(),
+        )
+        .expect("spawn");
+        push(&mut tx, 4_800);
+        drained(&tx);
+
+        paused.store(true, Ordering::Relaxed);
+        std::thread::sleep(Duration::from_millis(60));
+        // Spoken while paused: never recorded, never transcribed.
+        push(&mut tx, 9_600);
+        drained(&tx);
+        paused.store(false, Ordering::Relaxed);
+        std::thread::sleep(Duration::from_millis(60));
+        push(&mut tx, 4_800);
+
+        let report = writer.finish().expect("finish");
+
+        // 100 ms, then the pause's 1 s of silence, then 100 ms.
+        assert_eq!(report.samples, 4_800 + 48_000 + 4_800);
+        let mut reader = hound::WavReader::open(&path).expect("open");
+        let samples: Vec<f32> = reader.samples::<f32>().map(|sample| sample.expect("sample")).collect();
+        assert!(samples[..4_800].iter().all(|&sample| sample == 0.25));
+        assert!(samples[4_800..52_800].iter().all(|&sample| sample == 0.0));
+        assert!(samples[52_800..].iter().all(|&sample| sample == 0.25));
+        // The tap heard the same 1.2 s: the live clock stays on the recording's.
+        let live: usize = std::iter::from_fn(|| live_rx.try_recv().ok()).map(|chunk| chunk.len()).sum();
+        // (The resampler holds back its last sample, so the twelfth chunk may still wait for a flush.)
+        assert!((11..=12).contains(&(live / 1_600)), "{live} samples");
         std::fs::remove_file(path).ok();
     }
 
@@ -264,7 +349,16 @@ mod tests {
         })
         .join()
         .ok();
-        let writer = spawn_writer(path.clone(), mono_spec(), rx, CHECKPOINT_EVERY, || {}, Some((tap, 0))).expect("spawn");
+        let writer = spawn_writer(
+            path.clone(),
+            mono_spec(),
+            rx,
+            CHECKPOINT_EVERY,
+            || {},
+            Some((tap, 0)),
+            Arc::default(),
+        )
+        .expect("spawn");
         push(&mut tx, 9_600);
 
         let report = writer.finish().expect("a broken tap is not the writer's failure");

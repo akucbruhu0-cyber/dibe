@@ -72,7 +72,7 @@ fn discarded_recording_leaves_nothing_to_recover() {
         sample_format: hound::SampleFormat::Float,
     };
     let (mut tx, rx) = capture::ring(&spec);
-    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
+    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None, Arc::default()).expect("spawn");
     // A first device was already recording when the second one failed to start.
     capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
     let mut recording = ActiveRecording::new("session".to_string(), RecordingOrigin::Meeting, None);
@@ -95,7 +95,7 @@ fn stream_error_finishes_session_with_audio() {
         sample_format: hound::SampleFormat::Float,
     };
     let (mut tx, rx) = capture::ring(&spec);
-    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
+    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None, Arc::default()).expect("spawn");
     let state = RecordingState::default();
     let session_id = state.try_begin(RecordingOrigin::Meeting).expect("begin");
     // The device delivered 0.1 s of audio and was unplugged: cpal calls the error callback and
@@ -155,7 +155,7 @@ fn a_failed_device_leaves_the_other_recording_until_the_stop() {
         let (tx, rx) = capture::ring(&spec);
         recording
             .writers
-            .push(spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn"));
+            .push(spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None, Arc::default()).expect("spawn"));
         recording.wav_paths.push(path);
         rings.push(tx);
     }
@@ -200,7 +200,7 @@ fn recording_without_live_finishes_as_before() {
     let live = recording.live.as_ref().map(|live| live.feed(0));
     assert!(live.is_none(), "no client, so no tap");
     let (mut tx, rx) = capture::ring(&spec);
-    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, live).expect("spawn");
+    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, live, Arc::default()).expect("spawn");
     capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
     recording.writers.push(writer);
     recording.wav_paths.push(path);
@@ -241,7 +241,7 @@ fn captures_stay_recoverable_while_the_live_finals_are_awaited() {
     };
     let mut recording = ActiveRecording::new("session".to_string(), RecordingOrigin::Manual, None);
     let (mut tx, rx) = capture::ring(&spec);
-    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None).expect("spawn");
+    let writer = spawn_writer(path.clone(), spec, rx, CHECKPOINT_EVERY, || {}, None, Arc::default()).expect("spawn");
     capture::push_samples(&[0.5f32; 4_800], 1, &mut tx, &writer.dropped);
     recording.writers.push(writer);
     recording.wav_paths.push(path.clone());

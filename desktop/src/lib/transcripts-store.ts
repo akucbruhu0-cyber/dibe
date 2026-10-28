@@ -448,6 +448,28 @@ export async function updateTranscriptSummary(path: string, summary: string): Pr
 }
 
 /**
+ * Deletes a project's audio and keeps everything else: transcript, summary, thread, speaker names.
+ * Only the project's own copy goes; an imported original elsewhere is the user's and is never touched.
+ * Nothing in the record points at the deleted file afterwards. @returns whether it was done.
+ */
+export async function deleteProjectAudio(path: string): Promise<boolean> {
+	try {
+		const record = await readTranscript(path)
+		if (!record?.audioFile) return false
+		const audioPath = await pathApi.join(await pathApi.dirname(path), record.audioFile)
+		// A DIBE recording's source is the copy itself.
+		const sourcePath = record.sourcePath === audioPath ? '' : record.sourcePath
+		await writeRecordAtomic(path, { ...record, audioFile: undefined, sourcePath })
+		// The record goes first: a file it no longer names is only clutter, one it names and lacks is a broken project.
+		await fs.remove(audioPath)
+		return true
+	} catch (error) {
+		console.warn('failed to delete project audio:', path, error)
+		return false
+	}
+}
+
+/**
  * Fired on `window` whenever the store changed (a save or a delete) so open lists can refresh
  * without the writer having to know about them.
  */

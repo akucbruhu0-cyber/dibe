@@ -8,7 +8,8 @@ use crate::server::live::LiveClient;
 use cpal::Stream;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 pub struct StreamHandle(pub Stream);
 // A cpal stream is only ever played, paused and dropped by whoever owns the session.
@@ -42,6 +43,8 @@ pub struct ActiveRecording {
     /// Devices whose stream stopped while the others went on, each with why; their files keep
     /// what they captured until then.
     pub failed_devices: Vec<(usize, String)>,
+    /// Set while the recording is paused; every writer of the session reads it.
+    pub paused: Arc<AtomicBool>,
 }
 
 impl ActiveRecording {
@@ -55,6 +58,7 @@ impl ActiveRecording {
             wav_paths: Vec::new(),
             live: None,
             failed_devices: Vec::new(),
+            paused: Arc::default(),
         }
     }
 }
@@ -103,6 +107,16 @@ impl RecordingState {
         if let Some(live) = active.and_then(|active| active.live.as_ref()) {
             live.retry();
         }
+    }
+
+    /// Pauses or resumes `session_id`; false when it is not the active session.
+    pub fn set_paused(&self, session_id: &str, paused: bool) -> bool {
+        let slot = self.slot();
+        let Some(active) = slot.as_ref().filter(|active| active.session_id == session_id) else {
+            return false;
+        };
+        active.paused.store(paused, Ordering::Relaxed);
+        true
     }
 
     /// Notes that device `device` of `session_id` stopped delivering audio. The session goes on while
@@ -184,6 +198,19 @@ mod tests {
         assert_eq!(recording.failed_devices.len(), 2);
         assert!(state.take(&session_id).is_none(), "the slot is free again");
         assert!(state.device_failed("not-the-session", 0, String::new()).is_none());
+    }
+
+    #[test]
+    fn pause_reaches_only_the_active_session() {
+        let state = RecordingState::default();
+        let session_id = two_device_session(&state);
+
+        assert!(!state.set_paused("not-the-session", true));
+        assert!(state.set_paused(&session_id, true));
+
+        let recording = state.take(&session_id).expect("still active");
+        assert!(recording.paused.load(Ordering::Relaxed));
+        assert!(!state.set_paused(&session_id, false), "a finished session cannot be resumed");
     }
 
     #[test]

@@ -36,9 +36,19 @@ export interface LiveState {
 	message?: string
 }
 
+/**
+ * What the reader typed over finals, by their index in `LiveState.finals`. The start time rides along
+ * so an edit only ever lands on the line it was made on.
+ */
+export type LiveEdits = Map<number, { start: number; text: string }>
+
 /** What the recording screen shows and does with the live transcription. */
 export interface LiveView {
 	state: LiveState
+	/** The bound session's edits; changes in place, like the finals. */
+	edits: LiveEdits
+	/** Replaces final `index`'s text with what the reader typed. */
+	edit: (index: number, text: string) => void
 	/** The recording the transcript belongs to; null while none is bound. */
 	sessionId: string | null
 	/** "Try again" was pressed and nothing has been heard since. */
@@ -81,6 +91,34 @@ export function liveReducer(state: LiveState, event: LiveUpdate | LiveStatus): L
 		}
 	}
 	return { ...state, partial, lagMs: event.lag_ms }
+}
+
+// By session, not in the hook's state: the recording's project is made from them after its
+// record_finish, which may reach the project's listener after this hook has reset.
+const editsBySession = new Map<string, LiveEdits>()
+const noEdits: LiveEdits = new Map()
+
+function editsOf(sessionId: string): LiveEdits {
+	let edits = editsBySession.get(sessionId)
+	if (!edits) editsBySession.set(sessionId, (edits = new Map()))
+	return edits
+}
+
+/** The session's edits, handed over once: the recording's project takes them. */
+export function takeLiveEdits(sessionId: string): LiveEdits {
+	const edits = editsBySession.get(sessionId) ?? new Map()
+	editsBySession.delete(sessionId)
+	return edits
+}
+
+/** `segments` with the reader's edits; a line emptied by hand is gone. */
+export function applyLiveEdits<T extends Segment>(segments: T[], edits: LiveEdits): T[] {
+	if (edits.size === 0) return segments
+	return segments.flatMap((segment, index) => {
+		const edit = edits.get(index)
+		if (!edit || edit.start !== segment.start) return [segment]
+		return edit.text.trim() ? [{ ...segment, text: edit.text }] : []
+	})
 }
 
 // The file queue waits while a live session runs: the server lends its model to the session, and a
@@ -188,6 +226,14 @@ export function useLiveTranscript(): LiveView {
 		}
 	}, [stopRetrying])
 
+	const edit = useCallback(
+		(index: number, text: string) => {
+			const line = stateRef.current.finals[index]
+			if (sessionId && line) editsOf(sessionId).set(index, { start: line.start, text })
+		},
+		[sessionId],
+	)
+
 	const retry = useCallback(() => {
 		if (!sessionId) return
 		setRetrying(true)
@@ -200,5 +246,6 @@ export function useLiveTranscript(): LiveView {
 	}, [sessionId, stopRetrying])
 
 	// `version` stands in for the finals, which change in place.
-	return useMemo(() => ({ state: stateRef.current, sessionId, retrying, retry }), [version, sessionId, retrying, retry])
+	const edits = sessionId ? editsOf(sessionId) : noEdits
+	return useMemo(() => ({ state: stateRef.current, edits, edit, sessionId, retrying, retry }), [version, edits, edit, sessionId, retrying, retry])
 }

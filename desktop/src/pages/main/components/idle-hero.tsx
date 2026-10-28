@@ -1,6 +1,6 @@
 import { listen } from '@tauri-apps/api/event'
 import { AnimatePresence, motion } from 'framer-motion'
-import { FolderOpen, Link2, Mic, Plus, Square, Upload, X } from 'lucide-react'
+import { FolderOpen, Link2, Mic, Pause, Play, Plus, Square, Upload, X } from 'lucide-react'
 import { siFacebook, siInstagram, siTiktok, siX, siYoutube } from 'simple-icons'
 import { useEffect, useRef, useState } from 'react'
 import { m } from '~/paraglide/messages.js'
@@ -104,7 +104,7 @@ function Segment({ active, label, onClick, children }: { active?: boolean; label
 }
 
 function RecordPanel() {
-	const { recording, recordElapsed, preference, live } = useSession()
+	const { recording, recordElapsed, recordPaused, toggleRecordPause, preference, live } = useSession()
 
 	useEffect(() => {
 		// The recording hook loads audio devices for this tab only.
@@ -113,16 +113,26 @@ function RecordPanel() {
 
 	if (recording.isRecording) {
 		return (
-			<div className="flex flex-col items-center gap-4 py-2.5">
-				<div className="flex items-center gap-3">
+			<div className="flex min-h-0 flex-1 flex-col items-center gap-4 py-2.5">
+				<div className={cn('flex items-center gap-3', recordPaused && 'opacity-50')}>
 					<LevelMeter />
 					<span className="font-mono text-2xl tracking-tight tabular-nums">{formatElapsed(recordElapsed)}</span>
 				</div>
-				<LiveTranscript live={live} />
-				<Button onClick={() => recording.stopRecord()} disabled={recording.isFinishing} className="h-10 w-full rounded-xl disabled:opacity-60">
-					{recording.isFinishing ? <Spinner className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5 fill-current" />}
-					{recording.isFinishing ? m.finishingRecording() : m.stopRecording()}
-				</Button>
+				<LiveTranscript live={live} paused={recordPaused} />
+				<div className="flex w-full shrink-0 gap-2">
+					<Button
+						variant="outline"
+						onClick={() => void toggleRecordPause()}
+						disabled={recording.isFinishing}
+						className="h-10 flex-1 rounded-xl disabled:opacity-60">
+						{recordPaused ? <Play className="h-3.5 w-3.5 fill-current" /> : <Pause className="h-3.5 w-3.5 fill-current" />}
+						{recordPaused ? m.resumeRecording() : m.pauseRecording()}
+					</Button>
+					<Button onClick={() => recording.stopRecord()} disabled={recording.isFinishing} className="h-10 flex-1 rounded-xl disabled:opacity-60">
+						{recording.isFinishing ? <Spinner className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5 fill-current" />}
+						{recording.isFinishing ? m.finishingRecording() : m.stopRecording()}
+					</Button>
+				</div>
 			</div>
 		)
 	}
@@ -321,7 +331,9 @@ function LinkPanel() {
 }
 
 export default function IdleHero() {
-	const { dragging, browse, collectingFolder, panel, setPanel, link, recording } = useSession()
+	const { dragging, browse, collectingFolder, panel: chosenPanel, setPanel, link, recording } = useSession()
+	// A running recording owns this screen, whatever was clicked since ("new transcription" included).
+	const panel = recording.isRecording ? 'record' : chosenPanel
 
 	function selectPanel(next: IdlePanel) {
 		if (recording.isRecording || next === panel) return
@@ -332,7 +344,12 @@ export default function IdleHero() {
 	return (
 		// One optical column: pills, active source and quiet row all span max-w-xl with a 20px rhythm.
 		// The extra bottom padding lifts the column above the true centre — optically centred reads better.
-		<div className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-5 px-6 pt-4 pb-[30vh]">
+		// While recording, the transcript takes the window: it is read and copied from for hours.
+		<div
+			className={cn(
+				'mx-auto flex min-h-0 w-full flex-1 flex-col gap-5 px-6 pt-4',
+				recording.isRecording ? 'max-w-5xl pb-6' : 'max-w-xl justify-center pb-[30vh]',
+			)}>
 			{/* Joined source switcher: one control, three keys; the active source replaces the drop area. */}
 			<div className="mx-auto inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 p-1">
 				<Segment active={panel === 'none'} label={m.fromFile()} onClick={() => selectPanel('none')}>
@@ -347,7 +364,7 @@ export default function IdleHero() {
 			</div>
 
 			{/* Fixed-height slot sized to the drop zone so switching sources never moves the pills or the quiet row. */}
-			<div className="flex min-h-[220px] w-full flex-col justify-center">
+			<div className={cn('flex min-h-[220px] w-full flex-col justify-center', recording.isRecording && 'min-h-0 flex-1')}>
 				<AnimatePresence mode="wait" initial={false}>
 					{panel === 'none' ? (
 						<motion.button
@@ -388,7 +405,10 @@ export default function IdleHero() {
 							exit={{ opacity: 0, y: -6 }}
 							transition={{ duration: 0.18, ease: 'easeOut' }}
 							// Same footprint as the drop zone so the composition stays anchored.
-							className="flex min-h-[220px] w-full flex-col justify-center rounded-[1.25rem] border border-border bg-muted/30 px-7">
+							className={cn(
+								'flex min-h-[220px] w-full flex-col justify-center rounded-[1.25rem] border border-border bg-muted/30 px-7',
+								recording.isRecording && 'min-h-0 flex-1 py-4',
+							)}>
 							{panel === 'record' ? <RecordPanel /> : <LinkPanel />}
 						</motion.div>
 					)}

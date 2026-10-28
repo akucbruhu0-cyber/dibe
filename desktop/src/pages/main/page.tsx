@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { Mic } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { m } from '~/paraglide/messages.js'
 import Layout, { SIDEBAR_STORAGE_KEY, TOGGLE_SIDEBAR_EVENT } from '~/components/layout'
@@ -38,13 +39,40 @@ function useSidebarVisible() {
 	return visible
 }
 
+/**
+ * Shown over any other screen while a recording runs (just under its toolbar), so its live transcript
+ * is one click away. The recording and its transcription never stop for a change of screen; only
+ * their view is hidden.
+ */
+function BackToLive() {
+	const { recording, recordElapsed, showLive } = useSession()
+	const minutes = Math.floor(recordElapsed / 60)
+	const elapsed = `${String(minutes).padStart(2, '0')}:${String(recordElapsed % 60).padStart(2, '0')}`
+	return (
+		<button
+			type="button"
+			onClick={showLive}
+			disabled={recording.isFinishing}
+			className="absolute inset-x-0 top-16 z-20 mx-auto flex w-fit cursor-pointer items-center gap-2 rounded-full border border-border bg-card/95 px-3.5 py-1.5 text-[13px] font-medium text-foreground shadow-md backdrop-blur hover:bg-muted">
+			<span aria-hidden className="h-2 w-2 rounded-full bg-red-500" />
+			<Mic aria-hidden className="h-3.5 w-3.5 text-muted-foreground" />
+			{m.backToLive()}
+			<bdi dir="ltr" className="font-mono text-[12px] tabular-nums text-muted-foreground">
+				{elapsed}
+			</bdi>
+		</button>
+	)
+}
+
 function MainContent() {
-	const { mode, dragging } = useSession()
+	const { mode, dragging, recording, liveInFront } = useSession()
+	const liveShown = mode === 'idle' || (recording.isRecording && liveInFront)
 
 	return (
 		<div className="relative flex h-full min-h-0 w-full min-w-0 flex-col">
+			{recording.isRecording && !liveShown && <BackToLive />}
 			<AnimatePresence mode="wait" initial={false}>
-				{mode === 'idle' ? (
+				{liveShown ? (
 					<motion.div
 						key="idle"
 						exit={{ opacity: 0, y: -8 }}

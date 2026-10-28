@@ -100,10 +100,38 @@ function ViewOptions({ options }: { options: TranscriptViewOptions }) {
 }
 
 /**
+ * Transcript or summary, always in view once a summary exists (or is being written): the two are
+ * read side by side often enough that the switch must not hide in a menu.
+ */
+function ViewTabs({ job, tab, setTab }: { job: Job | null; tab: TranscriptTab; setTab: (tab: TranscriptTab) => void }) {
+	const { summaries } = useSession()
+	const summarizing = job ? Boolean(summaries.pending[job.id]) : false
+	if (!job?.summary && !summarizing) return null
+	return (
+		<div role="tablist" className="me-1 inline-flex items-center gap-0.5 rounded-full border border-border bg-muted/50 p-0.5">
+			{(['transcript', 'summary'] as const).map((value) => (
+				<button
+					key={value}
+					type="button"
+					role="tab"
+					aria-selected={tab === value}
+					onClick={() => setTab(value)}
+					className={cn(
+						'cursor-pointer rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors duration-150',
+						tab === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+					)}>
+					{value === 'transcript' ? m.segmentsTab() : m.summaryTab()}
+				</button>
+			))}
+		</div>
+	)
+}
+
+/**
  * Everything the AI step can do for the open transcript, behind one icon — same popover grammar as
  * the view options, so the toolbar keeps its shape whether or not a summary exists.
  */
-function SummaryMenu({ job, tab, setTab }: { job: Job | null; tab: TranscriptTab; setTab: (tab: TranscriptTab) => void }) {
+function SummaryMenu({ job }: { job: Job | null }) {
 	const { summaries } = useSession()
 	const [open, setOpen] = useState(false)
 	const [promptOpen, setPromptOpen] = useState(false)
@@ -113,19 +141,10 @@ function SummaryMenu({ job, tab, setTab }: { job: Job | null; tab: TranscriptTab
 	const hasSummary = Boolean(job?.summary)
 	const hasText = (job?.segments.length ?? 0) > 0
 	const canSummarize = summaries.enabled && hasText && job?.status !== 'running'
-	const actionLabel =
-		!canSummarize && hasSummary
-			? m.summaryTab()
-			: summarizing
-				? m.summarizeLoading()
-				: summaryError
-					? m.retrySummary()
-					: hasSummary
-						? m.regenerateSummary()
-						: m.summarizeTranscript()
+	const actionLabel = summarizing ? m.summarizeLoading() : summaryError ? m.retrySummary() : hasSummary ? m.regenerateSummary() : m.summarizeTranscript()
 
-	// Nothing to offer: the feature is off in settings and this transcript has no summary either.
-	if (!canSummarize && !hasSummary) return null
+	// Nothing to offer: the feature is off in settings (a summary there is reached by its tab).
+	if (!canSummarize) return null
 
 	function run(prompt?: string) {
 		setOpen(false)
@@ -150,24 +169,7 @@ function SummaryMenu({ job, tab, setTab }: { job: Job | null; tab: TranscriptTab
 					<p className="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{m.aiSection()}</p>
 
 					<div className="space-y-3">
-						{hasSummary && (
-							<div className="inline-flex w-full items-center gap-1 rounded-full border border-border bg-muted/50 p-1">
-								{(['transcript', 'summary'] as const).map((value) => (
-									<button
-										key={value}
-										type="button"
-										onClick={() => setTab(value)}
-										className={cn(
-											'flex-1 cursor-pointer rounded-full py-1 text-[12px] font-medium transition-colors duration-150',
-											tab === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-										)}>
-										{value === 'transcript' ? m.segmentsTab() : m.summaryTab()}
-									</button>
-								))}
-							</div>
-						)}
-
-						<div className={cn('space-y-0.5', hasSummary && 'border-t border-border pt-2')}>
+						<div className="space-y-0.5">
 							{canSummarize && (
 								<button
 									type="button"
@@ -310,6 +312,7 @@ export default function TranscriptToolbar({
 							exit={{ opacity: 0, y: -4 }}
 							transition={{ duration: 0.15, ease: 'easeOut' }}
 							className="flex w-full items-center gap-1">
+							<ViewTabs job={job} tab={tab} setTab={setTab} />
 							{queue.jobs.length > 1 ? (
 								/* A batch: the same word, with everything that writes files behind it. */
 								<DropdownMenu>
@@ -361,7 +364,7 @@ export default function TranscriptToolbar({
 								<Search className="h-3.5 w-3.5" />
 							</Button>
 
-							<SummaryMenu job={job} tab={tab} setTab={setTab} />
+							<SummaryMenu job={job} />
 
 							<ViewOptions options={options} />
 

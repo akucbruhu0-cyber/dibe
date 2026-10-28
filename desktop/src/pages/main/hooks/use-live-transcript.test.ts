@@ -3,7 +3,16 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { rememberNormalSession } from '~/lib/recording-session'
-import { liveReducer, useLiveTranscript, waitForLiveIdle, type LiveState, type LiveStatus, type LiveUpdate } from './use-live-transcript'
+import {
+	applyLiveEdits,
+	liveReducer,
+	takeLiveEdits,
+	useLiveTranscript,
+	waitForLiveIdle,
+	type LiveState,
+	type LiveStatus,
+	type LiveUpdate,
+} from './use-live-transcript'
 
 const mocks = vi.hoisted(() => ({
 	listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -156,6 +165,45 @@ describe('useLiveTranscript', () => {
 		expect(result.current.retrying).toBe(true)
 		act(() => vi.advanceTimersByTime(5000))
 		expect(result.current.retrying).toBe(false)
+	})
+})
+
+describe('live edits', () => {
+	const said = [
+		{ start: 0, stop: 100, text: 'שלום לכולם' },
+		{ start: 100, stop: 200, text: 'אני מתחיל' },
+		{ start: 200, stop: 300, text: 'עוד משפט' },
+	]
+
+	it('puts each edit on the line it was made on, and drops a line emptied by hand', () => {
+		const edits = new Map([
+			[0, { start: 0, text: 'שלום לכולן' }],
+			[2, { start: 200, text: '  ' }],
+		])
+
+		expect(applyLiveEdits(said, edits)).toEqual([
+			{ start: 0, stop: 100, text: 'שלום לכולן' },
+			{ start: 100, stop: 200, text: 'אני מתחיל' },
+		])
+	})
+
+	it('leaves a line alone when it is not the one that was edited', () => {
+		// The screen missed a final, so its line 1 is the backend's line 2: never edit the wrong one.
+		const edits = new Map([[1, { start: 200, text: 'שונה' }]])
+
+		expect(applyLiveEdits(said, edits)).toEqual(said)
+	})
+
+	it('keeps the edits of a session past its end, for the project, once', async () => {
+		const { result } = await mounted()
+		act(() => rememberNormalSession('s9'))
+		emit('live_update', update([final('אחת', 0)], 's9'))
+
+		act(() => result.current.edit(0, 'אחד'))
+		emit('record_finish', { sessionId: 's9', origin: 'manual' })
+
+		expect(takeLiveEdits('s9').get(0)).toEqual({ start: 0, text: 'אחד' })
+		expect(takeLiveEdits('s9').size).toBe(0)
 	})
 })
 

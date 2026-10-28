@@ -73,7 +73,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 	readDir: async () => [],
 }))
 
-import { readTranscript, renameTranscript, resolveProjectAudio, saveTranscript } from './transcripts-store'
+import { deleteProjectAudio, readTranscript, renameTranscript, resolveProjectAudio, saveTranscript, updateTranscriptSummary } from './transcripts-store'
 
 const createdAt = new Date(2026, 7, 26, 10, 20, 30)
 const segments = [{ start: 0, stop: 100, text: 'Hello' }]
@@ -245,5 +245,42 @@ describe('project media ownership', () => {
 		expect(await renameTranscript(saved!.recordPath, 'Broken')).toBeNull()
 		expect(await readTranscript(saved!.recordPath)).not.toBeNull()
 		expect(disk.directories.has('/media/projects/Broken-20260826-102030')).toBe(false)
+	})
+})
+
+describe('deleteProjectAudio', () => {
+	it('deletes a recording and keeps its transcript and summary', async () => {
+		disk.files.set('/temp/meeting.wav', new Uint8Array([1, 2, 3]))
+		const saved = await saveTranscript({
+			name: 'Record-meeting',
+			sourcePath: '/temp/meeting.wav',
+			projectsPath: '/media/projects',
+			moveSourceMedia: true,
+			createdAt,
+			segments,
+		})
+		await updateTranscriptSummary(saved!.recordPath, 'סיכום')
+
+		expect(await deleteProjectAudio(saved!.recordPath)).toBe(true)
+
+		expect(disk.files.has(saved!.mediaPath)).toBe(false)
+		const record = await readTranscript(saved!.recordPath)
+		expect(record?.segments).toEqual(segments)
+		expect(record?.summary).toBe('סיכום')
+		// Nothing points at the deleted file any more.
+		expect(record?.audioFile).toBeUndefined()
+		expect(record?.sourcePath).toBe('')
+		expect(await resolveProjectAudio(saved!.recordPath, record!)).toBeNull()
+	})
+
+	it('deletes only the project copy of an imported file, never the original', async () => {
+		disk.files.set('/user/interview.m4a', new Uint8Array([4, 5, 6]))
+		const saved = await saveTranscript({ name: 'File-interview', sourcePath: '/user/interview.m4a', projectsPath: '/media/projects', createdAt, segments })
+
+		expect(await deleteProjectAudio(saved!.recordPath)).toBe(true)
+
+		expect(disk.files.has(saved!.mediaPath)).toBe(false)
+		expect(disk.files.has('/user/interview.m4a')).toBe(true)
+		expect((await readTranscript(saved!.recordPath))?.sourcePath).toBe('/user/interview.m4a')
 	})
 })

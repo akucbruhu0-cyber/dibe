@@ -137,6 +137,8 @@ export interface Preference {
 	setAutoTranscribeAfterRecording: ModifyState<boolean>
 	/** Show the transcript while recording. Dictation never does. */
 	liveTranscription: boolean
+	livePartials: boolean
+	setLivePartials: (value: boolean) => void
 	setLiveTranscription: ModifyState<boolean>
 	afterRecording: AfterRecording
 	setAfterRecording: ModifyState<AfterRecording>
@@ -278,6 +280,7 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 	const [meetingDetectionEnabled, setMeetingDetectionEnabled] = usePersisted<boolean>(CONFIG_KEYS.meetingDetectionEnabled, false)
 	const [autoTranscribeAfterRecording, setAutoTranscribeAfterRecording] = usePersisted<boolean>(CONFIG_KEYS.autoTranscribeAfterRecording, false)
 	const [liveTranscription, setLiveTranscription] = usePersisted<boolean>(CONFIG_KEYS.liveTranscription, true)
+	const [livePartials, setLivePartials] = usePersisted<boolean>(CONFIG_KEYS.livePartials, true)
 	const [afterRecording, setAfterRecording] = usePersisted<AfterRecording>(CONFIG_KEYS.afterRecording, 'keep')
 
 	/**
@@ -455,6 +458,8 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 		setAutoTranscribeAfterRecording,
 		liveTranscription,
 		setLiveTranscription,
+		livePartials,
+		setLivePartials,
 		afterRecording,
 		setAfterRecording,
 	}

@@ -171,6 +171,11 @@ export function RecordingSection() {
 					/>
 				</SettingsRow>
 				{preference.liveTranscription && (
+					<SettingsRow label={m.livePartialsSetting()} description={m.livePartialsSettingInfo()}>
+						<Switch checked={preference.livePartials} onCheckedChange={preference.setLivePartials} aria-label={m.livePartialsSetting()} />
+					</SettingsRow>
+				)}
+				{preference.liveTranscription && (
 					<SettingsRow label={m.afterRecording()} description={m.afterRecordingInfo()}>
 						<Select value={preference.afterRecording} onValueChange={(value: AfterRecording) => preference.setAfterRecording(value)}>
 							<SelectTrigger className={`w-56 ${rowControlClass}`} aria-label={m.afterRecording()}>
