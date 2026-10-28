@@ -43,9 +43,23 @@ DIBE is a fork of [Vibe](https://github.com/thewh1teagle/vibe) by [thewh1teagle]
 
 DIBE is developed and tested on **macOS (Apple Silicon)**. The code still builds for Windows and Linux like Vibe's, but those builds are untested in this fork.
 
-## Install
+## Download
 
-There are no signed releases yet. Build it yourself — see [docs/BUILDING.md](docs/BUILDING.md); the short version for macOS:
+1. Download `DIBE-<version>-macos-arm64.zip` from the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) (Apple Silicon Macs).
+2. Unzip it and drag `DIBE.app` into `/Applications`.
+3. DIBE is not notarized by Apple, so macOS blocks the first launch. Allow it once in **System Settings → Privacy & Security → Open Anyway**, or run:
+
+   ```console
+   xattr -dr com.apple.quarantine /Applications/DIBE.app
+   ```
+
+4. Open DIBE, pick a model to download, and allow the microphone when asked.
+
+Already using Vibe? DIBE copies your Vibe models, settings and projects on its first launch; Vibe keeps working unchanged.
+
+## Build from source
+
+See [docs/BUILDING.md](docs/BUILDING.md); the short version for macOS:
 
 ```console
 pnpm install
@@ -60,7 +74,7 @@ The app lands in `target/release/bundle/macos/DIBE.app`. It is unsigned: sign it
 codesign --force --deep --sign - --entitlements desktop/src-tauri/entitlements.plist target/release/bundle/macos/DIBE.app
 ```
 
-DIBE never updates itself; pull and rebuild to update.
+DIBE never updates itself: download the new release, or pull and rebuild.
 
 ## Privacy
 
