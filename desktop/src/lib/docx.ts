@@ -1,5 +1,6 @@
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx'
+import { AlignmentType, BorderStyle, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx'
 import { formatDuration } from '~/components/html-view'
+import { parseMarkdown, type Run } from './markdown-blocks'
 import { speakerName, type Segment, type SpeakerNames } from './transcript'
 
 export interface DocxExportOptions {
@@ -29,10 +30,77 @@ const INK = '1A1C1F'
 const MUTED = '6E6E6E'
 const ACCENT = '1D4ED8'
 
+/** The summary's own headings, largest first, all smaller than the section heading above them. */
+const SUMMARY_HEADINGS = [
+	{ level: HeadingLevel.HEADING_2, size: 26 },
+	{ level: HeadingLevel.HEADING_3, size: 24 },
+	{ level: HeadingLevel.HEADING_4, size: 22 },
+]
+/** Twips per list level, and the room its bullet or number hangs in. */
+const LIST_INDENT = 360
+
 /** Twips: 20 per point, so a line of 1.15 at 11pt is 276. */
 const LINE = 276
 const PARAGRAPH_GAP = 200
 const SECTION_GAP = 360
+
+/**
+ * An AI summary (Markdown) as Word paragraphs: real headings, bold and italic runs, lists, quotes and
+ * rules, instead of the `###`, `**` and `---` the text is written with.
+ */
+function summaryParagraphs(summary: string, isRtl: boolean) {
+	const alignment = isRtl ? AlignmentType.RIGHT : AlignmentType.LEFT
+	const runs = (items: Run[], extra: { size?: number; bold?: boolean; italics?: boolean; color?: string } = {}) =>
+		items.map(
+			(run) =>
+				new TextRun({
+					text: run.text,
+					bold: extra.bold || run.bold,
+					italics: extra.italics || run.italic,
+					size: extra.size ?? BODY_SIZE,
+					color: extra.color ?? INK,
+					rightToLeft: isRtl,
+					...(run.code ? { font: 'Courier New' } : {}),
+				}),
+		)
+	return parseMarkdown(summary).map((block) => {
+		const base = { alignment, bidirectional: isRtl, spacing: { line: LINE, after: PARAGRAPH_GAP } }
+		switch (block.type) {
+			case 'heading': {
+				const heading = SUMMARY_HEADINGS[Math.min(block.rank, SUMMARY_HEADINGS.length - 1)]
+				return new Paragraph({
+					...base,
+					heading: heading.level,
+					spacing: { before: 280, after: 100 },
+					keepNext: true,
+					children: runs(block.runs, { bold: true, size: heading.size }),
+				})
+			}
+			case 'rule':
+				return new Paragraph({
+					...base,
+					spacing: { after: PARAGRAPH_GAP },
+					border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'C8C8C8', space: 1 } },
+					children: [],
+				})
+			case 'quote':
+				return new Paragraph({ ...base, indent: { start: LIST_INDENT }, children: runs(block.runs, { italics: true, color: MUTED }) })
+			case 'bullet':
+			case 'number': {
+				// The marker hangs in the indent, so wrapped lines line up under the text, not under it.
+				const marker = block.type === 'bullet' ? '•' : block.marker
+				return new Paragraph({
+					...base,
+					spacing: { line: LINE, after: 80 },
+					indent: { start: LIST_INDENT * (block.depth + 1), hanging: LIST_INDENT },
+					children: [new TextRun({ text: `${marker}\t`, size: BODY_SIZE, color: INK, rightToLeft: isRtl }), ...runs(block.runs)],
+				})
+			}
+			default:
+				return new Paragraph({ ...base, children: runs(block.runs) })
+		}
+	})
+}
 
 export async function toDocx(title: string, segments: Segment[], direction: 'rtl' | 'ltr', speakerLabel: string = 'Speaker', options: DocxExportOptions = {}) {
 	const isRtl = direction === 'rtl'
@@ -113,14 +181,7 @@ export async function toDocx(title: string, segments: Segment[], direction: 'rtl
 					}),
 					...(includeTranscript ? [...(content === 'both' ? [heading(options.transcriptLabel ?? 'Transcript')] : []), ...paragraphs] : []),
 					...(includeSummary
-						? [
-								...(content === 'both' ? [heading(options.summaryLabel ?? 'Summary')] : []),
-								...(options.summary ?? '')
-									.split(/\n{2,}/)
-									.map((paragraph) => paragraph.trim())
-									.filter(Boolean)
-									.map(body),
-							]
+						? [...(content === 'both' ? [heading(options.summaryLabel ?? 'Summary')] : []), ...summaryParagraphs(options.summary ?? '', isRtl)]
 						: []),
 				],
 			},

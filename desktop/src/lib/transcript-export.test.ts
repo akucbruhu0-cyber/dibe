@@ -93,6 +93,25 @@ describe('serializeTranscriptExport', () => {
 		expect(html).not.toContain('<script>alert(1)</script>')
 	})
 
+	it('draws an AI summary’s Markdown in each format’s own terms', () => {
+		const markdown = '### Key points\n\n- **Decision:** ship it\n- Next step\n\n---\n\nThanks *all*.'
+
+		// Plain text: the words, with bullets, and no marks left.
+		expect(serialize('normal', { content: 'summary' }, markdown)).toBe('Key points\n\n• Decision: ship it\n• Next step\n\nThanks all.')
+		// A blank line would end a subtitle note, so the note keeps one line per paragraph.
+		expect(serialize('srt', { content: 'summary' }, markdown)).toBe('NOTE Summary\nKey points\n• Decision: ship it\n• Next step\nThanks all.')
+
+		// HTML: real elements, the summary's headings under the page's "Summary".
+		const html = serialize('html', { content: 'both' }, markdown)
+		expect(html).toContain('<h3>Key points</h3>')
+		expect(html).toContain('<ul><li><strong>Decision:</strong> ship it</li><li>Next step</li></ul>')
+		expect(html).toContain('<hr>')
+		expect(serialize('html', { content: 'summary' }, markdown)).toContain('<h2>Key points</h2>')
+
+		// Markdown stays Markdown.
+		expect(serialize('md', { content: 'summary' }, markdown)).toContain('- **Decision:** ship it')
+	})
+
 	it('includes only selected JSON fields and converts timing to seconds', () => {
 		const json = JSON.parse(serialize('json', { content: 'both', showTimestamps: true, showSpeakers: false }))
 		expect(json).toEqual({

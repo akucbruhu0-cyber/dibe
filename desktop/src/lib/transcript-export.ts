@@ -1,4 +1,5 @@
 import type { TextFormat } from '~/components/format-select'
+import { markdownToHtml, markdownToText } from '~/lib/markdown-blocks'
 import { formatTimestamp, speakerName, type Segment, type SpeakerNames } from '~/lib/transcript'
 
 export type TranscriptExportContent = 'transcript' | 'summary' | 'both'
@@ -49,7 +50,14 @@ function sectioned(transcript: string, summary: string, options: TranscriptExpor
 	return `${heading('Transcript')}\n\n${transcript}\n\n${heading('Summary')}\n\n${summary}`
 }
 
+/** A summary in a subtitle file: plain, and without the blank lines that would end its note. */
+function subtitleNote(summary: string) {
+	return `NOTE Summary\n${markdownToText(summary).replace(/\n{2,}/g, '\n')}`
+}
+
+/** The AI writes summaries in Markdown; plain text gets its words, not its marks. */
 function serializeText(segments: Segment[], summary: string, options: TranscriptExportOptions) {
+	summary = markdownToText(summary)
 	const transcript = segments
 		.map((segment) => {
 			const metadata = segmentMetadata(segment, options)
@@ -79,7 +87,7 @@ function serializeSrt(segments: Segment[], summary: string, options: TranscriptE
 	const cues = includesTranscript(options.content)
 		? segments.map((segment, index) => `${index + 1}\n${timestamp(segment.start, segment.stop, ',', true)}\n${subtitleText(segment, options)}`).join('\n\n')
 		: ''
-	const summaryBlock = includesSummary(options.content) ? `NOTE Summary\n${summary}` : ''
+	const summaryBlock = includesSummary(options.content) ? subtitleNote(summary) : ''
 	return [cues, summaryBlock].filter(Boolean).join('\n\n')
 }
 
@@ -87,7 +95,7 @@ function serializeVtt(segments: Segment[], summary: string, options: TranscriptE
 	const cues = includesTranscript(options.content)
 		? segments.map((segment) => `${timestamp(segment.start, segment.stop)}\n${subtitleText(segment, options)}`).join('\n\n')
 		: ''
-	const summaryBlock = includesSummary(options.content) ? `NOTE Summary\n${summary}` : ''
+	const summaryBlock = includesSummary(options.content) ? subtitleNote(summary) : ''
 	return `WEBVTT\n\n${[cues, summaryBlock].filter(Boolean).join('\n\n')}`
 }
 
@@ -115,7 +123,9 @@ function serializeHtml(segments: Segment[], summary: string, options: Transcript
 		sections.push(`<section class="transcript">${options.content === 'both' ? '<h2>Transcript</h2>' : ''}${transcript}</section>`)
 	}
 	if (includesSummary(options.content)) {
-		sections.push(`<section class="summary">${options.content === 'both' ? '<h2>Summary</h2>' : ''}<p>${htmlText(summary)}</p></section>`)
+		// Under the page's own "Summary" heading when there is one, so the levels stay in order.
+		const both = options.content === 'both'
+		sections.push(`<section class="summary">${both ? '<h2>Summary</h2>' : ''}${markdownToHtml(summary, both ? 3 : 2)}</section>`)
 	}
 	const title = options.title.trim()
 	return [
@@ -125,7 +135,7 @@ function serializeHtml(segments: Segment[], summary: string, options: Transcript
 		'<meta charset="utf-8">',
 		`<meta name="color-scheme" content="${dark ? 'dark' : 'light'}">`,
 		`<title>${escapeHtml(title)}</title>`,
-		`<style>:root{color-scheme:${dark ? 'dark' : 'light'}}html,body{min-height:100%;margin:0;background:${palette.background};color:${palette.foreground}}.html{box-sizing:border-box;min-height:100vh;font-family:Roboto,Arial,sans-serif;max-width:1000px;margin:auto;padding:22px;line-height:1.5;background:${palette.background};color:${palette.foreground}}.html h1{text-align:center;color:${palette.primary}}.html h2{border-bottom:1px solid ${palette.border};padding-bottom:.35rem}.html .segment{margin-top:18px}.html .metadata{font-size:.8rem;font-weight:600;color:${palette.muted}}.html .segment p,.html .summary p{white-space:normal}</style>`,
+		`<style>:root{color-scheme:${dark ? 'dark' : 'light'}}html,body{min-height:100%;margin:0;background:${palette.background};color:${palette.foreground}}.html{box-sizing:border-box;min-height:100vh;font-family:Roboto,Arial,sans-serif;max-width:1000px;margin:auto;padding:22px;line-height:1.5;background:${palette.background};color:${palette.foreground}}.html h1{text-align:center;color:${palette.primary}}.html h2{border-bottom:1px solid ${palette.border};padding-bottom:.35rem}.html .segment{margin-top:18px}.html .metadata{font-size:.8rem;font-weight:600;color:${palette.muted}}.html .segment p,.html .summary p{white-space:normal}.html .summary hr{border:0;border-top:1px solid ${palette.border};margin:1.25rem 0}.html .summary blockquote{margin:0;padding-inline-start:1rem;border-inline-start:3px solid ${palette.border};color:${palette.muted}}.html .summary ul,.html .summary ol{padding-inline-start:1.5rem}</style>`,
 		'</head>',
 		'<body>',
 		`<main class="html printable" dir="${options.direction}">`,

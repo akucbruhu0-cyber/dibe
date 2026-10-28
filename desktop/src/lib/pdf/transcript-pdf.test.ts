@@ -37,7 +37,7 @@ function options(direction: 'rtl' | 'ltr'): TranscriptExportOptions {
 	}
 }
 
-async function renderPdf(segments: Segment[], direction: 'rtl' | 'ltr') {
+async function renderPdf(segments: Segment[], direction: 'rtl' | 'ltr', summary = '') {
 	const { Font, renderToBuffer } = await import('@react-pdf/renderer')
 	Font.register({
 		family: PDF_FONT,
@@ -48,8 +48,8 @@ async function renderPdf(segments: Segment[], direction: 'rtl' | 'ltr') {
 	})
 	const document = createElement(TranscriptDocument, {
 		segments,
-		summary: '',
-		options: options(direction),
+		summary,
+		options: { ...options(direction), content: summary ? 'both' : 'transcript' },
 		labels: { transcript: 'Transcript', summary: 'Summary' },
 	}) as Parameters<typeof renderToBuffer>[0]
 	return renderToBuffer(document)
@@ -104,6 +104,18 @@ describe('transcript pdf', () => {
 	it('leaves a left-to-right document alone', async () => {
 		const text = await extractText(await renderPdf(ENGLISH, 'ltr'))
 		expect(readsInOrder(text, ENGLISH[0].text)).toBe(true)
+	}, 30_000)
+
+	it('draws the summary’s Markdown as formatting, not as marks', async () => {
+		const summary = '### סקירה ממצה\n\nהדיון עוסק **במתודולוגיות** של מחקר.\n\n---\n\n- **מעבר לשון:** תהליך רציף\n1. ראשון'
+		const text = await extractText(await renderPdf(HEBREW, 'rtl', summary))
+
+		expect(text).not.toMatch(/###|\*\*|---/)
+		// pdf.js gives each bold or plain run on its own, left to right on the page; so a line read
+		// right to left is its runs backwards. The period must stay with the last words.
+		expect(text).toContain('של מחקר. במתודולוגיות הדיון עוסק')
+		expect(text).toContain('סקירה ממצה')
+		expect(text).toContain('•')
 	}, 30_000)
 
 	it('keeps the fonts embedded, so the text is real rather than an image', async () => {

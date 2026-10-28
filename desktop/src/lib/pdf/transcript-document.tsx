@@ -1,4 +1,5 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
+import { parseMarkdown, type Run } from '~/lib/markdown-blocks'
 import type { Segment } from '~/lib/transcript'
 import { includesSummary, includesTranscript, segmentMetadata, type TranscriptExportOptions } from '~/lib/transcript-export'
 
@@ -24,6 +25,12 @@ function sheet(palette: Palette, direction: 'rtl' | 'ltr') {
 		// takes "-->" for a neutral inside a right-to-left line and flips it. Only the alignment follows.
 		metadata: { fontSize: 9, fontWeight: 700, color: palette.muted, textAlign: align, direction: 'ltr' as const, marginBottom: 3 },
 		body: { fontSize: 11, lineHeight: 1.45, color: palette.ink, textAlign: align, direction },
+		// The summary's own headings, largest first, all below the section heading above them.
+		summaryHeading: { fontWeight: 700, color: palette.ink, textAlign: align, direction, marginTop: 14 },
+		listItem: { flexDirection: direction === 'rtl' ? 'row-reverse' : 'row', marginTop: 4 },
+		marker: { width: 16, fontSize: 11, lineHeight: 1.45, color: palette.muted, textAlign: align },
+		quote: { fontSize: 11, lineHeight: 1.45, color: palette.muted, textAlign: align, direction, marginTop: 10, paddingHorizontal: 10 },
+		rule: { borderBottomWidth: 1, borderBottomColor: palette.muted, opacity: 0.4, marginVertical: 12 },
 		// The footer would inherit the page's direction and print "31 / 7"; it stays left to right.
 		footer: { position: 'absolute', bottom: 24, left: 52, right: 52, textAlign: 'center', fontSize: 9, color: palette.muted, direction: 'ltr' },
 	})
@@ -35,6 +42,64 @@ function sheet(palette: Palette, direction: 'rtl' | 'ltr') {
  */
 function plain(text: string) {
 	return text.replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+}
+
+const SUMMARY_HEADING_SIZES = [14, 12.5, 11.5]
+
+/**
+ * Bold runs in bold; italics and code read as plain text: the bundled font has no italic face. Each
+ * run carries the direction too: without it react-pdf resolves a run on its own, and a sentence's
+ * final period lands at the wrong end of a right-to-left line.
+ */
+function RunsText({ runs, direction }: { runs: Run[]; direction: 'rtl' | 'ltr' }) {
+	return runs.map((run, index) => (
+		<Text key={index} style={{ fontWeight: run.bold ? 700 : 400, direction }}>
+			{plain(run.text)}
+		</Text>
+	))
+}
+
+/** An AI summary (Markdown) as headings, paragraphs, lists, quotes and rules. */
+function SummaryBlocks({ summary, styles, direction }: { summary: string; styles: ReturnType<typeof sheet>; direction: 'rtl' | 'ltr' }) {
+	const indent = direction === 'rtl' ? 'paddingRight' : 'paddingLeft'
+	return parseMarkdown(summary).map((block, index) => {
+		switch (block.type) {
+			case 'heading':
+				return (
+					<Text
+						key={index}
+						style={[styles.summaryHeading, { fontSize: SUMMARY_HEADING_SIZES[Math.min(block.rank, SUMMARY_HEADING_SIZES.length - 1)] }]}>
+						<RunsText runs={block.runs} direction={direction} />
+					</Text>
+				)
+			case 'rule':
+				return <View key={index} style={styles.rule} />
+			case 'quote':
+				return (
+					<Text key={index} style={styles.quote}>
+						<RunsText runs={block.runs} direction={direction} />
+					</Text>
+				)
+			case 'bullet':
+			case 'number':
+				return (
+					<View key={index} style={[styles.listItem, { [indent]: block.depth * 14 }]} wrap={false}>
+						<Text style={styles.marker}>{block.type === 'bullet' ? '•' : block.marker}</Text>
+						<Text style={[styles.body, { flex: 1 }]}>
+							<RunsText runs={block.runs} direction={direction} />
+						</Text>
+					</View>
+				)
+			default:
+				return (
+					<View key={index} style={styles.block}>
+						<Text style={styles.body}>
+							<RunsText runs={block.runs} direction={direction} />
+						</Text>
+					</View>
+				)
+		}
+	})
 }
 
 export interface TranscriptDocumentProps {
@@ -79,16 +144,7 @@ export function TranscriptDocument({ segments, summary, options, labels }: Trans
 					})}
 
 				{showSummary && both && <Text style={styles.heading}>{plain(labels.summary)}</Text>}
-				{showSummary &&
-					summary
-						.split(/\n{2,}/)
-						.map((paragraph) => paragraph.trim())
-						.filter(Boolean)
-						.map((paragraph, index) => (
-							<View key={index} style={styles.block}>
-								<Text style={styles.body}>{plain(paragraph)}</Text>
-							</View>
-						))}
+				{showSummary && <SummaryBlocks summary={summary} styles={styles} direction={options.direction} />}
 
 				<Text style={styles.footer} fixed render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
 			</Page>
