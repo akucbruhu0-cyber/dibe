@@ -15,7 +15,6 @@ require 1.6.0
 # so a green local run means the same commands ran.
 
 include handoff/handoff.chore
-include website/website.chore
 
 # The server release the app ships, a server-v* tag of this repository.
 server=$(read .server-version)
@@ -144,18 +143,22 @@ task build {
     pnpm exec tauri build
 }
 
-# Rebuild vibe.app, replace the installed one and relaunch it (macOS).
+# Rebuild DIBE.app with the engine built from this tree, replace the installed one and
+# relaunch it (macOS). It never touches /Applications/vibe.app: DIBE installs beside Vibe.
 task upgrade {
-    # The updater artifacts are skipped: signing them needs the CI private key.
     setup
+    # The released server predates live transcription and the API token.
+    server-build
     cd desktop
-    pnpm exec tauri build --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'
+    pnpm exec tauri build --bundles app
     cd $ROOT
-    try osascript -e 'quit app "vibe"'
-    remove /Applications/vibe.app
-    copy target/release/bundle/macos/vibe.app /Applications/vibe.app
-    open /Applications/vibe.app
-    echo "vibe upgraded and relaunched"
+    # Ad-hoc, with the entitlements, so macOS keeps the microphone permission across rebuilds.
+    codesign --force --deep --sign - --entitlements desktop/src-tauri/entitlements.plist target/release/bundle/macos/DIBE.app
+    try osascript -e 'quit app id "io.github.akucbruhu0-cyber.dibe"'
+    remove /Applications/DIBE.app
+    copy target/release/bundle/macos/DIBE.app /Applications/DIBE.app
+    open /Applications/DIBE.app
+    echo "DIBE upgraded and relaunched"
 }
 
 # Run the frontend tests.
@@ -198,7 +201,7 @@ task stamp-translations {
     uv run scripts/content_i18n.py stamp
 }
 
-# Type-check the desktop app and the website.
+# Type-check the desktop app.
 task check-types {
     pnpm check-types
 }

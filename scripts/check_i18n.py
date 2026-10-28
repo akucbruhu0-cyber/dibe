@@ -59,6 +59,8 @@ def compare_desktop_locales():
 
 def compare_website_locales():
 	directory = ROOT / "i18n/website"
+	if not directory.is_dir():  # DIBE ships no website
+		return
 	reference = directory / "en-US.json"
 	locales = sorted(path.stem for path in directory.glob("*.json"))
 	if "en-US" not in locales:
@@ -76,7 +78,8 @@ def compare_locale_registry():
 	registry_desktop = sorted(item["code"] for item in registry if item["desktop"])
 	registry_website = sorted(item["code"] for item in registry if item["website"])
 	desktop_config = sorted(read_json(ROOT / "desktop/project.inlang/settings.json")["locales"])
-	website_config = sorted(read_json(ROOT / "website/project.inlang/settings.json")["locales"])
+	website_settings = ROOT / "website/project.inlang/settings.json"
+	website_config = sorted(read_json(website_settings)["locales"]) if website_settings.is_file() else registry_website
 	if registry_desktop != desktop_config:
 		issues.append("locale registry: desktop Inlang locales differ from i18n/locales.json")
 	if registry_website != website_config:

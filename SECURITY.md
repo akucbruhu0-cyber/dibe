@@ -1,26 +1,19 @@
 # Security Policy
 
-## Reporting Security Issues
+## Reporting a vulnerability
 
-If you find a security issue in Vibe, please report it responsibly.  
-We take security reports seriously and will do my best to review and address valid issues.
+Please report security issues privately through GitHub's **Security → Report a vulnerability** on this repository. Do not open a public issue for a security report.
 
-The preferred way to report a vulnerability is via GitHub’s **Security Advisory – “Report a Vulnerability”** feature.
+Include what you found, how to reproduce it, and the DIBE version (Settings → About). I will reply with next steps.
 
-- Please do NOT open a public GitHub issue for security-related reports.
-- Include as much detail as possible so I can understand and reproduce the issue.
+If the problem is in code DIBE shares with [Vibe](https://github.com/thewh1teagle/vibe), please report it to Vibe as well. If it is in a third-party dependency, report it to that project's maintainers too.
 
-If you can’t use GitHub Security Advisories, you can also reach out to me directly via **Vibe’s Discord channel** (linked on the Vibe website) and send me a DM.  
-Please use this channel only for security-related matters.
+## Supported versions
 
-After the initial report, I’ll reply with next steps and may ask for more details if needed.
+Only the latest commit on `main` receives security fixes.
 
-## Supported Versions
+## Security-relevant design
 
-Security fixes are provided only for the latest released version of Vibe.
-
-## Third-Party Dependencies
-
-If the issue is in a third-party dependency, it’s usually best to report it directly to the maintainers of that project as well.
-
-Thanks for helping keep Vibe secure.
+- The local transcription API listens on `127.0.0.1` only, requires a bearer token generated at every server start, and rejects any request that carries a browser `Origin` header.
+- The token and port are written to `server.json` in the app data folder with owner-only permissions (`0600`) and removed when the server stops.
+- DIBE sends no analytics and performs no automatic updates.

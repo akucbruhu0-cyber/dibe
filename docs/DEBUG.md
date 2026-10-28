@@ -26,7 +26,7 @@ set RUST_LOG=vibe=debug,whisper_rs=debug
 <summary>macOS</summary>
 
 ```console
-RUST_LOG=vibe=debug,whisper_rs=debug RUST_BACKTRACE=1 /Applications/vibe.app/Contents/MacOS/vibe
+RUST_LOG=vibe=debug,whisper_rs=debug RUST_BACKTRACE=1 /Applications/DIBE.app/Contents/MacOS/dibe
 ```
 
 </details>

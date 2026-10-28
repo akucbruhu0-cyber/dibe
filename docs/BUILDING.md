@@ -48,8 +48,13 @@ pnpm exec tauri dev    # or: pnpm exec tauri build
 x86_64-pc-windows-msvc` — which is how the release workflow uses it. Without one
 it fetches for this machine.
 
-On macOS, `chore upgrade` builds the app, replaces `/Applications/vibe.app` and
-relaunches it.
+On macOS, `chore upgrade` builds the engine from this tree and the app, signs it
+locally, replaces `/Applications/DIBE.app` and relaunches it. It never touches
+`/Applications/vibe.app`.
+
+**DIBE needs the engine built from this repository** (`chore server-build`):
+`chore setup` stages the released Vibe server, which has neither live
+transcription nor the API token. `chore upgrade` does both steps.
 
 ## Build the server locally (dev)
 
@@ -84,22 +89,16 @@ cargo test -- --nocapture
 chore ci           # everything below, in one go
 chore lint         # eslint, then cargo fmt and clippy with CI's flags
 chore format       # prettier and cargo fmt, in place
-chore check-types  # tsc over desktop and website
+chore check-types  # tsc over the desktop app
 chore check-i18n   # translation coverage against en-US
 ```
 
-# Create new release
+# Create a new release
 
-1. Increment version in `tauri.conf.json` and commit
-2. Run the Release workflow from GitHub Actions (workflow_dispatch)
-
-It will create releases for `Windows`, `Linux`, and `macOS`
-
-Along with `latest.json` file (used for auto updater).
-
-When `Release` action finishes, it will run `Deploy landing` action
-
-and update downloads links in landing page.
+DIBE has no release pipeline yet (Vibe's depended on its author's signing setup).
+Bump the version in `desktop/src-tauri/tauri.conf.json`, update `CHANGELOG.md`,
+tag `vX.Y.Z`, build with `chore upgrade`, and attach the zipped `DIBE.app` to a
+GitHub release by hand.
 
 # Landing
 
@@ -107,13 +106,6 @@ and update downloads links in landing page.
 
 ```console
 pnpx tinypng-go static/*.png
-```
-
-## Convert markdown to PDF
-
-```console
-go install github.com/mandolyte/mdtopdf/cmd/md2pdf@latest
-md2pdf -i website/public/privacy_policy.md -o website/public/privacy_policy.pdf
 ```
 
 ## Normalize wav file for tests

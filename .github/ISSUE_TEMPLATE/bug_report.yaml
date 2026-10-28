@@ -8,12 +8,12 @@ body:
       attributes:
           value: |
               Thanks for taking the time to fill out this bug report!
-              One second before you create, search if it's already reported [issues](https://github.com/thewh1teagle/vibe/issues?q=is:issue+label:bug+)
+              One second before you create, search if it's already reported [issues](https://github.com/akucbruhu0-cyber/dibe/issues?q=is:issue+label:bug+)
 
-              Please, if possible, just open settings in vibe, and click 'Report Bug'
+              Please, if possible, just open settings in DIBE, and click 'Report Bug'
               This way I'll get all the relevant info required
 
-              If not reported, if possible please check [DEBUG.md](https://github.com/thewh1teagle/vibe/blob/main/docs/DEBUG.md) and add comments with more info.
+              If not reported, if possible please check [DEBUG.md](https://github.com/akucbruhu0-cyber/dibe/blob/main/docs/DEBUG.md) and add comments with more info.
 
     - type: textarea
       id: what-happened
@@ -29,7 +29,7 @@ body:
           label: Steps to reproduce
           description: The shortest path from a fresh start to the bug.
           placeholder: |
-              1. Open Vibe and pick a model
+              1. Open DIBE and pick a model
               2. Drop in a 3 minute mp3
               3. Transcription stops at 40%
       validations:

@@ -1,119 +1,81 @@
 <p align="center">
-  <a target="blank" href="https://github.com/thewh1teagle/vibe">
-    <img
-        width="96px"
-        alt="Vibe logo"
-        src="./design/logo.png"
-    />
-  </a>
+  <img width="96px" alt="DIBE logo" src="./design/logo.png" />
 </p>
 
-<h1 align="center">Vibe - Transcribe on your own!</h1>
+<h1 align="center">DIBE — private transcription, live while you record</h1>
 
 <p align="center">
-  <strong>⌨️ Transcribe audio and video right on your device</strong>
-  <br/>
-</p>
-
-<p align="center">
-  <a target="_blank" href="https://thewh1teagle.github.io/vibe/">
-    🔗 Download Vibe
-  </a>
-    &nbsp; | &nbsp; Give it a Star ⭐ | &nbsp;
-    <a target="_blank" href="https://thewh1teagle.github.io/vibe/?action=support-vibe">Support the project 🤝</a>
+  <strong>Transcribe audio and video right on your Mac. Nothing leaves your device.</strong>
 </p>
 
 <hr />
 
-## Screenshots
+DIBE is a fork of [Vibe](https://github.com/thewh1teagle/vibe) by [thewh1teagle](https://github.com/thewh1teagle), released under the same MIT license. It keeps everything Vibe does and adds live transcription, a more reliable recorder, Google Gemini for AI summaries, and no analytics at all. It installs beside Vibe (its own name, icon, data folder and `dibe://` links), and on first launch it copies Vibe's models, settings and projects so you can start where you left off — without using extra disk space.
 
-<p align="center">
-	<a target="_blank" href="https://thewh1teagle.github.io/vibe/">
-    	<img width=720 src="./design/app-preview-light.png">
-	</a>
-</p>
+## What DIBE adds
 
-# Features 🌟
+- 🔴 **Live transcription while recording** — finished sentences appear within about a second or two of when they are said, with a grey line for the sentence still being spoken. Keep the live transcript when you stop, or transcribe the recording again for the best accuracy (automatic if the live text was incomplete).
+- 💾 **Recordings that survive crashes** — audio is written off the real-time thread, checkpointed every 5 seconds, and an unfinished recording is recovered as a project on the next launch.
+- 🎧 **Two devices, one recording** — if one device disconnects (for example AirPods switching to a call), the others keep recording.
+- ✨ **Google Gemini** for summaries and dictation clean-up, beside Claude, any OpenAI-compatible API and Ollama.
+- 🔒 **No analytics** — the telemetry plugin and every event are removed; DIBE sends nothing to anyone.
+- 🛡️ **A locked local API** — the transcription server requires a per-launch token and refuses browser requests.
+- 🧹 **Model storage** — see how much space models take, find byte-identical duplicates and leftovers, delete them with a confirmation.
+- 🪟 Fixes: the window can be dragged by its title bar on macOS; cancelling a transcription is immediate; uploads are streamed to disk instead of held in memory twice; and more (see the [changelog](CHANGELOG.md)).
 
-- 🌍 Transcribe almost every language
-- 🔒 Ultimate privacy: fully offline transcription, no data ever leaves your device
-- 🎨 User friendly design
-- 🎙️ Transcribe audio / video
-- 🎶 Option to transcribe audio from popular websites (YouTube, Vimeo, Facebook, Twitter and more!)
-- 📂 Batch transcribe multiple files!
-- 📝 Support `SRT`, `VTT`, `TXT`, `HTML`, `PDF`, `JSON`, `DOCX` formats
-- 👀 Realtime preview
-- 🤖 Supports Whisper, Nemotron 3.5, and Parakeet TDT v3 models
-- ✨ Summarize transcripts: Get quick, multilingual summaries using the Claude API
-- 🧠 Ollama support: Do local AI analysis and batch summaries with Ollama
+## Everything from Vibe
+
+- 🌍 Transcribe almost every language, fully offline
+- 🎙️ Transcribe audio, video, the microphone and system audio
+- 🎶 Transcribe audio from popular websites (YouTube, Vimeo, Facebook, X and more)
+- 📂 Batch transcription
+- 📝 Export to `SRT`, `VTT`, `TXT`, `HTML`, `PDF`, `JSON`, `DOCX`
+- 🤖 Whisper, Nemotron and Parakeet TDT v3 models, GPU-accelerated
+- 👥 Speaker diarization and a stable-timestamps mode for subtitles
 - 🌐 Translate to English from any language
-- 🖨️ Print transcript directly to any printer
-- 🔄 Automatic updates
-- 💻 Optimized for `GPU` (`macOS`, `Windows`, `Linux`)
-- 🎮 Optimized for `Nvidia` / `AMD` / `Intel` GPUs! (`Vulkan`/`CoreML`)
-- 🔧 Total Freedom: Customize Models Easily via Settings
-- ⚙️ Model arguments for advanced users
-- ⏳ Transcribe system audio
-- 🎤 Transcribe from microphone
-- 🖥️ CLI support: Use Vibe directly from the command line interface! (see `--help`)
-- 👥 Speaker diarization
-- 🎬 Stable timestamps mode for subtitle/movie-grade timing (VAD-backed, slower)
-- 📱 Record from your phone: scan a QR code once, then your computer does the transcribing and sends the text straight back — works on iOS and Android with nothing to install from an app store
-- 📥 Integrate custom models from your own site: Use `vibe://download/?url=<model url>`
-- 📹 Choose caption length optimized for videos / reels
-- ⚡ HTTP API with Swagger docs and agent skills
+- ⌨️ Global dictation hotkey
+- 📱 Record from your phone and let the computer transcribe
+- 📥 Add custom models from your own site with `dibe://download/?url=<model url>`
+- ⚡ A local HTTP API with Swagger docs and an agent skill for Claude Code / Codex
+- 🖥️ Command line: `/Applications/DIBE.app/Contents/MacOS/dibe --help`
 
-# Supported platforms 🖥️
+## Platforms
 
-`MacOS`
-`Windows`
-`Linux`
+DIBE is developed and tested on **macOS (Apple Silicon)**. The code still builds for Windows and Linux like Vibe's, but those builds are untested in this fork.
 
-# Contribute 🤝
+## Install
 
-## Developers
+There are no signed releases yet. Build it yourself — see [docs/BUILDING.md](docs/BUILDING.md); the short version for macOS:
 
-Get started with local development [here](docs/BUILDING.md).
+```console
+pnpm install
+chore setup            # ffmpeg (and Vibe's released server, replaced on the next line)
+chore server-build     # build the transcription server from this repository — required for live transcription
+cd desktop && pnpm exec tauri build --bundles app
+```
 
-PRs are welcomed!
-In addition, you're welcome to add translations.
+The app lands in `target/release/bundle/macos/DIBE.app`. It is unsigned: sign it locally before moving it to `/Applications` so macOS remembers the microphone permission:
 
-# Community
+```console
+codesign --force --deep --sign - --entitlements desktop/src-tauri/entitlements.plist target/release/bundle/macos/DIBE.app
+```
 
-[![Discord](https://img.shields.io/badge/chat-discord-7289da.svg)](https://discord.gg/EcxWSstQN8)
+DIBE never updates itself; pull and rebuild to update.
 
-# Roadmap 🛣️
+## Privacy
 
-You can see the roadmap in [Vibe-Roadmap](https://github.com/users/thewh1teagle/projects/5/views/1)
+Transcription runs on your device. DIBE contacts the internet only when you ask it to — downloading a model, transcribing a web link, using an AI provider you configured, or pairing a phone. Details in [PRIVACY.md](PRIVACY.md).
 
-# Add translation 🌐
+## Contribute
 
-See the [translation guide](docs/TRANSLATIONS.md).
+Issues and pull requests are welcome: [CONTRIBUTE.md](CONTRIBUTE.md). Translations: [docs/TRANSLATIONS.md](docs/TRANSLATIONS.md). Security reports: [SECURITY.md](SECURITY.md).
 
-# Docs 📄
+## Credits
 
-see [Vibe Docs](https://github.com/thewh1teagle/vibe/tree/main/docs)
+DIBE exists because of [Vibe](https://github.com/thewh1teagle/vibe) and its author [thewh1teagle](https://github.com/thewh1teagle) — consider [supporting the original project](https://thewh1teagle.github.io/vibe/?action=support-vibe). Models, model documentation and the phone page are still served by the Vibe project.
 
-# I want to know more!
+Built with [Tauri](https://tauri.app/), [whisper.cpp](https://github.com/ggml-org/whisper.cpp) / [ggml](https://github.com/ggml-org/ggml), OpenAI's [Whisper](https://openai.com/research/whisper), NVIDIA's Parakeet and Nemotron models, and many other open-source libraries.
 
-Medium [post](https://medium.com/@thewh1teagle/creating-vibe-multilingual-audio-transcription-872ab6d9dbb0)
+## License
 
-# Issue report
-
-You can open [new issue](https://github.com/thewh1teagle/vibe/issues/new?assignees=octocat&labels=bug&projects=&template=bug_report.yaml&title=[Short+title]) and it's recommend to check [DEBUG.md](docs/DEBUG.md) first.
-
-# Privacy Policy 🔒
-
-Your privacy is important to us. Please review our [Privacy Policy](http://thewh1teagle.github.io/vibe/?action=open-privacy-policy) to understand how we handle your data.
-
-# Credits
-
-Thanks for [tauri.app](https://tauri.app/) for making the best apps framework I ever seen
-
-Thanks for [github.com/whisper.cpp](https://github.com/ggerganov/whisper.cpp) for outstanding interface for the AI model.
-
-Thanks for [openai.com](https://openai.com/) for their amazing [Whisper model](https://openai.com/research/whisper)
-
-Thanks for [github.com](https://github.com/) for their support in open source projects, providing infastructure completely free.
-
-And for all the amazing open source frameworks and libraries which this project uses...
+[MIT](LICENSE) — © thewh1teagle (Vibe) and © akucbruhu0-cyber (DIBE changes).
