@@ -1,5 +1,22 @@
 # Changelog
 
+## DIBE 1.2.0 — 2026-10-31
+
+A pause that comes back after any length of time, a battery saver, files and images for the AI summary, and editing a finished transcript.
+
+### Fixes
+
+- **Live transcription comes back after a long pause.** After a pause of more than about five and a half minutes the live transcript stopped for good, and "Try again" could not help: the server closes a session that hears nothing for 30 seconds, then unloads the model after its unload timeout, and every new session was refused with "no model loaded". DIBE now loads the model again by itself and goes on; what was said while it loads is kept and transcribed right after.
+- **A pause really rests.** The microphone and system audio stop (the Mac's microphone indicator goes off), and the live transcription finishes the last sentence before the pause, closes its session and frees the model. Nothing goes to the server until you resume.
+
+### New
+
+- **Battery saver** in Settings → Recording → Live transcription: send the audio every 10 or every 30 seconds instead of every 1 to 3. The server runs speech detection and transcription far less often; the text appears up to 10 or 30 seconds after it is said.
+- **Attach files and images to a summary** from the summary menu → "Fine-tune summary…". Images go to Claude, OpenAI, Gemini and Ollama; PDFs to Claude, OpenAI and Gemini; text files (txt, md, csv, json, srt, vtt, html and more) go into the prompt. Up to 20 MB a file; the attachments belong to that one summary.
+- **Edit a finished transcript as one document.** An Edit button in the toolbar turns the transcript into the same editor as the live one: Cmd+A takes the whole transcript, the arrows and Backspace cross lines, and times stay out of the text. Edits are saved to the project and reach exports and the AI summary.
+- **Opens on live transcription**, the main use, instead of the file upload; "New transcription" and the end of a recording come back to it too.
+- **A new logo**: a green circle with a white microphone and orange sparkles.
+
 ## DIBE 1.1.0 — 2026-10-28
 
 A live transcript to follow a lecture or a meeting with, and copy from, for hours.

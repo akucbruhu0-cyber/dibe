@@ -16,8 +16,10 @@ DIBE is a fork of [Vibe](https://github.com/thewh1teagle/vibe) by [thewh1teagle]
 
 - 🔴 **Live transcription while recording** — finished sentences appear within a second or a few of when they are said, with a grey line for the sentence still being spoken. Keep the live transcript when you stop, or transcribe the recording again for the best accuracy (automatic if the live text was incomplete).
 - 📖 **A live transcript to work from** — it fills the window at the text size you choose, as timed lines or one block of prose; edit it while it is still being written, copy without the times, and download everything so far without stopping.
-- ⏯️ **Pause and resume** a recording, and get back to its live transcript from any screen with one click.
-- 🔋 **Easy on the battery** — live transcription sends audio every few seconds instead of four times a second; turn off the words-as-spoken preview for the largest saving.
+- ⏯️ **Pause and resume** a recording: a pause stops the microphone and frees the model, and the resume picks up after any length of time. Get back to the live transcript from any screen with one click.
+- 🔋 **Easy on the battery** — live transcription sends audio every few seconds instead of four times a second; turn off the words-as-spoken preview, or turn on the battery saver to send every 10 or 30 seconds, for the largest saving.
+- ✏️ **Edit a finished transcript** as one document, the same editor as the live one, saved to the project.
+- 📎 **Files and images for the AI summary** — attach images, PDFs and text files to the summary prompt.
 - 📄 **Exports that look right** — AI summaries come out with real headings, bold text and lists in Word, PDF and HTML, not Markdown marks.
 - 🗑️ **Delete the recording only** — free the disk space and keep the transcript and summary.
 - 💾 **Recordings that survive crashes** — audio is written off the real-time thread, checkpointed every 5 seconds, and an unfinished recording is recovered as a project on the next launch.
