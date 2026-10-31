@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AI, defaultModel, migrateLegacy, modernizePrompt, presetPrompt } from './config'
 import { chunkLines, createClient, fillPrompt, inputBudgetBytes, testConnection } from './client'
+import { inlineTextFiles, type Attachment } from './attachments'
 
 const fetchMock = vi.fn()
 vi.mock('@tauri-apps/plugin-http', () => ({ fetch: (...args: unknown[]) => fetchMock(...args) }))
@@ -116,6 +117,34 @@ describe('createClient', () => {
 		)
 		const text = await createClient({ ...DEFAULT_AI.connection, platform: 'claude' }).stream('p', () => {})
 		expect(text).toBe('hi')
+	})
+
+	it("sends images and PDFs as each provider's media, and text files inside the prompt", async () => {
+		const files: Attachment[] = [
+			{ name: 'slide.png', kind: 'image', mime: 'image/png', data: 'iVBO' },
+			{ name: 'notes.md', kind: 'text', mime: 'text/plain', data: '# Agenda' },
+			{ name: 'deck.pdf', kind: 'pdf', mime: 'application/pdf', data: 'JVBE' },
+		]
+		const prompt = inlineTextFiles('Summarize', files)
+		expect(prompt).toBe('Summarize\n\n--- Attached file: notes.md ---\n# Agenda')
+
+		fetchMock.mockImplementation(async () => streamResponse([]))
+		await createClient({ ...DEFAULT_AI.connection, platform: 'claude' }).stream(prompt, () => {}, files)
+		expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content).toEqual([
+			{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'iVBO' } },
+			{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'JVBE' } },
+			{ type: 'text', text: prompt },
+		])
+
+		await createClient({ ...DEFAULT_AI.connection, platform: 'openai' }).stream(prompt, () => {}, files)
+		expect(JSON.parse(fetchMock.mock.calls[1][1].body).messages[0].content).toEqual([
+			{ type: 'text', text: prompt },
+			{ type: 'image_url', image_url: { url: 'data:image/png;base64,iVBO' } },
+			{ type: 'file', file: { filename: 'deck.pdf', file_data: 'data:application/pdf;base64,JVBE' } },
+		])
+
+		await createClient({ ...DEFAULT_AI.connection, platform: 'ollama' }).stream(prompt, () => {}, files.slice(0, 2))
+		expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({ prompt, images: ['iVBO'] })
 	})
 
 	it('turns an error body into a readable message', async () => {

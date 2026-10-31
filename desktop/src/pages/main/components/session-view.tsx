@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useSession } from '../session'
-import { useTranscriptViewOptions, type TranscriptTab } from '../hooks/use-transcript-view'
+import { canEditTranscript, useTranscriptViewOptions, type TranscriptTab } from '../hooks/use-transcript-view'
 import BatchBanner from './batch-banner'
 import FileQueue from './file-queue'
+import TranscriptDocument from './transcript-document'
 import TranscriptToolbar from './transcript-toolbar'
 import TranscriptView from './transcript-view'
 
@@ -11,6 +12,7 @@ export default function SessionView() {
 	const { queue, summaries } = useSession()
 	const [query, setQuery] = useState('')
 	const [tab, setTab] = useState<TranscriptTab>('transcript')
+	const [editing, setEditing] = useState(false)
 	const options = useTranscriptViewOptions()
 	const multiple = queue.jobs.length > 1
 	const selected = queue.selectedJob
@@ -18,6 +20,7 @@ export default function SessionView() {
 	useEffect(() => {
 		setQuery('')
 		setTab('transcript')
+		setEditing(false)
 	}, [queue.selectedId])
 
 	// A summary that starts, by hand or on its own, opens its tab once so the text is seen arriving.
@@ -41,8 +44,25 @@ export default function SessionView() {
 
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<BatchBanner />
-				<TranscriptToolbar job={selected} query={query} setQuery={setQuery} options={options} tab={tab} setTab={setTab} />
-				<div className="min-h-0 flex-1">{selected && <TranscriptView job={selected} query={query} options={options} tab={tab} />}</div>
+				<TranscriptToolbar
+					job={selected}
+					query={query}
+					setQuery={setQuery}
+					options={options}
+					tab={tab}
+					setTab={setTab}
+					editing={editing}
+					setEditing={setEditing}
+				/>
+				{/* A search reads the matching lines, so it shows them even while editing. */}
+				<div className="min-h-0 flex-1">
+					{selected &&
+						(editing && !query && tab === 'transcript' && canEditTranscript(selected) ? (
+							<TranscriptDocument key={selected.id} job={selected} options={options} />
+						) : (
+							<TranscriptView job={selected} query={query} options={options} tab={tab} />
+						))}
+				</div>
 			</div>
 		</motion.div>
 	)

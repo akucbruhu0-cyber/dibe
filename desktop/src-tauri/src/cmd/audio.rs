@@ -195,7 +195,13 @@ fn start_streams(
             .iter()
             .map(|(_, config)| (config.sample_rate(), config.channels()))
             .collect();
-        recording.live = Some(LiveClient::start(app_handle, &recording.session_id, options, &formats));
+        recording.live = Some(LiveClient::start(
+            app_handle,
+            &recording.session_id,
+            options,
+            &formats,
+            recording.paused.clone(),
+        ));
     }
 
     for (device_index, (device, config)) in devices.into_iter().enumerate() {
@@ -259,8 +265,9 @@ pub async fn stop_record(app_handle: AppHandle, state: State<'_, RecordingState>
 }
 
 #[tauri::command]
-/// Pauses or resumes the recording `session_id`: while paused nothing is saved or transcribed, and
-/// the pause shows in the file as one second of silence. Ignored for a session that is not active.
+/// Pauses or resumes the recording `session_id`: while paused the devices are stopped and nothing is
+/// saved or transcribed, and the pause shows in the file as one second of silence. Ignored for a
+/// session that is not active.
 pub fn pause_record(state: State<'_, RecordingState>, session_id: String, paused: bool) {
     if !state.set_paused(&session_id, paused) {
         tracing::debug!("pause_record ignored: session {session_id} is not active");

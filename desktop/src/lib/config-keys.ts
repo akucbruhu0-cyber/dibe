@@ -50,6 +50,8 @@ export const CONFIG_KEYS = {
 	liveTranscription: 'recording.liveTranscription',
 	/** The sentence being spoken shows before it ends: costs battery, every 3 s. */
 	livePartials: 'recording.livePartials',
+	/** The battery saver: seconds of audio each push to the server waits for; 0 is the usual pace. */
+	livePushSeconds: 'recording.livePushSeconds',
 	/** The live transcript's text size, in px. */
 	liveFontSize: 'recording.liveFontSize',
 	/** The live transcript as one block of prose, without times. */

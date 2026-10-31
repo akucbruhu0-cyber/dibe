@@ -10,7 +10,7 @@ import { cn } from '~/lib/style'
 import { usePreferenceProvider } from '~/providers/preference'
 import { useSession } from '../session'
 import type { Job } from '../hooks/use-transcribe-queue'
-import { textSizeClass, type TranscriptTab, type TranscriptViewOptions } from '../hooks/use-transcript-view'
+import { canEditTranscript, textSizeClass, type TranscriptTab, type TranscriptViewOptions } from '../hooks/use-transcript-view'
 import { PLAYER_SEEK_EVENT, PLAYER_TOGGLE_EVENT, PLAYER_TIME_EVENT, type PlayerTimeDetail } from './player-bar'
 import { ProjectNameEditor } from './project-name-editor'
 import QuietRow from './quiet-row'
@@ -383,7 +383,7 @@ export default function TranscriptView({
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const listRef = useRef<HTMLDivElement>(null)
 	const running = job.status === 'running'
-	const editable = !running && (job.status === 'done' || job.hydrated === true)
+	const editable = canEditTranscript(job)
 
 	const [editing, setEditing] = useState<EditTarget | null>(null)
 	const [activeIndex, setActiveIndex] = useState(-1)

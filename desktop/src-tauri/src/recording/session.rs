@@ -5,6 +5,7 @@
 //! so one caller can never end a recording that belongs to someone else.
 use super::writer::WriterHandle;
 use crate::server::live::LiveClient;
+use cpal::traits::StreamTrait;
 use cpal::Stream;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -105,17 +106,33 @@ impl RecordingState {
         let slot = self.slot();
         let active = slot.as_ref().filter(|active| active.session_id == session_id);
         if let Some(live) = active.and_then(|active| active.live.as_ref()) {
-            live.retry();
+            live.wake();
         }
     }
 
-    /// Pauses or resumes `session_id`; false when it is not the active session.
+    /// Pauses or resumes `session_id`; false when it is not the active session. A pause stops the
+    /// devices too, so the microphone is let go (and its indicator goes off) until the resume, and
+    /// tells the live client, which closes its session meanwhile.
     pub fn set_paused(&self, session_id: &str, paused: bool) -> bool {
         let slot = self.slot();
         let Some(active) = slot.as_ref().filter(|active| active.session_id == session_id) else {
             return false;
         };
         active.paused.store(paused, Ordering::Relaxed);
+        for StreamHandle(stream) in &active.streams {
+            let toggled = if paused { stream.pause() } else { stream.play() };
+            // The writers drop what a device that could not pause still delivers; one that cannot
+            // resume reports itself through its stream's error callback.
+            if let Err(error) = toggled {
+                tracing::warn!(
+                    "cannot {} a recording device: {error}",
+                    if paused { "pause" } else { "resume" }
+                );
+            }
+        }
+        if let Some(live) = &active.live {
+            live.wake();
+        }
         true
     }
 

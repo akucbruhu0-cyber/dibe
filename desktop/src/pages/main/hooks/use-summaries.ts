@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { m } from '~/paraglide/messages.js'
-import { appLanguageName, chunkLines, createClient, fillPrompt, inputBudgetBytes, utf8Bytes, type AiClient } from '~/lib/ai'
+import { appLanguageName, chunkLines, createClient, fillPrompt, inlineTextFiles, inputBudgetBytes, utf8Bytes, type AiClient, type Attachment } from '~/lib/ai'
 import { asText } from '~/lib/transcript'
 import { usePreferenceProvider } from '~/providers/preference'
 import type { Job, TranscribeQueue } from './use-transcribe-queue'
@@ -23,7 +23,8 @@ export interface Summaries {
 	progress: Record<string, SummaryProgress>
 	/** Last failure for a job; cleared as soon as a retry begins. */
 	errors: Record<string, string>
-	summarize: (job: Job, prompt?: string) => Promise<boolean>
+	/** `files` go with the final request only, so a long transcript's parts are not each sent the same images. */
+	summarize: (job: Job, prompt?: string, files?: Attachment[]) => Promise<boolean>
 	/** Ask a question about the transcript; the answer streams into `answerDrafts` and then the thread. */
 	ask: (job: Job, question: string) => Promise<boolean>
 	/** The answer being written for a job, while it streams. */
@@ -91,7 +92,7 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 	const speakersOf = useCallback((job: Job) => Object.values(job.speakerNames ?? {}).join(', '), [])
 
 	const summarize = useCallback(
-		async (job: Job, prompt?: string) => {
+		async (job: Job, prompt?: string, files: Attachment[] = []) => {
 			const template = prompt ?? task.prompt
 			if (!template.trim() || !job.segments.length || inFlight.current.has(job.id)) return false
 			inFlight.current.add(job.id)
@@ -114,10 +115,14 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 					source = joinParts(parts)
 				}
 				let text = ''
-				await client.stream(fillPrompt(template, { ...values, transcript: source }), (token) => {
-					text += token
-					setDraft(job.id, text)
-				})
+				await client.stream(
+					inlineTextFiles(fillPrompt(template, { ...values, transcript: source }), files),
+					(token) => {
+						text += token
+						setDraft(job.id, text)
+					},
+					files,
+				)
 				text = text.trim()
 				if (!text) throw new Error(m.summaryFailed())
 				queue.setJobSummary(job.id, text)

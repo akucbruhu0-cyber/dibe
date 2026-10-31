@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown, Download, NotebookPen, Pencil, PilcrowLeft, PilcrowRight, Plus, Search, Settings2, Sparkles, X } from 'lucide-react'
+import { Check, ChevronDown, Download, NotebookPen, Pencil, PilcrowLeft, PilcrowRight, Plus, Search, Settings2, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { m } from '~/paraglide/messages.js'
 import { usePreferenceProvider } from '~/providers/preference'
@@ -10,9 +10,10 @@ import { Spinner } from '~/components/ui/spinner'
 import { Switch } from '~/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
 import { cn } from '~/lib/style'
+import type { Attachment } from '~/lib/ai'
 import type { TextFormat } from '~/components/format-select'
 import type { Job } from '../hooks/use-transcribe-queue'
-import type { TranscriptTab, TranscriptTextSize, TranscriptViewOptions } from '../hooks/use-transcript-view'
+import { canEditTranscript, type TranscriptTab, type TranscriptTextSize, type TranscriptViewOptions } from '../hooks/use-transcript-view'
 import { useTranscriptExport } from '../hooks/use-transcript-export'
 import TranscriptExportDialog from './transcript-export-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '~/components/ui/dropdown-menu'
@@ -146,9 +147,9 @@ function SummaryMenu({ job }: { job: Job | null }) {
 	// Nothing to offer: the feature is off in settings (a summary there is reached by its tab).
 	if (!canSummarize) return null
 
-	function run(prompt?: string) {
+	function run(prompt?: string, files?: Attachment[]) {
 		setOpen(false)
-		if (job) void summaries.summarize(job, prompt)
+		if (job) void summaries.summarize(job, prompt, files)
 	}
 
 	return (
@@ -199,7 +200,7 @@ function SummaryMenu({ job }: { job: Job | null }) {
 				</PopoverContent>
 			</Popover>
 
-			<ResummarizeDialog open={promptOpen} onOpenChange={setPromptOpen} loading={summarizing} onSubmit={(prompt) => run(prompt)} />
+			<ResummarizeDialog open={promptOpen} onOpenChange={setPromptOpen} loading={summarizing} onSubmit={run} />
 		</>
 	)
 }
@@ -211,6 +212,8 @@ export default function TranscriptToolbar({
 	options,
 	tab,
 	setTab,
+	editing,
+	setEditing,
 }: {
 	job: Job | null
 	query: string
@@ -218,6 +221,9 @@ export default function TranscriptToolbar({
 	options: TranscriptViewOptions
 	tab: TranscriptTab
 	setTab: (tab: TranscriptTab) => void
+	/** The transcript is open as one editable document. */
+	editing: boolean
+	setEditing: (value: boolean) => void
 }) {
 	const { queue, startNew } = useSession()
 	const preference = usePreferenceProvider()
@@ -313,6 +319,17 @@ export default function TranscriptToolbar({
 							transition={{ duration: 0.15, ease: 'easeOut' }}
 							className="flex w-full items-center gap-1">
 							<ViewTabs job={job} tab={tab} setTab={setTab} />
+							{/* Clicking a line edits it too, but nothing on screen says so; this does. */}
+							{job && tab === 'transcript' && hasText && canEditTranscript(job) && (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => setEditing(!editing)}
+									className={cn('rounded-full px-3 text-[13px] font-medium', editing && 'bg-muted text-foreground')}>
+									{editing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+									{editing ? m.doneEditing() : m.editTranscript()}
+								</Button>
+							)}
 							{queue.jobs.length > 1 ? (
 								/* A batch: the same word, with everything that writes files behind it. */
 								<DropdownMenu>

@@ -158,7 +158,7 @@ const LINE_CLASS =
 	'relative block py-0.5 ps-12 text-justify leading-[1.6] before:absolute before:start-0 before:top-[0.45em] before:font-mono before:text-[11px] before:leading-none before:tabular-nums before:text-muted-foreground before:content-[attr(data-time)]'
 
 interface TranscriptProps {
-	state: LiveState
+	state: Pick<LiveState, 'finals' | 'partial'>
 	edits: LiveEdits
 	onEdit: LiveView['edit']
 	still: boolean
@@ -175,7 +175,7 @@ interface TranscriptProps {
  * carries its final's index, so after an edit every line is read back and the changed ones reported;
  * a line that disappeared (joined into the one before it, or deleted) is reported empty.
  */
-function EditableTranscript({ state, edits, onEdit, still, asBlock }: TranscriptProps) {
+export function EditableTranscript({ state, edits, onEdit, still, asBlock }: TranscriptProps) {
 	const hostRef = useRef<HTMLDivElement & HTMLSpanElement>(null)
 	const written = useRef(0)
 	const { finals, partial } = state

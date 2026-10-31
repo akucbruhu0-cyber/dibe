@@ -1,5 +1,6 @@
 import { fetch } from '@tauri-apps/plugin-http'
 import { PLACEHOLDERS, type AiConnection } from './config'
+import type { Attachment } from './attachments'
 
 /** Output ceiling; the input side of the context is what is left after it and a margin. */
 const MAX_OUTPUT_TOKENS = 8_192
@@ -9,8 +10,13 @@ const BYTES_PER_TOKEN = 4
 export interface AiClient {
 	/** The whole answer at once. */
 	ask(prompt: string): Promise<string>
-	/** The answer as it arrives; resolves with the whole text. */
-	stream(prompt: string, onToken: (text: string) => void): Promise<string>
+	/** The answer as it arrives; resolves with the whole text. Images and PDFs in `files` go as media. */
+	stream(prompt: string, onToken: (text: string) => void, files?: Attachment[]): Promise<string>
+}
+
+/** Text files are already in the prompt (`inlineTextFiles`); only images and PDFs travel as media. */
+function media(files: Attachment[]) {
+	return files.filter((file) => file.kind !== 'text')
 }
 
 export function outputTokens(contextTokens: number) {
@@ -110,11 +116,13 @@ async function failure(label: string, response: Response) {
 
 class Ollama implements AiClient {
 	constructor(private connection: AiConnection) {}
-	private body(prompt: string, stream: boolean) {
+	private body(prompt: string, stream: boolean, files: Attachment[] = []) {
+		const images = media(files).map((file) => file.data)
 		return JSON.stringify({
 			model: this.connection.model,
 			prompt,
 			stream,
+			...(images.length > 0 && { images }),
 			options: { num_ctx: this.connection.contextTokens, num_predict: outputTokens(this.connection.contextTokens) },
 		})
 	}
@@ -131,11 +139,11 @@ class Ollama implements AiClient {
 		if (!response.ok) throw await failure('Ollama', response)
 		return (await response.json())?.response ?? ''
 	}
-	async stream(prompt: string, onToken: (text: string) => void) {
+	async stream(prompt: string, onToken: (text: string) => void, files?: Attachment[]) {
 		const response = await fetch(`${this.connection.ollamaBaseUrl.replace(/\/+$/, '')}/api/generate`, {
 			method: 'POST',
 			headers: this.headers(),
-			body: this.body(prompt, true),
+			body: this.body(prompt, true, files),
 		})
 		if (!response.ok) throw await failure('Ollama', response)
 		let text = ''
@@ -173,12 +181,22 @@ class OpenAICompatible implements AiClient {
 		if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`
 		return headers
 	}
-	private body(prompt: string, stream: boolean) {
+	private content(prompt: string, files: Attachment[]) {
+		const parts = media(files).map((file) => {
+			const url = `data:${file.mime};base64,${file.data}`
+			// OpenAI takes a PDF as a file part; Gemini's compatible endpoint reads any inline data through image_url.
+			return file.kind === 'pdf' && this.baseUrl !== GEMINI_OPENAI_BASE_URL
+				? { type: 'file', file: { filename: file.name, file_data: url } }
+				: { type: 'image_url', image_url: { url } }
+		})
+		return parts.length > 0 ? [{ type: 'text', text: prompt }, ...parts] : prompt
+	}
+	private body(prompt: string, stream: boolean, files: Attachment[] = []) {
 		return JSON.stringify({
 			model: this.connection.model,
 			max_tokens: outputTokens(this.connection.contextTokens),
 			stream,
-			messages: [{ role: 'user', content: prompt }],
+			messages: [{ role: 'user', content: this.content(prompt, files) }],
 		})
 	}
 	async ask(prompt: string) {
@@ -186,8 +204,8 @@ class OpenAICompatible implements AiClient {
 		if (!response.ok) throw await failure(this.label, response)
 		return (await response.json()).choices?.[0]?.message?.content ?? ''
 	}
-	async stream(prompt: string, onToken: (text: string) => void) {
-		const response = await fetch(this.url(), { method: 'POST', headers: this.headers(), body: this.body(prompt, true) })
+	async stream(prompt: string, onToken: (text: string) => void, files?: Attachment[]) {
+		const response = await fetch(this.url(), { method: 'POST', headers: this.headers(), body: this.body(prompt, true, files) })
 		if (!response.ok) throw await failure(this.label, response)
 		let text = ''
 		await readLines(response, (line) => {
@@ -213,12 +231,17 @@ class Claude implements AiClient {
 	private headers() {
 		return { Origin: '', Referer: '', 'X-API-Key': this.connection.claudeApiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' }
 	}
-	private body(prompt: string, stream: boolean) {
+	private body(prompt: string, stream: boolean, files: Attachment[] = []) {
+		const blocks = media(files).map((file) => ({
+			type: file.kind === 'pdf' ? 'document' : 'image',
+			source: { type: 'base64', media_type: file.mime, data: file.data },
+		}))
 		return JSON.stringify({
 			model: this.connection.model,
 			max_tokens: outputTokens(this.connection.contextTokens),
 			stream,
-			messages: [{ role: 'user', content: prompt }],
+			// Anthropic advises the media before the instructions that refer to it.
+			messages: [{ role: 'user', content: blocks.length > 0 ? [...blocks, { type: 'text', text: prompt }] : prompt }],
 		})
 	}
 	async ask(prompt: string) {
@@ -226,8 +249,8 @@ class Claude implements AiClient {
 		if (!response.ok) throw await failure('Claude', response)
 		return (await response.json()).content?.[0]?.text ?? ''
 	}
-	async stream(prompt: string, onToken: (text: string) => void) {
-		const response = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: this.headers(), body: this.body(prompt, true) })
+	async stream(prompt: string, onToken: (text: string) => void, files?: Attachment[]) {
+		const response = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: this.headers(), body: this.body(prompt, true, files) })
 		if (!response.ok) throw await failure('Claude', response)
 		let text = ''
 		await readLines(response, (line) => {

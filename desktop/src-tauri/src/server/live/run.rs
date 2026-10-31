@@ -8,6 +8,7 @@
 use serde_json::{json, Value};
 use std::collections::VecDeque;
 use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 use tokio::sync::mpsc::Receiver;
@@ -26,28 +27,20 @@ const MAX_BACKLOG_SAMPLES: usize = 60 * LIVE_HZ;
 const BACKOFF: [Duration; 3] = [Duration::from_secs(1), Duration::from_secs(2), Duration::from_secs(5)];
 /// A `DELETE` answered 409 while a push of ours whose answer was lost still runs on the server.
 const STOP_RETRIES: usize = 5;
-
-/// Waits until at least `min_samples` arrived, or the channel closed, and returns them.
-pub async fn drain_batch(rx: &mut Receiver<Vec<f32>>, min_samples: usize) -> Vec<f32> {
-    let mut batch = Vec::new();
-    while batch.len() < min_samples {
-        match rx.recv().await {
-            Some(chunk) => batch.extend(chunk),
-            None => break,
-        }
-    }
-    batch
-}
+/// What a pause waits for the audio from before the click, and the pause's second of silence, to
+/// come through the tap before it closes the session: the writers hand both over within a drain.
+const PAUSE_SETTLE: Duration = Duration::from_millis(300);
 
 /// The least audio worth a push. Every push runs the server's VAD over all of its open audio, and
 /// with live text on it may run the engine once more for the sentence being spoken (whose interval
 /// the server fixes at a second, but no push, no run): so a push is a battery cost, not a free
-/// refresh. Live text every 3 s; finals alone a second late at most.
-pub fn push_samples(partials: bool) -> usize {
-    if partials {
-        3 * LIVE_HZ
-    } else {
-        LIVE_HZ
+/// refresh. Live text every 3 s; finals alone a second late at most. The battery saver's
+/// `push_seconds` spaces them further, up to the 30 s a push may carry.
+pub fn push_samples(partials: bool, push_seconds: Option<u32>) -> usize {
+    match push_seconds {
+        Some(seconds) if seconds > 0 => (seconds as usize * LIVE_HZ).min(MAX_PUSH_SAMPLES),
+        _ if partials => 3 * LIVE_HZ,
+        _ => LIVE_HZ,
     }
 }
 
@@ -66,7 +59,10 @@ pub fn cap_backlog(backlog: &mut VecDeque<Vec<f32>>, max_samples: usize) -> u64 
 /// Runs a recording's live transcription until `cancel`, then sends what is left, closes the
 /// session and returns every final, in order (also kept in `collected` as they come), and whether
 /// they cover all of the audio. Audio goes out `min_push` samples at a time (see [`push_samples`]).
-/// `emit` sends `live_update` and `live_status`; `wake` cuts a wait between attempts short.
+/// `emit` sends `live_update` and `live_status`; `wake` cuts any wait short, and is notified on
+/// every change of `paused`. A pause closes the session, which hands the server its model back for
+/// as long as nothing is said, and the resume opens a new one.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_live(
     api: impl LiveApi,
     min_push: usize,
@@ -74,6 +70,7 @@ pub async fn run_live(
     emit: impl Fn(&str, Value),
     cancel: CancellationToken,
     wake: Arc<Notify>,
+    paused: Arc<AtomicBool>,
     collected: Arc<Mutex<Vec<Segment>>>,
 ) -> LiveTranscript {
     let mut live = Live::new(rx, emit, collected);
@@ -81,6 +78,23 @@ pub async fn run_live(
     let mut failures = 0;
     live.status("starting", None);
     while !cancel.is_cancelled() && !live.closed {
+        if paused.load(Ordering::Relaxed) {
+            if let Some(current) = session.take() {
+                live.during(tokio::time::sleep(PAUSE_SETTLE)).await;
+                if let Some(trouble) = live.close(&api, current).await {
+                    tracing::warn!("closing the live session for a pause failed: {trouble}");
+                    live.complete = false;
+                }
+            }
+            live.during(async {
+                tokio::select! {
+                    () = wake.notified() => {}
+                    () = cancel.cancelled() => {}
+                }
+            })
+            .await;
+            continue;
+        }
         let failure = match session.as_mut() {
             None => match live.during(api.start()).await {
                 Ok(id) => {
@@ -91,18 +105,18 @@ pub async fn run_live(
                 Err(error) => Some(error),
             },
             Some(current) => {
-                let missing = min_push.saturating_sub(live.backlog_samples());
-                if missing > 0 {
-                    // A stop closes the channel before it cancels, so this wait ends with the last
-                    // audio; the token only matters should the tap outlive the stop.
-                    let audio = tokio::select! {
+                if live.backlog_samples() < min_push {
+                    // A chunk at a time, so a pause is noticed between chunks and none is lost to
+                    // it. A stop closes the channel before it cancels, so this wait ends with the
+                    // last audio; the token only matters should the tap outlive the stop.
+                    tokio::select! {
                         biased;
-                        audio = drain_batch(&mut live.rx, missing) => Some(audio),
-                        () = cancel.cancelled() => None,
-                    };
-                    if let Some(audio) = audio {
-                        live.closed = audio.len() < missing;
-                        live.receive(audio);
+                        chunk = live.rx.recv() => match chunk {
+                            Some(chunk) => live.receive(chunk),
+                            None => live.closed = true,
+                        },
+                        () = cancel.cancelled() => {}
+                        () = wake.notified() => {}
                     }
                     continue;
                 }
@@ -351,35 +365,18 @@ impl<E: Fn(&str, Value)> Live<E> {
             self.receive(chunk);
         }
         let mut trouble = None;
-        if session.is_none() && self.backlog_samples() > 0 {
+        // The tail of a pause's silence is all a session closed for the pause can leave behind,
+        // and no words are worth opening a session (and maybe reloading the model) for.
+        let silent = self.backlog.iter().flatten().all(|&sample| sample == 0.0);
+        if session.is_none() && !silent {
             match api.start().await {
                 Ok(id) => session = Some(Session::new(id, self.position)),
                 Err(error) if error.unsupported() => return self.unsupported(),
                 Err(error) => trouble = Some(error.message),
             }
         }
-        if let Some(mut current) = session {
-            let mut lost = false;
-            while self.backlog_samples() > 0 {
-                let (batch, at) = self.take(MAX_PUSH_SAMPLES);
-                match api.push(&current.id, &batch).await {
-                    Ok(update) => {
-                        current.sent(at, batch.len());
-                        self.deliver(update, current.offset);
-                    }
-                    Err(error) => {
-                        lost = error.lost_session();
-                        trouble = Some(error.message);
-                        break;
-                    }
-                }
-            }
-            if !lost {
-                match stop_session(api, &current.id).await {
-                    Ok(update) => self.deliver(update, current.offset),
-                    Err(error) => trouble = Some(error.message),
-                }
-            }
+        if let Some(current) = session {
+            trouble = self.close(api, current).await.or(trouble);
         }
         // Audio left unsent, or finals never answered.
         self.complete &= trouble.is_none();
@@ -387,6 +384,39 @@ impl<E: Fn(&str, Value)> Live<E> {
         LiveTranscript {
             finals: self.collected.lock().unwrap_or_else(PoisonError::into_inner).clone(),
             complete: self.complete,
+        }
+    }
+
+    /// Sends the backlog to `current`, at most 30 s a push, then closes it for its last finals.
+    /// What went wrong, if anything; audio the server never took stays in the backlog.
+    async fn close(&mut self, api: &impl LiveApi, mut current: Session) -> Option<String> {
+        while self.backlog_samples() > 0 {
+            let (batch, at) = self.take(MAX_PUSH_SAMPLES);
+            match api.push(&current.id, &batch).await {
+                Ok(update) => {
+                    current.sent(at, batch.len());
+                    self.deliver(update, current.offset);
+                }
+                Err(error) => {
+                    if error.untaken() {
+                        self.requeue(batch);
+                    }
+                    // A lost session has nothing left to close; any other still owes what it heard.
+                    if !error.lost_session() {
+                        if let Ok(update) = stop_session(api, &current.id).await {
+                            self.deliver(update, current.offset);
+                        }
+                    }
+                    return Some(error.message);
+                }
+            }
+        }
+        match stop_session(api, &current.id).await {
+            Ok(update) => {
+                self.deliver(update, current.offset);
+                None
+            }
+            Err(error) => Some(error.message),
         }
     }
 

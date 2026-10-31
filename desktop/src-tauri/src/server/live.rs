@@ -17,6 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::future::Future;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 use tauri::async_runtime::JoinHandle;
@@ -46,6 +47,9 @@ pub struct LiveOptions {
     partials: bool,
     /// The Silero VAD model the server cuts the audio into utterances with.
     vad_model: String,
+    /// The battery saver: seconds of audio a push waits for, instead of what `partials` sets.
+    #[serde(default)]
+    push_seconds: Option<u32>,
 }
 
 /// What the server says about the audio, in seconds. `run_live` moves the times onto the
@@ -145,6 +149,22 @@ impl HttpLive {
         let process = state.process.as_ref().ok_or_else(not_running)?;
         Ok((process.client(), process.base_url()))
     }
+
+    /// Loads the model the server last had again: it unloads it once nothing has used it for its
+    /// unload timeout, which a long pause outlasts.
+    async fn reload_model(&self) -> Result<(), ApiError> {
+        let not_running = || ApiError::unreachable("The transcription server is not running".to_string());
+        let state = self
+            .app
+            .try_state::<tokio::sync::Mutex<ServerState>>()
+            .ok_or_else(not_running)?;
+        let mut state = state.lock().await;
+        let process = state.process.as_mut().ok_or_else(not_running)?;
+        process.reload_model().await.map_err(|error| ApiError {
+            status: Some(503),
+            message: format!("{error:#}"),
+        })
+    }
 }
 
 impl LiveApi for HttpLive {
@@ -153,13 +173,23 @@ impl LiveApi for HttpLive {
         struct Started {
             id: String,
         }
-        let (client, base_url) = self.endpoint().await?;
         let body = json!({
             "language": self.options.language,
             "vad_model": self.options.vad_model,
             "partials": self.options.partials,
         });
-        let started: Started = answer(client.post(format!("{base_url}/v1/live")).json(&body).send().await).await?;
+        let open = || async {
+            let (client, base_url) = self.endpoint().await?;
+            answer::<Started>(client.post(format!("{base_url}/v1/live")).json(&body).send().await).await
+        };
+        let started = match open().await {
+            Err(error) if error.status == Some(503) => {
+                tracing::info!("the model was unloaded under the live recording; loading it again");
+                self.reload_model().await?;
+                open().await?
+            }
+            started => started?,
+        };
         Ok(started.id)
     }
 
@@ -217,10 +247,16 @@ pub struct LiveClient {
 
 impl LiveClient {
     /// Starts the client of recording `session_id`, whose devices deliver `formats` (rate,
-    /// channels), in device order. Never fails: the task finds the server and opens the session,
-    /// and reports any trouble as `live_status`.
-    pub fn start(app: &AppHandle, session_id: &str, options: LiveOptions, formats: &[(u32, u16)]) -> Self {
-        let min_push = push_samples(options.partials);
+    /// channels), in device order, and pauses with `paused` (see [`LiveClient::wake`]). Never fails:
+    /// the task finds the server and opens the session, and reports any trouble as `live_status`.
+    pub fn start(
+        app: &AppHandle,
+        session_id: &str,
+        options: LiveOptions,
+        formats: &[(u32, u16)],
+        paused: Arc<AtomicBool>,
+    ) -> Self {
+        let min_push = push_samples(options.partials, options.push_seconds);
         let api = HttpLive {
             app: app.clone(),
             options,
@@ -244,6 +280,7 @@ impl LiveClient {
             emit,
             cancel.clone(),
             Arc::clone(&wake),
+            paused,
             Arc::clone(&collected),
         ));
         Self {
@@ -260,8 +297,9 @@ impl LiveClient {
         (Arc::clone(&self.tap), device)
     }
 
-    /// Cuts a paused client's wait for its next attempt short.
-    pub fn retry(&self) {
+    /// Cuts the client's wait short: for its next attempt after a failure, or to see that the
+    /// recording was paused or resumed.
+    pub fn wake(&self) {
         self.wake.notify_one();
     }
 

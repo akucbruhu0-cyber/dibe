@@ -293,6 +293,7 @@ impl ServerProcess {
             client,
             stderr_buf,
             info_path,
+            loaded: None,
         })
     }
 
@@ -375,6 +376,12 @@ impl ServerProcess {
         Some(message)
     }
 
+    /// Loads the model this process last loaded again, the way it was loaded then.
+    pub async fn reload_model(&mut self) -> Result<()> {
+        let (path, gpu_device, no_gpu) = self.loaded.clone().context("no model was loaded on this server yet")?;
+        self.load_model(&path, gpu_device, no_gpu).await
+    }
+
     pub async fn load_model(&mut self, path: &str, gpu_device: Option<i32>, no_gpu: bool) -> Result<()> {
         let url = format!("{}/v1/models/load", self.base_url());
         let mut body = serde_json::json!({"path": path});
@@ -397,6 +404,7 @@ impl ServerProcess {
             match self.client.post(&url).json(&body).send().await {
                 Ok(response) if response.status().is_success() => {
                     tracing::debug!("vibe-server model loaded: {path}");
+                    self.loaded = Some((path.to_string(), gpu_device, no_gpu));
                     return Ok(());
                 }
                 Ok(response) => {

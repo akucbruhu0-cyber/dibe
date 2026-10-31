@@ -176,6 +176,20 @@ export function RecordingSection() {
 					</SettingsRow>
 				)}
 				{preference.liveTranscription && (
+					<SettingsRow label={m.liveBatterySaver()} description={m.liveBatterySaverInfo()}>
+						<Select value={String(preference.livePushSeconds)} onValueChange={(value) => preference.setLivePushSeconds(Number(value))}>
+							<SelectTrigger className={`w-56 ${rowControlClass}`} aria-label={m.liveBatterySaver()}>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="0">{m.liveBatterySaverOff()}</SelectItem>
+								<SelectItem value="10">{m.liveBatterySaverEvery10()}</SelectItem>
+								<SelectItem value="30">{m.liveBatterySaverEvery30()}</SelectItem>
+							</SelectContent>
+						</Select>
+					</SettingsRow>
+				)}
+				{preference.liveTranscription && (
 					<SettingsRow label={m.afterRecording()} description={m.afterRecordingInfo()}>
 						<Select value={preference.afterRecording} onValueChange={(value: AfterRecording) => preference.setAfterRecording(value)}>
 							<SelectTrigger className={`w-56 ${rowControlClass}`} aria-label={m.afterRecording()}>

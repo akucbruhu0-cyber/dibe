@@ -14,11 +14,13 @@ export interface LiveOptions {
 	partials: boolean
 	/** The Silero VAD model the server cuts the audio into utterances with. */
 	vadModel: string
+	/** The battery saver: seconds of audio each push waits for, instead of what `partials` sets. */
+	pushSeconds?: number
 }
 
 type LivePreference = Pick<
 	Preference,
-	'liveTranscription' | 'livePartials' | 'modelPath' | 'gpuDevice' | 'noGpu' | 'unloadTimeoutMinutes' | 'modelOptions' | 'recentLanguages'
+	'liveTranscription' | 'livePartials' | 'livePushSeconds' | 'modelPath' | 'gpuDevice' | 'noGpu' | 'unloadTimeoutMinutes' | 'modelOptions' | 'recentLanguages'
 >
 
 /**
@@ -59,7 +61,8 @@ export async function liveOptions(origin: RecordingOrigin, preference: LivePrefe
 			})
 			return null
 		}
-		return { language: liveLanguage(preference), partials: preference.livePartials, vadModel }
+		const pushSeconds = preference.livePushSeconds || undefined
+		return { language: liveLanguage(preference), partials: preference.livePartials, vadModel, pushSeconds }
 	} catch (error) {
 		console.error('live transcription is off for this recording:', error)
 		toast.warning(m.liveUnavailable(), { description: recordingErrorMessage(error) })

@@ -100,24 +100,6 @@ async fn next(calls: &mut UnboundedReceiver<String>) -> String {
     calls.recv().await.unwrap()
 }
 
-#[tokio::test]
-async fn drain_batch_waits_for_min_samples() {
-    let (tx, mut rx) = mpsc::channel(8);
-    send(&tx, 1).await;
-    {
-        let mut batch = std::pin::pin!(drain_batch(&mut rx, 4_000));
-        assert!(futures::poll!(&mut batch).is_pending(), "100 ms is not a batch yet");
-
-        send(&tx, 2).await;
-        assert_eq!(batch.await.len(), 3 * CHUNK);
-    }
-
-    // Once the tap is gone, what is there is all there will be.
-    send(&tx, 1).await;
-    drop(tx);
-    assert_eq!(drain_batch(&mut rx, 4_000).await.len(), CHUNK);
-}
-
 #[test]
 fn paused_buffer_caps_at_60s() {
     let mut backlog: VecDeque<Vec<f32>> = (0..601).map(|n| vec![n as f32; CHUNK]).collect();
@@ -233,6 +215,7 @@ async fn session_is_flushed_and_closed_on_cancel() {
         recorder(&emitted),
         cancel,
         Arc::default(),
+        Arc::default(),
         Arc::clone(&collected),
     );
     let (transcript, ()) = tokio::join!(run, driver);
@@ -269,7 +252,16 @@ async fn retry_after_no_model_then_live() {
         assert_eq!(next(&mut calls).await, "stop s1");
     };
     tokio::join!(
-        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        run_live(
+            &fake,
+            PUSH,
+            rx,
+            recorder(&emitted),
+            cancel,
+            Arc::default(),
+            Arc::default(),
+            Arc::default()
+        ),
         driver
     );
 
@@ -311,7 +303,16 @@ async fn push_error_pauses_and_resumes() {
         assert_eq!(next(&mut calls).await, "stop s2");
     };
     let (transcript, ()) = tokio::join!(
-        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        run_live(
+            &fake,
+            PUSH,
+            rx,
+            recorder(&emitted),
+            cancel,
+            Arc::default(),
+            Arc::default(),
+            Arc::default()
+        ),
         driver
     );
 
@@ -352,7 +353,16 @@ async fn a_session_reaped_during_a_pause_is_replaced_quietly() {
         assert_eq!(next(&mut calls).await, "stop s2");
     };
     let (transcript, ()) = tokio::join!(
-        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        run_live(
+            &fake,
+            PUSH,
+            rx,
+            recorder(&emitted),
+            cancel,
+            Arc::default(),
+            Arc::default(),
+            Arc::default()
+        ),
         driver
     );
 
@@ -383,7 +393,16 @@ async fn delete_retried_on_409() {
         assert_eq!(next(&mut calls).await, "stop s1");
     };
     let (transcript, ()) = tokio::join!(
-        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        run_live(
+            &fake,
+            PUSH,
+            rx,
+            recorder(&emitted),
+            cancel,
+            Arc::default(),
+            Arc::default(),
+            Arc::default()
+        ),
         driver
     );
 
@@ -413,7 +432,16 @@ async fn audio_the_server_lost_makes_the_transcript_incomplete() {
         assert_eq!(next(&mut calls).await, "stop s1");
     };
     let (transcript, ()) = tokio::join!(
-        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        run_live(
+            &fake,
+            PUSH,
+            rx,
+            recorder(&emitted),
+            cancel,
+            Arc::default(),
+            Arc::default(),
+            Arc::default()
+        ),
         driver
     );
 
@@ -443,7 +471,16 @@ async fn a_stop_that_cannot_send_the_rest_is_incomplete() {
         assert_eq!(next(&mut calls).await, "push s1 1600");
     };
     let (transcript, ()) = tokio::join!(
-        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, Arc::default(), Arc::default()),
+        run_live(
+            &fake,
+            PUSH,
+            rx,
+            recorder(&emitted),
+            cancel,
+            Arc::default(),
+            Arc::default(),
+            Arc::default()
+        ),
         driver
     );
 
@@ -468,6 +505,7 @@ async fn a_server_without_live_routes_ends_live_at_once() {
         CancellationToken::new(),
         Arc::default(),
         Arc::default(),
+        Arc::default(),
     );
     let transcript = tokio::time::timeout(Duration::from_secs(1), run)
         .await
@@ -489,8 +527,63 @@ async fn a_server_without_live_routes_ends_live_at_once() {
 #[test]
 fn live_text_waits_three_seconds_a_push_and_finals_only_one() {
     // The server refreshes the live text at most once a push: fewer pushes, fewer engine runs.
-    assert_eq!(push_samples(true), 3 * 16_000);
-    assert_eq!(push_samples(false), 16_000);
+    assert_eq!(push_samples(true, None), 3 * 16_000);
+    assert_eq!(push_samples(false, None), 16_000);
+    // The battery saver spaces them out whatever the live text, up to the most one push carries.
+    assert_eq!(push_samples(true, Some(10)), 10 * 16_000);
+    assert_eq!(push_samples(false, Some(60)), 30 * 16_000);
+    assert_eq!(push_samples(false, Some(0)), 16_000);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_pause_closes_the_session_and_the_resume_opens_a_new_one() {
+    let (fake, mut calls) = Fake::new();
+    fake.starts
+        .lock()
+        .unwrap()
+        .extend([Ok("s1".to_string()), Ok("s2".to_string())]);
+    fake.stops
+        .lock()
+        .unwrap()
+        .push_back(Ok(update(vec![final_(0.0, 0.1, "before")])));
+    let emitted = Emitted::default();
+    let (tx, rx) = mpsc::channel(64);
+    let cancel = CancellationToken::new();
+    let stop = cancel.clone();
+    let wake = Arc::new(Notify::new());
+    let paused = Arc::new(AtomicBool::new(false));
+
+    let driver = {
+        let (wake, paused) = (Arc::clone(&wake), Arc::clone(&paused));
+        async move {
+            assert_eq!(next(&mut calls).await, "start");
+            send(&tx, 1).await;
+            paused.store(true, Ordering::Relaxed);
+            wake.notify_one();
+            // What came before the click goes out short of a full push, and the session is closed
+            // for its last sentence: the server holds no model through the pause.
+            assert_eq!(next(&mut calls).await, "push s1 1600");
+            assert_eq!(next(&mut calls).await, "stop s1");
+            tokio::time::sleep(Duration::from_secs(600)).await;
+            assert!(calls.try_recv().is_err(), "nothing goes to the server while paused");
+            paused.store(false, Ordering::Relaxed);
+            wake.notify_one();
+            assert_eq!(next(&mut calls).await, "start");
+            send(&tx, 3).await;
+            assert_eq!(next(&mut calls).await, "push s2 4800");
+            drop(tx);
+            stop.cancel();
+            assert_eq!(next(&mut calls).await, "stop s2");
+        }
+    };
+    let (transcript, ()) = tokio::join!(
+        run_live(&fake, PUSH, rx, recorder(&emitted), cancel, wake, paused, Arc::default()),
+        driver
+    );
+
+    assert_eq!(transcript.finals, vec![segment(0, 10, "before")]);
+    assert!(transcript.complete);
+    assert_eq!(states(&emitted), ["starting", "live", "ended"]);
 }
 
 #[tokio::test(start_paused = true)]
@@ -515,10 +608,11 @@ async fn audio_waits_for_a_full_push() {
     tokio::join!(
         run_live(
             &fake,
-            push_samples(false),
+            push_samples(false, None),
             rx,
             recorder(&emitted),
             cancel,
+            Arc::default(),
             Arc::default(),
             Arc::default()
         ),

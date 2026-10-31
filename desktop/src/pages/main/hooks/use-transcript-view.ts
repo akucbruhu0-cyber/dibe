@@ -1,5 +1,6 @@
 import { CONFIG_KEYS } from '~/lib/config-keys'
 import { usePersisted } from '~/lib/config-store'
+import type { Job } from './use-transcribe-queue'
 
 export type TranscriptTextSize = 'sm' | 'md' | 'lg'
 
@@ -28,4 +29,9 @@ export const textSizeClass: Record<TranscriptTextSize, string> = {
 	sm: 'text-[13px] leading-[1.7]',
 	md: 'text-[15px] leading-[1.75]',
 	lg: 'text-[17px] leading-[1.8]',
+}
+
+/** A transcript can be edited once its text stops changing: a finished run, or a project opened from disk. */
+export function canEditTranscript(job: Job) {
+	return job.status !== 'running' && (job.status === 'done' || job.hydrated === true)
 }

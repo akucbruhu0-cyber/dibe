@@ -139,6 +139,8 @@ export interface Preference {
 	liveTranscription: boolean
 	livePartials: boolean
 	setLivePartials: (value: boolean) => void
+	livePushSeconds: number
+	setLivePushSeconds: (value: number) => void
 	setLiveTranscription: ModifyState<boolean>
 	afterRecording: AfterRecording
 	setAfterRecording: ModifyState<AfterRecording>
@@ -281,6 +283,7 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 	const [autoTranscribeAfterRecording, setAutoTranscribeAfterRecording] = usePersisted<boolean>(CONFIG_KEYS.autoTranscribeAfterRecording, false)
 	const [liveTranscription, setLiveTranscription] = usePersisted<boolean>(CONFIG_KEYS.liveTranscription, true)
 	const [livePartials, setLivePartials] = usePersisted<boolean>(CONFIG_KEYS.livePartials, true)
+	const [livePushSeconds, setLivePushSeconds] = usePersisted<number>(CONFIG_KEYS.livePushSeconds, 0)
 	const [afterRecording, setAfterRecording] = usePersisted<AfterRecording>(CONFIG_KEYS.afterRecording, 'keep')
 
 	/**
@@ -460,6 +463,8 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 		setLiveTranscription,
 		livePartials,
 		setLivePartials,
+		livePushSeconds,
+		setLivePushSeconds,
 		afterRecording,
 		setAfterRecording,
 	}

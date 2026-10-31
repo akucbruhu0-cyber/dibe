@@ -22,6 +22,7 @@ function preference(overrides: Partial<Preference> = {}) {
 	return {
 		liveTranscription: true,
 		livePartials: true,
+		livePushSeconds: 0,
 		modelPath: '/models/ivrit.bin',
 		gpuDevice: null,
 		noGpu: false,
@@ -57,6 +58,11 @@ describe('liveOptions', () => {
 		const live = await liveOptions('manual', preference({ livePartials: false }), mocks.downloadVad)
 
 		expect(live?.partials).toBe(false)
+	})
+
+	it('spaces the pushes out with the battery saver, and leaves the usual pace alone without it', async () => {
+		expect((await liveOptions('manual', preference({ livePushSeconds: 30 }), mocks.downloadVad))?.pushSeconds).toBe(30)
+		expect((await liveOptions('manual', preference(), mocks.downloadVad))?.pushSeconds).toBeUndefined()
 	})
 
 	it('is off when the preference is off', async () => {

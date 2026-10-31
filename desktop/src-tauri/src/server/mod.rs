@@ -59,6 +59,8 @@ pub struct ServerProcess {
     stderr_buf: Arc<Mutex<StderrTail>>,
     /// Where `server.json` was written for this process, to take it down again.
     info_path: Option<std::path::PathBuf>,
+    /// The last `load_model` that succeeded (path, GPU device, no GPU), for `reload_model`.
+    loaded: Option<(String, Option<i32>, bool)>,
 }
 
 /// The child's most recent stderr. A crash message is the *last* thing written,

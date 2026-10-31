@@ -79,7 +79,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 	const summaries = useSummaries(queue)
 	useTranscribeWarnings()
 	const live = useLiveTranscript()
-	const [panel, setPanel] = useState<IdlePanel>('none')
+	// Live transcription is what the app is mostly opened for, so it opens on the recording panel.
+	const [panel, setPanel] = useState<IdlePanel>('record')
 	const [collectingFolder, setCollectingFolder] = useState(false)
 	const [recordElapsed, setRecordElapsed] = useState(0)
 	const [recordPaused, setRecordPaused] = useState(false)
@@ -201,7 +202,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 		const unlisten: Promise<UnlistenFn> = listen<RecordFinishPayload>('record_finish', async ({ payload }) => {
 			if (!isMine(payload, PROJECT_RECORDING_ORIGINS)) return
 			recording.setIsRecording(false)
-			setPanel('none')
+			setPanel('record')
 			if (payload.warning) toast.warning(finishWarningTitle(payload), { description: payload.warning, position: 'bottom-center' })
 			const deps = recordingCompletionRef.current
 			// What the reader corrected while it was live is what the project keeps.
@@ -225,7 +226,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 			if (!isMine(payload, PROJECT_RECORDING_ORIGINS)) return
 			const message = payload.message || m.error()
 			recording.setIsRecording(false)
-			setPanel('none')
+			setPanel('record')
 			toast.error(m.error(), { description: message, position: 'bottom-center' })
 			setErrorModal?.({ log: message, open: true })
 		})
@@ -258,7 +259,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
 	const startNew = useCallback(() => {
 		queue.reset()
-		setPanel('none')
+		setPanel('record')
 	}, [queue])
 
 	// Same guards the old home page ran on mount.
