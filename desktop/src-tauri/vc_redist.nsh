@@ -13,7 +13,7 @@
         ; reporting success while silently retaining an incompatible sidecar.
         Delete "$INSTDIR\${SIDECAR_NAME}"
         ${If} ${FileExists} "$INSTDIR\${SIDECAR_NAME}"
-            MessageBox MB_OK|MB_ICONSTOP "Vibe could not replace ${SIDECAR_NAME} because it is still in use. Close Vibe and its background processes, then run the installer again."
+            MessageBox MB_OK|MB_ICONSTOP "DIBE could not replace ${SIDECAR_NAME} because it is still in use. Close DIBE and its background processes, then run the installer again."
             Abort "The existing ${SIDECAR_NAME} is still locked"
         ${EndIf}
     ${EndIf}

@@ -1,0 +1,122 @@
+name: Release
+
+# Builds the Intel Mac and Windows downloads and attaches them to an existing
+# release; the Apple Silicon zip is built locally, on the machine DIBE is developed on.
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Existing release to attach the builds to (for example: v1.2.0)'
+                required: true
+                type: string
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        timeout-minutes: 120
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runner: macos-15-intel
+                      triple: x86_64-apple-darwin
+                      # Same as the server release: no speaker diarization on Intel Macs.
+                      cargo_flags: --no-default-features
+                      bundles: app
+                    - runner: windows-latest
+                      triple: x86_64-pc-windows-msvc
+                      exe: .exe
+                      bundles: nsis
+        runs-on: ${{ matrix.runner }}
+        env:
+            GH_TOKEN: ${{ github.token }}
+            TAG: ${{ inputs.tag }}
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: pnpm/action-setup@v4
+              with:
+                  package_json_file: desktop/package.json
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: desktop/pnpm-lock.yaml
+
+            - uses: getchore/setup-chore@v1
+              with:
+                  version: v1.6.0
+
+            - uses: dtolnay/rust-toolchain@stable
+
+            - uses: swatinem/rust-cache@v2
+              with:
+                  workspaces: |
+                      . -> target
+                      server -> target
+
+            - name: Install frontend dependencies
+              run: pnpm install --frozen-lockfile
+              working-directory: desktop
+
+            # ffmpeg comes from here; the server it brings is replaced in the next step.
+            - name: Fetch the sidecars
+              run: chore setup ${{ matrix.triple }}
+
+            # The released server has neither live transcription nor the API token.
+            - name: Build the engine from this tree
+              env:
+                  VIBE_SERVER_COMMIT: ${{ github.sha }}
+              run: |
+                  cd server
+                  chore fetch-libs
+                  cargo build -p vibe-server --release ${{ matrix.cargo_flags }}
+                  cd ..
+                  cp server/target/release/vibe-server${{ matrix.exe }} desktop/src-tauri/binaries/vibe-server-${{ matrix.triple }}${{ matrix.exe }}
+                  desktop/src-tauri/binaries/vibe-server-${{ matrix.triple }}${{ matrix.exe }} --version
+
+            - name: Build the app
+              run: pnpm exec tauri build --bundles ${{ matrix.bundles }}
+              working-directory: desktop
+
+            - name: Package the macOS app
+              if: runner.os == 'macOS'
+              run: |
+                  # Ad-hoc, as `chore upgrade` does: a real signature needs an Apple Developer ID.
+                  app=target/release/bundle/macos/DIBE.app
+                  codesign --force --deep --sign - --entitlements desktop/src-tauri/entitlements.plist "$app"
+                  ditto -c -k --keepParent "$app" "DIBE-${TAG#v}-macos-intel.zip"
+
+            - name: Package the Windows installer
+              if: runner.os == 'Windows'
+              run: cp target/release/bundle/nsis/*-setup.exe "DIBE-${TAG#v}-windows-x64-setup.exe"
+
+            # A build can pass and still not start, for instance on a missing library.
+            - name: Check that the macOS app starts
+              if: runner.os == 'macOS'
+              run: |
+                  target/release/bundle/macos/DIBE.app/Contents/MacOS/dibe &
+                  pid=$!
+                  sleep 20
+                  kill -0 "$pid"
+                  kill "$pid"
+
+            - name: Check that the Windows installer works and the app starts
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  Start-Process -Wait -FilePath "DIBE-$($env:TAG.TrimStart('v'))-windows-x64-setup.exe" -ArgumentList '/S'
+                  $app = Start-Process -PassThru -FilePath "$env:LOCALAPPDATA\DIBE\dibe.exe"
+                  Start-Sleep -Seconds 20
+                  if ($app.HasExited) { throw "dibe.exe exited with code $($app.ExitCode)" }
+                  Stop-Process -Id $app.Id -Force
+
+            - name: Attach to the release
+              run: gh release upload "$TAG" DIBE-* --clobber
