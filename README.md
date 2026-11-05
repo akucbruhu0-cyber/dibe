@@ -10,11 +10,11 @@
 
 <hr />
 
-**DIBE turns speech into text on your own computer.** Record and watch the transcript appear live, or transcribe audio and video files — it works offline and nothing leaves your device. To install it, open the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) and download `macos-arm64.zip` for Apple Silicon Macs, `macos-intel.zip` for Intel Macs, or `windows-x64-setup.exe` for Windows. Install it (on a Mac, drag `DIBE.app` into Applications), open it, pick a model to download, and press record or choose a file. Your computer warns you the first time because DIBE is unsigned; the [Download](#download) section shows how to allow it.
+**DIBE turns speech into text on your own computer.** Record and watch the transcript appear live, or transcribe audio and video files — it works offline and nothing leaves your device. To install it, open the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) and download `macos-arm64.zip` for Apple Silicon Macs, `macos-intel.zip` for Intel Macs, or `windows-x64-setup.exe` for Windows. Install it (on a Mac, drag `DIBE.app` into Applications), open it, pick a model to download, and press record or choose a file. You need a powerful computer, because the transcription runs on the computer itself. Your computer warns you the first time because DIBE is unsigned; the [Download](#download) section shows how to allow it.
 
 <div dir="rtl">
 
-**DIBE הופכת דיבור לטקסט על המחשב שלכם.** מקליטים ורואים את התמלול מופיע בזמן אמת, או מתמללים קובצי אודיו ווידאו. הכול עובד בלי אינטרנט ושום דבר לא יוצא מהמכשיר. להתקנה, פותחים את [הגרסה האחרונה](https://github.com/akucbruhu0-cyber/dibe/releases/latest) ומורידים `macos-arm64.zip` למק עם Apple Silicon,‏ `macos-intel.zip` למק עם Intel, או `windows-x64-setup.exe` ל-Windows. מתקינים (במק גוררים את `DIBE.app` אל Applications), פותחים, בוחרים מודל להורדה ולוחצים על הקלטה או בוחרים קובץ. בפתיחה הראשונה המחשב יציג אזהרה כי DIBE לא חתומה. ההוראות לאישור נמצאות בסעיף [Download](#download).
+**DIBE הופכת דיבור לטקסט על המחשב שלכם.** מקליטים ורואים את התמלול מופיע בזמן אמת, או מתמללים קובצי אודיו ווידאו. הכול עובד בלי אינטרנט ושום דבר לא יוצא מהמכשיר. להתקנה, פותחים את [הגרסה האחרונה](https://github.com/akucbruhu0-cyber/dibe/releases/latest) ומורידים `macos-arm64.zip` למק עם Apple Silicon,‏ `macos-intel.zip` למק עם Intel, או `windows-x64-setup.exe` ל-Windows. מתקינים (במק גוררים את `DIBE.app` אל Applications), פותחים, בוחרים מודל להורדה ולוחצים על הקלטה או בוחרים קובץ. נדרש מחשב חזק, כי התמלול רץ על המחשב עצמו. בפתיחה הראשונה המחשב יציג אזהרה כי DIBE לא חתומה. ההוראות לאישור נמצאות בסעיף [Download](#download).
 
 </div>
 
