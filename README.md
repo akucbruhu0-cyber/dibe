@@ -5,8 +5,18 @@
 <h1 align="center">DIBE — private transcription, live while you record</h1>
 
 <p align="center">
-  <strong>Transcribe audio and video right on your Mac. Nothing leaves your device.</strong>
+  <strong>Transcribe audio and video right on your computer. Nothing leaves your device.</strong>
 </p>
+
+<hr />
+
+**DIBE turns speech into text on your own computer.** Record and watch the transcript appear live, or transcribe audio and video files — it works offline and nothing leaves your device. To install it, open the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) and download `macos-arm64.zip` for Apple Silicon Macs, `macos-intel.zip` for Intel Macs, or `windows-x64-setup.exe` for Windows. Install it (on a Mac, drag `DIBE.app` into Applications), open it, pick a model to download, and press record or choose a file. Your computer warns you the first time because DIBE is unsigned; the [Download](#download) section shows how to allow it.
+
+<div dir="rtl">
+
+**DIBE הופכת דיבור לטקסט על המחשב שלכם.** מקליטים ורואים את התמלול מופיע בזמן אמת, או מתמללים קובצי אודיו ווידאו. הכול עובד בלי אינטרנט ושום דבר לא יוצא מהמכשיר. להתקנה, פותחים את [הגרסה האחרונה](https://github.com/akucbruhu0-cyber/dibe/releases/latest) ומורידים `macos-arm64.zip` למק עם Apple Silicon,‏ `macos-intel.zip` למק עם Intel, או `windows-x64-setup.exe` ל-Windows. מתקינים (במק גוררים את `DIBE.app` אל Applications), פותחים, בוחרים מודל להורדה ולוחצים על הקלטה או בוחרים קובץ. בפתיחה הראשונה המחשב יציג אזהרה כי DIBE לא חתומה. ההוראות לאישור נמצאות בסעיף [Download](#download).
+
+</div>
 
 <hr />
 
@@ -48,19 +58,33 @@ DIBE is a fork of [Vibe](https://github.com/thewh1teagle/vibe) by [thewh1teagle]
 
 ## Platforms
 
-DIBE is developed and tested on **macOS (Apple Silicon)**. The code still builds for Windows and Linux like Vibe's, but those builds are untested in this fork.
+DIBE is developed and tested on **macOS (Apple Silicon)**. The **Intel Mac** and **Windows** builds are made automatically and checked to install and start, but they are not used day to day, so please report anything that misbehaves. Intel Macs have no speaker diarization. The code still builds for Linux like Vibe's, but no Linux build is published.
 
 ## Download
 
-1. Download `DIBE-<version>-macos-arm64.zip` from the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) (Apple Silicon Macs).
-2. Unzip it and drag `DIBE.app` into `/Applications`.
-3. DIBE is not notarized by Apple, so macOS blocks the first launch. Allow it once in **System Settings → Privacy & Security → Open Anyway**, or run:
+Get the file for your computer from the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest):
+
+| Computer | File |
+| --- | --- |
+| Mac with Apple Silicon | `DIBE-<version>-macos-arm64.zip` |
+| Mac with Intel | `DIBE-<version>-macos-intel.zip` |
+| Windows 10 / 11 (64-bit) | `DIBE-<version>-windows-x64-setup.exe` |
+
+**Mac**
+
+1. Unzip it and drag `DIBE.app` into `/Applications`.
+2. DIBE is not notarized by Apple, so macOS blocks the first launch. Allow it once in **System Settings → Privacy & Security → Open Anyway**, or run:
 
    ```console
    xattr -dr com.apple.quarantine /Applications/DIBE.app
    ```
 
-4. Open DIBE, pick a model to download, and allow the microphone when asked.
+3. Open DIBE, pick a model to download, and allow the microphone when asked.
+
+**Windows**
+
+1. Run the installer. DIBE is not code-signed, so Windows may show "Windows protected your PC": choose **More info → Run anyway**.
+2. Open DIBE, pick a model to download, and allow the microphone when asked.
 
 Already using Vibe? DIBE copies your Vibe models, settings and projects on its first launch; Vibe keeps working unchanged.
 
