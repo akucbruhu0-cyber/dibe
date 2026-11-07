@@ -58,7 +58,17 @@ DIBE is a fork of [Vibe](https://github.com/thewh1teagle/vibe) by [thewh1teagle]
 
 ## Platforms
 
-DIBE is developed and tested on **macOS (Apple Silicon)**. The **Intel Mac** and **Windows** builds are made automatically and checked to install and start, but they are not used day to day, so please report anything that misbehaves. Intel Macs have no speaker diarization. The code still builds for Linux like Vibe's, but no Linux build is published.
+DIBE is developed and tested **only on macOS with Apple Silicon**. The **Intel Mac** and **Windows** builds are produced automatically by CI but **have not been tested** — they may not work, so please report anything that misbehaves. Intel Macs have no speaker diarization.
+
+<div dir="rtl">
+
+DIBE פותחה ונבדקה **רק על מק עם Apple Silicon**. הגרסאות ל-Mac עם Intel ול-Windows נבנות אוטומטית אבל **לא נבדקו** ועלולות לא לעבוד. אם משהו לא עובד, אפשר לפתוח issue.
+
+</div>
+
+## Promo videos
+
+[English](https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.2.0/dibe-promo-en.mp4) · [עברית](https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.2.0/dibe-promo-he.mp4) — narration is AI-generated (Google Gemini TTS). The code still builds for Linux like Vibe's, but no Linux build is published.
 
 ## Download
 
@@ -120,6 +130,8 @@ Issues and pull requests are welcome: [CONTRIBUTE.md](CONTRIBUTE.md). Translatio
 DIBE exists because of [Vibe](https://github.com/thewh1teagle/vibe) and its author [thewh1teagle](https://github.com/thewh1teagle) — consider [supporting the original project](https://thewh1teagle.github.io/vibe/?action=support-vibe). Models, model documentation and the phone page are still served by the Vibe project.
 
 Built with [Tauri](https://tauri.app/), [whisper.cpp](https://github.com/ggml-org/whisper.cpp) / [ggml](https://github.com/ggml-org/ggml), OpenAI's [Whisper](https://openai.com/research/whisper), NVIDIA's Parakeet and Nemotron models, and many other open-source libraries.
+
+DIBE is an independent project, not affiliated with or endorsed by OpenAI, NVIDIA, Anthropic, Google or Apple. Their names and logos belong to their owners and appear only to say what DIBE works with.
 
 ## License
 
