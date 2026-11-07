@@ -8,6 +8,13 @@
   <strong>Transcribe audio and video right on your computer. Nothing leaves your device.</strong>
 </p>
 
+<p align="center">
+  <video src="https://github.com/akucbruhu0-cyber/dibe/raw/main/docs/media/dibe-promo-en.mp4" poster="https://github.com/akucbruhu0-cyber/dibe/raw/main/docs/media/dibe-promo-en.jpg" controls muted width="720"></video>
+</p>
+<p align="center">
+  <video src="https://github.com/akucbruhu0-cyber/dibe/raw/main/docs/media/dibe-promo-he.mp4" poster="https://github.com/akucbruhu0-cyber/dibe/raw/main/docs/media/dibe-promo-he.jpg" controls muted width="720"></video>
+</p>
+
 <hr />
 
 **DIBE turns speech into text on your own computer.** Record and watch the transcript appear live, or transcribe audio and video files — it works offline and nothing leaves your device. To install it, open the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) and download `macos-arm64.zip` for Apple Silicon Macs, `macos-intel.zip` for Intel Macs, or `windows-x64-setup.exe` for Windows. Install it (on a Mac, drag `DIBE.app` into Applications), open it, pick a model to download, and press record or choose a file. You need a powerful computer, because the transcription runs on the computer itself. Your computer warns you the first time because DIBE is unsigned; the [Download](#download) section shows how to allow it.
@@ -66,9 +73,7 @@ DIBE פותחה ונבדקה **רק על מק עם Apple Silicon**. הגרסאו
 
 </div>
 
-## Promo videos
-
-[English](https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.2.0/dibe-promo-en.mp4) · [עברית](https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.2.0/dibe-promo-he.mp4) — narration is AI-generated (Google Gemini TTS). The code still builds for Linux like Vibe's, but no Linux build is published.
+The promo videos at the top have AI-generated narration (Google Gemini TTS). The code still builds for Linux like Vibe's, but no Linux build is published.
 
 ## Download
 
