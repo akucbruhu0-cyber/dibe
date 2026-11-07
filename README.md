@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/akucbruhu0-cyber/dibe/raw/main/docs/media/dibe-promo-en.mp4"><img src="docs/media/dibe-promo-en.jpg" width="560" alt="DIBE promo video (English) — click to play"></a>
+  <a href="https://youtu.be/MwNkwr5Ozx8"><img src="docs/media/dibe-promo-en.jpg" width="560" alt="DIBE promo video (English) — click to watch on YouTube"></a>
 </p>
 <p align="center">
-  <a href="https://github.com/akucbruhu0-cyber/dibe/raw/main/docs/media/dibe-promo-he.mp4"><img src="docs/media/dibe-promo-he.jpg" width="560" alt="DIBE promo video (עברית) — click to play"></a>
+  <a href="https://youtu.be/h4Iy92rdQKs"><img src="docs/media/dibe-promo-he.jpg" width="560" alt="DIBE promo video (עברית) — click to watch on YouTube"></a>
 </p>
 
 <hr />
