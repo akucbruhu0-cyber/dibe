@@ -8,12 +8,9 @@
   <strong>Transcribe audio and video right on your computer. Nothing leaves your device.</strong>
 </p>
 
-<p align="center">
-  <a href="https://youtu.be/MwNkwr5Ozx8"><img src="docs/media/dibe-promo-en.jpg" width="560" alt="DIBE promo video (English) — click to watch on YouTube"></a>
-</p>
-<p align="center">
-  <a href="https://youtu.be/h4Iy92rdQKs"><img src="docs/media/dibe-promo-he.jpg" width="560" alt="DIBE promo video (עברית) — click to watch on YouTube"></a>
-</p>
+https://github.com/user-attachments/assets/713c5ee1-4c08-4745-ad98-27f8ddd23a94
+
+https://github.com/user-attachments/assets/a26c9f13-8cdb-47a3-a84a-6a5b2fb17d82
 
 <hr />
 
