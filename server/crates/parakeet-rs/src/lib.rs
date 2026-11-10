@@ -45,6 +45,12 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Per-graph logging stays off unless PARAKEET_DEBUG is set: every stderr write costs real time on a phone.
+pub(crate) fn debug_logging() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PARAKEET_DEBUG").is_some())
+}
+
 /// Confirms that the shared GGML backend registry is available.
 pub fn backend_device_count() -> usize {
     unsafe { sys::ggml_backend_dev_count() }

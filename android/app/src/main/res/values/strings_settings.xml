@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_app_language_system">System</string>
+    <!-- Each language in its own name, whatever the UI language. -->
+    <string name="settings_app_language_en" translatable="false">English</string>
+    <string name="settings_app_language_he" translatable="false">עברית</string>
+    <string name="settings_language_model_default">Model default</string>
+    <string name="settings_replay_intro">Show the introduction again</string>
+</resources>

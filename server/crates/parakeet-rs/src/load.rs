@@ -105,12 +105,19 @@ impl Model {
         model.validate_tensor_catalog()?;
         let mut model = model;
         model.device = unsafe { DeviceWeights::load(model.weights)? };
+        if model.device.is_none() {
+            model.device = unsafe { DeviceWeights::load_cpu_repacked(model.weights) };
+        }
         eprintln!(
             "[parakeet][load] done elapsed_ms={} variant={} tensors={} backend={}",
             started.elapsed().as_millis(),
             model.info.variant,
             model.info.tensor_count,
-            if model.device.is_some() { "gpu" } else { "cpu" }
+            match &model.device {
+                Some(device) if device.cpu => "cpu-repacked",
+                Some(_) => "gpu",
+                None => "cpu",
+            }
         );
         Ok(model)
     }
@@ -269,7 +276,106 @@ impl DeviceWeights {
             src = sys::ggml_get_next_tensor(source, src);
         }
         eprintln!("[parakeet][load] upload_complete tensors={}", count);
-        Ok(Some(Self { ctx, buffer, backend }))
+        Ok(Some(Self {
+            ctx,
+            buffer,
+            backend,
+            cpu: false,
+            threadpool: ptr::null_mut(),
+        }))
+    }
+
+    /// ARM (and AVX) CPUs run quantized matmuls through weights repacked at upload time (i8mm / dotprod
+    /// kernels), which only happens for tensors living in the CPU backend's "extra" buffer type. Weights
+    /// read straight from the GGUF sit in a plain buffer and take the slow generic path. None when the
+    /// CPU has no such buffer type (or PARAKEET_NO_REPACK is set), and the model keeps its plain weights.
+    pub(crate) unsafe fn load_cpu_repacked(source: *mut sys::ggml_context) -> Option<Self> {
+        // On by default on Android, where it is the difference between 0.32 and 0.23 of real time; elsewhere
+        // PARAKEET_REPACK opts in. PARAKEET_NO_REPACK turns it off.
+        let wanted = if cfg!(target_os = "android") {
+            std::env::var_os("PARAKEET_NO_REPACK").is_none()
+        } else {
+            std::env::var_os("PARAKEET_REPACK").is_some()
+        };
+        if !wanted {
+            return None;
+        }
+        let device = sys::ggml_backend_dev_by_type(sys::ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_CPU);
+        if device.is_null() {
+            return None;
+        }
+        let reg = sys::ggml_backend_dev_backend_reg(device);
+        if reg.is_null() {
+            return None;
+        }
+        let address = sys::ggml_backend_reg_get_proc_address(reg, c"ggml_backend_dev_get_extra_bufts".as_ptr());
+        if address.is_null() {
+            return None;
+        }
+        type ExtraBufts = unsafe extern "C" fn(sys::ggml_backend_dev_t) -> *mut sys::ggml_backend_buffer_type_t;
+        let extra_bufts: ExtraBufts = std::mem::transmute(address);
+        let bufts = extra_bufts(device);
+        if bufts.is_null() || (*bufts).is_null() {
+            return None;
+        }
+        let threads = crate::runtime::encoder_threads() as i32;
+        let backend = crate::runtime::init_cpu_backend(threads);
+        if backend.is_null() {
+            return None;
+        }
+        let threadpool = crate::runtime::attach_threadpool(backend, threads);
+        let mut count = 0usize;
+        let mut tensor = sys::ggml_get_first_tensor(source);
+        while !tensor.is_null() {
+            count += 1;
+            tensor = sys::ggml_get_next_tensor(source, tensor);
+        }
+        let ctx = sys::ggml_init(sys::ggml_init_params {
+            mem_size: sys::ggml_tensor_overhead() * (count + 32),
+            mem_buffer: ptr::null_mut(),
+            no_alloc: true,
+        });
+        if ctx.is_null() {
+            sys::ggml_backend_free(backend);
+            return None;
+        }
+        tensor = sys::ggml_get_first_tensor(source);
+        while !tensor.is_null() {
+            let copy = sys::ggml_dup_tensor(ctx, tensor);
+            sys::ggml_set_name(copy, sys::ggml_get_name(tensor));
+            tensor = sys::ggml_get_next_tensor(source, tensor);
+        }
+        let buffer = sys::ggml_backend_alloc_ctx_tensors_from_buft(ctx, *bufts);
+        if buffer.is_null() {
+            sys::ggml_free(ctx);
+            sys::ggml_backend_free(backend);
+            return None;
+        }
+        let mut src = sys::ggml_get_first_tensor(source);
+        while !src.is_null() {
+            let dst = sys::ggml_get_tensor(ctx, sys::ggml_get_name(src));
+            if dst.is_null() {
+                sys::ggml_backend_buffer_free(buffer);
+                sys::ggml_free(ctx);
+                sys::ggml_backend_free(backend);
+                return None;
+            }
+            if (*dst).extra.is_null() {
+                // Not repackable (norms, biases, the f16 pointwise convs): the buffer's set_tensor would
+                // dereference the missing repack traits, but the memory is plain CPU memory, so copy it.
+                ptr::copy_nonoverlapping((*src).data.cast::<u8>(), (*dst).data.cast::<u8>(), sys::ggml_nbytes(src));
+            } else {
+                sys::ggml_backend_tensor_set(dst, (*src).data, 0, sys::ggml_nbytes(src));
+            }
+            src = sys::ggml_get_next_tensor(source, src);
+        }
+        Some(Self {
+            ctx,
+            buffer,
+            backend,
+            cpu: true,
+            threadpool,
+        })
     }
 }
 

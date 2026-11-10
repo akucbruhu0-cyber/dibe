@@ -210,7 +210,13 @@ impl Default for FullParams {
     fn default() -> Self {
         Self {
             strategy: SamplingStrategy::Greedy,
-            n_threads: (std::thread::available_parallelism().map(|c| c.get()).unwrap_or(4) as i32).min(4),
+            // Fixed on Android: the CPU threadpool pins the thread that loads the model to one core, so
+            // available_parallelism() reads 1 there afterwards. Four is also the phone's fast cores.
+            n_threads: if cfg!(target_os = "android") {
+                4
+            } else {
+                (std::thread::available_parallelism().map(|c| c.get()).unwrap_or(4) as i32).min(4)
+            },
             n_max_text_ctx: 16384,
             offset_ms: 0,
             duration_ms: 0,

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AI settings: the model picker. -->
+<resources>
+    <string name="settings_ai_model_type">Type a model name…</string>
+    <string name="settings_ai_model_back_to_list">Choose from the list</string>
+    <string name="settings_ai_model_refresh">Refresh model list</string>
+    <string name="settings_ai_model_loading">Loading models…</string>
+    <string name="settings_ai_model_offline">Couldn\'t load the provider\'s list. Showing suggested models.</string>
+    <string name="settings_ai_model_custom">Custom</string>
+    <string name="settings_ai_model_free">Free tier</string>
+    <string name="settings_ai_model_local">Local</string>
+    <string name="settings_ai_model_low_cost">Lowest cost</string>
+</resources>

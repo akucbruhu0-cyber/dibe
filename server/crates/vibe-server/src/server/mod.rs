@@ -2,11 +2,12 @@ mod auth;
 mod diarization;
 mod form;
 pub(crate) mod format;
-mod live;
 mod routes;
 mod stream;
 mod transcription;
 pub(crate) mod unload_timeout;
+
+use dibe_core::live;
 
 use std::net::SocketAddr;
 use std::path::Path;

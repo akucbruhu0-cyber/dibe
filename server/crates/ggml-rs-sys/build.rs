@@ -5,7 +5,9 @@ fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let root = manifest_dir.parent().and_then(Path::parent).unwrap();
     let include_dir = root.join("libs/include");
-    let lib_dir = root.join("libs/lib");
+    // GGML_LIB_DIR lets a cross build (Android) link its own libraries without touching libs/lib.
+    println!("cargo:rerun-if-env-changed=GGML_LIB_DIR");
+    let lib_dir = env::var_os("GGML_LIB_DIR").map(PathBuf::from).unwrap_or_else(|| root.join("libs/lib"));
     let wrapper = manifest_dir.join("wrapper.h");
 
     for path in [&wrapper, &include_dir, &lib_dir] {
@@ -80,6 +82,12 @@ fn link_platform() {
         Ok("linux") => {
             println!("cargo:rustc-link-lib=static=ggml-vulkan");
             for lib in ["stdc++", "m", "pthread", "gomp", "dl"] {
+                println!("cargo:rustc-link-lib={lib}");
+            }
+        }
+        // Android: CPU only (built without OpenMP and Vulkan), with the NDK's static libc++.
+        Ok("android") => {
+            for lib in ["c++_static", "c++abi", "m", "dl", "log"] {
                 println!("cargo:rustc-link-lib={lib}");
             }
         }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_share">שיתוף ההקלטה</string>
+    <string name="recording_save">שמירת ההקלטה במכשיר</string>
+    <string name="recording_saved">ההקלטה נשמרה</string>
+</resources>

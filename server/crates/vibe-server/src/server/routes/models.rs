@@ -28,56 +28,7 @@ pub(in crate::server) async fn model_metadata(Json(request): Json<ModelMetadataR
         );
     }
     let path = request.path.clone();
-    match tokio::task::spawn_blocking(move || {
-        // Probing a whisper model with the GGUF readers only makes ggml log a
-        // magic mismatch, so files that are not GGUF go straight to whisper.
-        if !is_gguf(&path) {
-            return whisper_rs::validate_model_file(&path)
-                .map(|()| crate::engine::whisper_capabilities())
-                .map_err(|err| {
-                    tracing::error!(model = path, "model metadata check failed: {err}");
-                    err.to_string()
-                });
-        }
-
-        if let Ok(info) = parakeet_rs::Model::metadata(&path) {
-            if info.architecture == "parakeet" && info.head_kind == "tdt" && info.variant.contains("v3") {
-                return Ok(crate::engine::EngineCapabilities {
-                    engine: "parakeet".to_string(),
-                    requires_vad: true,
-                    languages: info.languages,
-                    language_detection: info.language_detection,
-                    streaming: false,
-                    translation: false,
-                    timestamps: true,
-                    text_prompts: false,
-                });
-            }
-        }
-
-        match nemotron_rs::Model::metadata(&path) {
-            Ok(info) if info.architecture == "parakeet" && info.head_kind == "rnnt" => Ok(crate::engine::EngineCapabilities {
-                engine: "nemotron".to_string(),
-                requires_vad: true,
-                languages: info.languages,
-                language_detection: info.language_detection,
-                streaming: false,
-                translation: false,
-                timestamps: true,
-                text_prompts: false,
-            }),
-            Ok(info) => Err(format!(
-                "unsupported GGUF architecture '{}' with head '{}'",
-                info.architecture, info.head_kind
-            )),
-            Err(err) => {
-                tracing::error!(model = path, "failed to read GGUF metadata: {err}");
-                Err(format!("failed to read GGUF metadata: {err}"))
-            }
-        }
-    })
-    .await
-    {
+    match tokio::task::spawn_blocking(move || crate::engine::metadata(&path)).await {
         Ok(Ok(capabilities)) => (
             StatusCode::OK,
             Json(ModelMetadataResponse {
@@ -184,15 +135,6 @@ pub(in crate::server) async fn list_models(State(state): State<AppState>) -> Res
         Vec::new()
     };
     (StatusCode::OK, Json(ModelListResponse { object: "list", data })).into_response()
-}
-
-/// Whether the file starts with the GGUF magic. Whisper models use the older
-/// GGML container and are handled by whisper.cpp instead.
-fn is_gguf(path: &str) -> bool {
-    use std::io::Read;
-
-    let mut magic = [0u8; 4];
-    std::fs::File::open(path).is_ok_and(|mut file| file.read_exact(&mut magic).is_ok()) && &magic == b"GGUF"
 }
 
 fn now_unix() -> i64 {

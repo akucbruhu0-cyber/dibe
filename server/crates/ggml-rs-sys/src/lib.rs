@@ -8,3 +8,6 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 #[cfg(target_arch = "x86_64")]
 mod cpu_variant;
+
+mod threadpool;
+pub use threadpool::attach_threadpool;

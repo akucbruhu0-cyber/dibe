@@ -11,6 +11,7 @@ name = "vibe-server"
 path = "src/main.rs"
 
 [dependencies]
+dibe-core = { path = "../dibe-core", features = ["schema"] }
 whisper-rs = { path = "../whisper-rs", features = ["ffi"] }
 nemotron-rs = { path = "../nemotron-rs" }
 parakeet-rs = { path = "../parakeet-rs" }

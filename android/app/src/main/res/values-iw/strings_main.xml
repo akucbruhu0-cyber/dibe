@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Navigation -->
+    <string name="nav_record">הקלטה</string>
+    <string name="nav_history">היסטוריה</string>
+    <string name="nav_settings">הגדרות</string>
+
+    <!-- Shared components -->
+    <string name="ui_tier_light">קל</string>
+    <string name="ui_tier_medium">מאוזן</string>
+    <string name="ui_tier_heavy">כבד</string>
+    <string name="ui_fit_good">רץ היטב על הטלפון הזה</string>
+    <string name="ui_fit_tight">צמוד: כדאי לסגור אפליקציות אחרות קודם</string>
+    <string name="ui_fit_too_heavy">כבד מדי לטלפון הזה</string>
+    <string name="ui_badge_hebrew">הכי טוב לעברית</string>
+    <string name="ui_badge_files_only">קבצים בלבד</string>
+    <string name="ui_action_choose_model">בחירת מודל</string>
+    <string name="ui_action_choose_lighter_model">בחירת מודל קל יותר</string>
+    <string name="ui_action_open_settings">פתיחת ההגדרות</string>
+    <string name="ui_action_free_space">פינוי מקום</string>
+    <string name="ui_action_dismiss">סגירה</string>
+    <string name="ui_action_run_anyway">להריץ בכל זאת</string>
+    <string name="ui_problem_mic_permission">&#x200F;DIBE צריך גישה למיקרופון כדי להקליט.</string>
+    <string name="ui_problem_notification_permission">ההתראות כבויות, אז לא תראו את ההתקדמות מחוץ לאפליקציה.</string>
+    <string name="ui_problem_projection_denied">ההרשאה להקלטת השמע מהמכשיר נדחתה.</string>
+    <string name="ui_problem_capture_silent">האפליקציה הזו לא מאפשרת להקליט את השמע שלה (או שלא מתנגן כלום).</string>
+    <string name="ui_problem_capture_failed">ההקלטה נעצרה: המיקרופון או מקור השמע הפסיקו להגיב.</string>
+    <string name="ui_problem_no_model">לא מותקן מודל תמלול.</string>
+    <string name="ui_problem_low_memory">אין מספיק זיכרון פנוי למודל הזה.</string>
+    <string name="ui_problem_model_not_live">המודל הזה מתמלל אחרי שעוצרים.</string>
+    <string name="ui_problem_unsupported_format">סוג הקובץ הזה לא נתמך.</string>
+    <string name="ui_problem_corrupt_file">לא הצלחנו לקרוא את הקובץ. ייתכן שהוא פגום.</string>
+    <string name="ui_problem_engine_failed">התמלול נעצר באופן לא צפוי.</string>
+    <string name="ui_problem_no_space">נגמר שטח האחסון בטלפון.</string>
+
+    <!-- Home -->
+    <string name="home_eyebrow">תמלול על המכשיר</string>
+    <string name="home_title">מוכנים להקשיב</string>
+    <string name="home_title_recording">הקלטה פעילה</string>
+    <string name="home_record_start">התחלת הקלטה</string>
+    <string name="home_record_hint">הקישו כדי להקליט</string>
+    <string name="home_record_needs_model">הורידו מודל כדי להתחיל</string>
+    <string name="home_record_open">מקליט — הקישו לפתיחה</string>
+    <string name="home_source_mic">מיקרופון</string>
+    <string name="home_source_system">שמע מהמכשיר</string>
+    <string name="home_source_both">שניהם</string>
+    <string name="home_source_system_hint">מקליט את מה שאפליקציות אחרות משמיעות. חלק מהאפליקציות לא מאפשרות זאת.</string>
+    <string name="home_or">או</string>
+    <string name="home_pick_file">תמלול קובץ</string>
+    <string name="home_language_auto">זיהוי אוטומטי</string>
+    <string name="home_language_desc">שפה: %1$s. שינוי</string>
+    <string name="home_no_model_title">עדיין אין מודל</string>
+    <string name="home_no_model_body">הורידו מודל תמלול כדי להתחיל. הוא רץ כולו על הטלפון הזה.</string>
+    <string name="home_model_failed_title">ההורדה נכשלה</string>
+    <string name="home_model_failed_body">הורדת המודל לא הסתיימה. נסו שוב או בחרו מודל אחר.</string>
+    <string name="home_model_downloading">מוריד</string>
+    <string name="home_model_waiting">ממתין לחיבור…</string>
+    <string name="home_model_verifying">בודק את ההורדה…</string>
+    <string name="home_file_decoding">מכין את השמע…</string>
+    <string name="home_file_transcribing">מתמלל · %1$d%%</string>
+    <string name="home_file_done">התמלול מוכן</string>
+    <string name="home_file_open">פתיחה</string>
+    <string name="home_file_cancel">ביטול</string>
+    <string name="home_file_busy">קובץ אחר עדיין בתמלול. נסו שוב כשיסתיים.</string>
+
+    <!-- Permissions -->
+    <string name="perm_mic_title">גישה למיקרופון</string>
+    <string name="perm_mic_body">&#x200F;DIBE צריך את המיקרופון כדי להקליט. השמע מתומלל על הטלפון הזה ולא יוצא ממנו.</string>
+    <string name="perm_mic_blocked_body">הגישה למיקרופון כבויה עבור DIBE. כדי להקליט, הפעילו אותה בהגדרות האפליקציה.</string>
+    <string name="perm_notifications_title">להישאר בתמונה</string>
+    <string name="perm_notifications_body">&#x200F;DIBE מציג בהתראה את התקדמות ההקלטה והתמלול, כדי שתוכלו לעקוב גם מאפליקציות אחרות. אפשר גם בלי.</string>
+    <string name="perm_allow">אישור</string>
+    <string name="perm_continue">המשך</string>
+    <string name="perm_not_now">לא עכשיו</string>
+
+    <!-- Recording -->
+    <string name="rec_back">חזרה</string>
+    <string name="rec_status_starting">מתחיל…</string>
+    <string name="rec_status_recording">מקליט</string>
+    <string name="rec_status_paused">מושהה</string>
+    <string name="rec_status_finishing">מסיים…</string>
+    <string name="rec_status_stopped">נעצר</string>
+    <string name="rec_pause">השהיה</string>
+    <string name="rec_resume">המשך</string>
+    <string name="rec_stop">עצירה</string>
+    <string name="rec_finishing">מסיים…</string>
+    <string name="rec_close">סגירה</string>
+    <string name="rec_empty_starting">מתכונן…</string>
+    <string name="rec_empty_listening">מקשיב… הטקסט יופיע תוך כדי דיבור.</string>
+    <string name="rec_empty_after_stop">התמלול יופיע אחרי שתעצרו.</string>
+    <string name="rec_jump_to_live">חזרה לזמן אמת</string>
+
+    <!-- Floating bubble -->
+    <string name="bubble_recording_desc">מקליט, %1$s. פתיחת ההקלטה.</string>
+    <string name="bubble_paused_desc">ההקלטה מושהית ב-%1$s. פתיחת ההקלטה.</string>
+    <string name="bubble_file_running_desc">מתמלל את %1$s, %2$d אחוזים. פתיחה.</string>
+    <string name="bubble_file_ready">מוכן</string>
+    <string name="bubble_file_ready_desc">התמלול של %1$s מוכן. פתיחת התמלול.</string>
+    <string name="bubble_file_failed">נכשל</string>
+    <string name="bubble_file_failed_desc">לא הצלחנו לתמלל את %1$s. פתחו כדי לראות למה.</string>
+
+    <!-- Onboarding -->
+    <string name="onb_skip_intro">דילוג</string>
+    <string name="onb_next">הבא</string>
+    <string name="onb_continue">המשך</string>
+    <string name="onb_download">הורדה · %1$s</string>
+    <string name="onb_page_desc">עמוד %1$d מתוך %2$d</string>
+    <string name="onb_power_eyebrow">טוב לדעת · סוללה</string>
+    <string name="onb_power_title">הטלפון עושה את כל העבודה</string>
+    <string name="onb_power_body">הבינה המלאכותית של DIBE רצה ישירות על המעבד של הטלפון. הקלטות ארוכות צורכות יותר סוללה, והטלפון עשוי להתחמם קצת. זה תקין, ובהקלטות ארוכות כדאי לחבר מטען.</string>
+    <string name="onb_hardware_eyebrow">טוב לדעת · מהירות</string>
+    <string name="onb_hardware_title">הטלפון קובע את הקצב</string>
+    <string name="onb_hardware_body">שום דבר לא נשלח לענן, כך שהחיבור לרשת לא משנה. המהירות והדיוק תלויים במעבד ובזיכרון של הטלפון.</string>
+    <string name="onb_fit_eyebrow">טוב לדעת · זיכרון</string>
+    <string name="onb_fit_title">נעזור לכם לבחור מודל</string>
+    <string name="onb_fit_body">מודלים גדולים מדויקים יותר, אבל צריכים יותר זיכרון. DIBE מדרג כל מודל לפי הטלפון הזה, כדי שתבחרו אחד שרץ בצורה חלקה.</string>
+    <string name="onb_device_eyebrow">הטלפון שלכם</string>
+    <string name="onb_device_title">המודל שהכי מתאים לטלפון הזה</string>
+    <string name="onb_device_body">&#x200F;DIBE בדק את המעבד והזיכרון של הטלפון הזה.</string>
+    <string name="onb_device_processor">מעבד</string>
+    <string name="onb_device_memory">זיכרון</string>
+    <string name="onb_device_fast_cores">ליבות מהירות</string>
+    <string name="onb_recommended">מומלץ</string>
+    <string name="onb_model_installed">כבר מותקן</string>
+    <string name="onb_model_downloading">בהורדה…</string>
+    <string name="onb_choose_another">בחירת מודל אחר</string>
+    <string name="onb_skip_for_now">דילוג בינתיים</string>
+</resources>

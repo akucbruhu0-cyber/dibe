@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Dibe" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/dibe_night_background</item>
+    </style>
+</resources>

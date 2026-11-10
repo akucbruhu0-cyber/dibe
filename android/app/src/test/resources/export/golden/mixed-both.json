@@ -1,0 +1,23 @@
+{
+  "direction": "ltr",
+  "transcript": [
+    {
+      "text": "First, with a speaker.",
+      "start": 0,
+      "stop": 2.5,
+      "speaker": 1
+    },
+    {
+      "text": "No speaker here.",
+      "start": 2.5,
+      "stop": 4.99
+    },
+    {
+      "text": "Speaker eleven.",
+      "start": 4.99,
+      "stop": 10,
+      "speaker": 11
+    }
+  ],
+  "summary": "Short **summary** with 'quotes' & <tags>.\n\n# Big\n\n## Smaller\n\n+ one\n+ two\n    + deep\n\n1. a\n- b\n\n___\nlast_line_with_underscores and _real italic_ and *star*"
+}

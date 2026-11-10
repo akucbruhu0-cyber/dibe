@@ -9,21 +9,39 @@ pub struct Token {
     pub duration_frames: usize,
 }
 
-struct StepGraph {
+type Tensor = *mut sys::ggml_tensor;
+
+/// The prediction network: one step of the LSTM stack over the last emitted token, projected for the joint.
+/// Its output only changes when a token is emitted, so the decode loop runs it then and not once per frame.
+struct PredictorGraph {
     graph: Graph,
-    embedding: *mut sys::ggml_tensor,
-    encoder: *mut sys::ggml_tensor,
-    prev_h: Vec<*mut sys::ggml_tensor>,
-    prev_c: Vec<*mut sys::ggml_tensor>,
-    next_h: Vec<*mut sys::ggml_tensor>,
-    next_c: Vec<*mut sys::ggml_tensor>,
-    logits: *mut sys::ggml_tensor,
+    embedding: Tensor,
+    prev_h: Vec<Tensor>,
+    prev_c: Vec<Tensor>,
+    next_h: Vec<Tensor>,
+    next_c: Vec<Tensor>,
+    projected: Tensor,
+}
+
+/// The joint network for one frame: both projections already applied, so it is the ReLU and the output layer.
+struct JointGraph {
+    graph: Graph,
+    encoder: Tensor,
+    predictor: Tensor,
+    logits: Tensor,
+}
+
+/// The joint's encoder-side projection for every frame at once, instead of one matrix-vector product per step.
+struct EncoderProjection {
+    graph: Graph,
+    input: Tensor,
+    output: Tensor,
 }
 
 struct EmbeddingGraph {
     graph: Graph,
-    id: *mut sys::ggml_tensor,
-    output: *mut sys::ggml_tensor,
+    id: Tensor,
+    output: Tensor,
 }
 
 impl EmbeddingGraph {
@@ -44,13 +62,12 @@ impl EmbeddingGraph {
     }
 }
 
-impl StepGraph {
+impl PredictorGraph {
     unsafe fn new(model: &Model) -> Result<Self> {
         let mut graph = Graph::new()?;
         let hidden = model.info().predictor_hidden as i64;
         let layers = model.info().predictor_layers as usize;
         let embedding = sys::ggml_new_tensor_1d(graph.ctx, sys::ggml_type_GGML_TYPE_F32, hidden);
-        let encoder = sys::ggml_new_tensor_1d(graph.ctx, sys::ggml_type_GGML_TYPE_F32, model.info().encoder_dimension as i64);
         let mut prev_h = Vec::new();
         let mut prev_c = Vec::new();
         let mut next_h = Vec::new();
@@ -61,9 +78,9 @@ impl StepGraph {
             let c = sys::ggml_new_tensor_1d(graph.ctx, sys::ggml_type_GGML_TYPE_F32, hidden);
             prev_h.push(h);
             prev_c.push(c);
-            let wx = model.cpu_tensor(&format!("pred.lstm.{layer}.Wx")).unwrap();
-            let wh = model.cpu_tensor(&format!("pred.lstm.{layer}.Wh")).unwrap();
-            let bias = model.cpu_tensor(&format!("pred.lstm.{layer}.bias"));
+            let wx = model.decode_tensor(&format!("pred.lstm.{layer}.Wx")).unwrap();
+            let wh = model.decode_tensor(&format!("pred.lstm.{layer}.Wh")).unwrap();
+            let bias = model.decode_tensor(&format!("pred.lstm.{layer}.bias"));
             let mut gates = sys::ggml_add(
                 graph.ctx,
                 sys::ggml_mul_mat(graph.ctx, wx, input),
@@ -72,8 +89,8 @@ impl StepGraph {
             if let Some(bias) = bias {
                 gates = sys::ggml_add(graph.ctx, gates, bias);
             } else {
-                let b_ih = model.cpu_tensor(&format!("decoder.lstm.{layer}.b_ih")).unwrap();
-                let b_hh = model.cpu_tensor(&format!("decoder.lstm.{layer}.b_hh")).unwrap();
+                let b_ih = model.decode_tensor(&format!("decoder.lstm.{layer}.b_ih")).unwrap();
+                let b_hh = model.decode_tensor(&format!("decoder.lstm.{layer}.b_hh")).unwrap();
                 gates = sys::ggml_add(graph.ctx, gates, sys::ggml_add(graph.ctx, b_ih, b_hh));
             }
             let part = |index: usize| {
@@ -96,33 +113,71 @@ impl StepGraph {
             next_c.push(nc);
             input = nh;
         }
-        let enc = sys::ggml_add(
+        let projected = sys::ggml_add(
             graph.ctx,
-            sys::ggml_mul_mat(graph.ctx, model.cpu_tensor("joint.enc.weight").unwrap(), encoder),
-            model.cpu_tensor("joint.enc.bias").unwrap(),
+            sys::ggml_mul_mat(graph.ctx, model.decode_tensor("joint.pred.weight").unwrap(), input),
+            model.decode_tensor("joint.pred.bias").unwrap(),
         );
-        let pred = sys::ggml_add(
-            graph.ctx,
-            sys::ggml_mul_mat(graph.ctx, model.cpu_tensor("joint.pred.weight").unwrap(), input),
-            model.cpu_tensor("joint.pred.bias").unwrap(),
-        );
-        let joined = sys::ggml_relu(graph.ctx, sys::ggml_add(graph.ctx, enc, pred));
-        let logits = sys::ggml_add(
-            graph.ctx,
-            sys::ggml_mul_mat(graph.ctx, model.cpu_tensor("joint.out.weight").unwrap(), joined),
-            model.cpu_tensor("joint.out.bias").unwrap(),
-        );
-        graph.output(logits);
+        graph.output(projected);
         Ok(Self {
             graph,
             embedding,
-            encoder,
             prev_h,
             prev_c,
             next_h,
             next_c,
+            projected,
+        })
+    }
+}
+
+impl JointGraph {
+    unsafe fn new(model: &Model) -> Result<Self> {
+        let mut graph = Graph::new()?;
+        let dimension = (*model.decode_tensor("joint.enc.weight").unwrap()).ne[1];
+        let encoder = sys::ggml_new_tensor_1d(graph.ctx, sys::ggml_type_GGML_TYPE_F32, dimension);
+        let predictor = sys::ggml_new_tensor_1d(graph.ctx, sys::ggml_type_GGML_TYPE_F32, dimension);
+        let joined = sys::ggml_relu(graph.ctx, sys::ggml_add(graph.ctx, encoder, predictor));
+        let logits = sys::ggml_add(
+            graph.ctx,
+            sys::ggml_mul_mat(graph.ctx, model.decode_tensor("joint.out.weight").unwrap(), joined),
+            model.decode_tensor("joint.out.bias").unwrap(),
+        );
+        graph.output(logits);
+        Ok(Self {
+            graph,
+            encoder,
+            predictor,
             logits,
         })
+    }
+}
+
+impl EncoderProjection {
+    unsafe fn new(model: &Model, frames: usize) -> Result<Self> {
+        let mut graph = Graph::new()?;
+        let input = sys::ggml_new_tensor_2d(
+            graph.ctx,
+            sys::ggml_type_GGML_TYPE_F32,
+            model.info().encoder_dimension as i64,
+            frames as i64,
+        );
+        let output = sys::ggml_add(
+            graph.ctx,
+            sys::ggml_mul_mat(graph.ctx, model.decode_tensor("joint.enc.weight").unwrap(), input),
+            model.decode_tensor("joint.enc.bias").unwrap(),
+        );
+        graph.output(output);
+        Ok(Self { graph, input, output })
+    }
+
+    /// The projected frames, `joint_dimension` floats each, back to back.
+    unsafe fn run(&mut self, runtime: &CpuRuntime, encoded: &[f32]) -> Result<Vec<f32>> {
+        runtime.execute(&mut self.graph, &[(self.input, encoded)])?;
+        let count = ((*self.output).ne[0] * (*self.output).ne[1]) as usize;
+        let mut projected = vec![0.0f32; count];
+        sys::ggml_backend_tensor_get(self.output, projected.as_mut_ptr().cast(), 0, count * 4);
+        Ok(projected)
     }
 }
 
@@ -132,14 +187,26 @@ impl Model {
         if encoded.len() != frames * dimension {
             return Err(Error::Ggml("encoder output shape"));
         }
+        if frames == 0 {
+            return Ok(Vec::new());
+        }
         unsafe {
-            let runtime = CpuRuntime::new()?;
-            let mut step_graph = StepGraph::new(self)?;
+            let runtime = CpuRuntime::for_decoder()?;
+            let mut predictor = PredictorGraph::new(self)?;
+            let mut joint = JointGraph::new(self)?;
             let mut embedding_graph = EmbeddingGraph::new(self)?;
             let hidden = self.info().predictor_hidden as usize;
             let layers = self.info().predictor_layers as usize;
+            let encoder_projection = EncoderProjection::new(self, frames)?.run(&runtime, encoded)?;
+            let joint_dimension = encoder_projection.len() / frames.max(1);
             let mut h = vec![vec![0.0f32; hidden]; layers];
             let mut c = vec![vec![0.0f32; hidden]; layers];
+            let mut next_h = vec![vec![0.0f32; hidden]; layers];
+            let mut next_c = vec![vec![0.0f32; hidden]; layers];
+            let mut projected = vec![0.0f32; joint_dimension];
+            // The predictor output is stale until it has run on the current embedding and state, and goes
+            // stale again each time a token is emitted. A blank leaves the embedding and state alone.
+            let mut stale = true;
             // NeMo TDT uses the blank embedding as the start-of-sequence
             // predictor input (not an all-zero pseudo-token).
             let mut embedding = embedding_graph.lookup(&runtime, self.tokenizer().blank_id(), hidden)?;
@@ -149,16 +216,28 @@ impl Model {
             let mut iterations = 0;
             while frame < frames && iterations < frames * 16 + 1024 {
                 iterations += 1;
-                let enc = &encoded[frame * dimension..(frame + 1) * dimension];
-                let mut inputs = vec![(step_graph.embedding, embedding.as_slice()), (step_graph.encoder, enc)];
-                for layer in 0..layers {
-                    inputs.push((step_graph.prev_h[layer], h[layer].as_slice()));
-                    inputs.push((step_graph.prev_c[layer], c[layer].as_slice()));
+                if stale {
+                    let mut inputs = vec![(predictor.embedding, embedding.as_slice())];
+                    for layer in 0..layers {
+                        inputs.push((predictor.prev_h[layer], h[layer].as_slice()));
+                        inputs.push((predictor.prev_c[layer], c[layer].as_slice()));
+                    }
+                    runtime.execute(&mut predictor.graph, &inputs)?;
+                    sys::ggml_backend_tensor_get(predictor.projected, projected.as_mut_ptr().cast(), 0, projected.len() * 4);
+                    for layer in 0..layers {
+                        sys::ggml_backend_tensor_get(predictor.next_h[layer], next_h[layer].as_mut_ptr().cast(), 0, hidden * 4);
+                        sys::ggml_backend_tensor_get(predictor.next_c[layer], next_c[layer].as_mut_ptr().cast(), 0, hidden * 4);
+                    }
+                    stale = false;
                 }
-                runtime.execute(&mut step_graph.graph, &inputs)?;
+                let enc = &encoder_projection[frame * joint_dimension..(frame + 1) * joint_dimension];
+                runtime.execute(
+                    &mut joint.graph,
+                    &[(joint.encoder, enc), (joint.predictor, projected.as_slice())],
+                )?;
                 let token_classes = self.info().vocabulary_size as usize;
                 let mut logits = vec![0.0f32; token_classes + self.info().joint_extra_outputs as usize];
-                sys::ggml_backend_tensor_get(step_graph.logits, logits.as_mut_ptr().cast(), 0, logits.len() * 4);
+                sys::ggml_backend_tensor_get(joint.logits, logits.as_mut_ptr().cast(), 0, logits.len() * 4);
                 let token = logits[..token_classes]
                     .iter()
                     .enumerate()
@@ -180,8 +259,8 @@ impl Model {
                 }
                 if !is_blank {
                     for layer in 0..layers {
-                        sys::ggml_backend_tensor_get(step_graph.next_h[layer], h[layer].as_mut_ptr().cast(), 0, hidden * 4);
-                        sys::ggml_backend_tensor_get(step_graph.next_c[layer], c[layer].as_mut_ptr().cast(), 0, hidden * 4);
+                        h[layer].copy_from_slice(&next_h[layer]);
+                        c[layer].copy_from_slice(&next_c[layer]);
                     }
                     output.push(Token {
                         id: token as u32,
@@ -189,6 +268,7 @@ impl Model {
                         duration_frames: duration,
                     });
                     embedding = embedding_graph.lookup(&runtime, token as u32, hidden)?;
+                    stale = true;
                 }
                 frame += duration;
                 symbols += 1;

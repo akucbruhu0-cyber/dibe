@@ -13,8 +13,17 @@ use ggml_rs_sys as sys;
 
 use crate::model::{Model, Tensor};
 
-/// whisper.cpp's `whisper_vad_default_context_params().n_threads`.
-const N_THREADS: i32 = 4;
+/// whisper.cpp's `whisper_vad_default_context_params().n_threads`; VAD_THREADS overrides it, because
+/// the per-window graph is tiny and on a phone's big.LITTLE cores the thread sync can cost more than it saves.
+fn n_threads() -> i32 {
+    std::env::var("VAD_THREADS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .filter(|threads| *threads > 0)
+        // One thread on Android: ggml spawns its workers per graph there, and a 32 ms window is a few
+        // microseconds of math, so four threads made the VAD cost about a quarter of the audio's length.
+        .unwrap_or(if cfg!(target_os = "android") { 1 } else { 4 })
+}
 
 pub(crate) struct Silero {
     model: Model,
@@ -62,7 +71,7 @@ impl Silero {
 
     pub(crate) fn new(model: Model) -> Option<Self> {
         unsafe {
-            let backend = init_cpu_backend(N_THREADS);
+            let backend = init_cpu_backend(n_threads());
             if backend.is_null() {
                 return None;
             }

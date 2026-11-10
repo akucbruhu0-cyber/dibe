@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onb_welcome_title">Welcome to DIBE</string>
+    <string name="onb_welcome_body">Your private transcriber. It listens, writes it all down, and every word stays on your phone.</string>
+    <string name="onb_lets_start">Let\'s start</string>
+</resources>

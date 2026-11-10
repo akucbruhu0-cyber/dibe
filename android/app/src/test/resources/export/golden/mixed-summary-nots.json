@@ -1,0 +1,4 @@
+{
+  "direction": "ltr",
+  "summary": "Short **summary** with 'quotes' & <tags>.\n\n# Big\n\n## Smaller\n\n+ one\n+ two\n    + deep\n\n1. a\n- b\n\n___\nlast_line_with_underscores and _real italic_ and *star*"
+}

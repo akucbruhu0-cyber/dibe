@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_app_language_system">מערכת</string>
+    <string name="settings_language_model_default">ברירת המחדל של המודל</string>
+    <string name="settings_replay_intro">הצגת ההיכרות מחדש</string>
+</resources>

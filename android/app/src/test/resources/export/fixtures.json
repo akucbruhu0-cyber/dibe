@@ -1,0 +1,51 @@
+{
+	"records": {
+		"hebrew": {
+			"version": 1,
+			"name": "פגישת צוות",
+			"sourcePath": "",
+			"createdAt": "2026-11-09T08:15:30.123Z",
+			"segments": [
+				{ "start": 0, "stop": 712, "text": "  שלום לכולם, ברוכים הבאים לפגישה.  ", "speaker": 0 },
+				{ "start": 712, "stop": 1530, "text": "תודה. יש לנו 3 נושאים: תקציב, \"לוח זמנים\" & גיוס --> היום --> מחר.", "speaker": 1 },
+				{ "start": 1530, "stop": 1530, "text": "   ", "speaker": 0 },
+				{ "start": 361234, "stop": 372001, "text": "English inside עברית <b>bold?</b> it's\nשורה שנייה", "speaker": 2 },
+				{ "start": 372001, "stop": 380000, "text": "בלי דובר" }
+			],
+			"speakerNames": { "0": "דנה", "1": "  ", "2": " Avi " },
+			"summary": "\n\n## סיכום הפגישה\r\n\r\nהפגישה עסקה ב**תקציב** וב*לוח הזמנים*. ראו [מסמך](https://example.com/doc) ו-`config_file`.\nשורה שממשיכה את הפסקה.\n\n### נקודות עיקריות\n- תקציב מאושר\n  - כולל _גיוס_ חדש\n- snake_case_name נשאר\n* פריט שני\n  ממשיך בשורה הבאה\n\n1. ראשון\n2) שני\n   1. פנימי\n- אחרי מספרים\n\n> ציטוט חשוב\n> שממשיך\n\n---\n\n#### הערה ##\nטקסט אחרון **מודגש *ונטוי* בפנים** ו__עוד__.\n\n***\n\n"
+		},
+		"english": {
+			"version": 1,
+			"name": "  Quarterly review: Q3/Q4 \"final\" & <draft>  ",
+			"sourcePath": "",
+			"createdAt": "2026-01-02T03:04:05.000Z",
+			"segments": [
+				{ "start": 5, "stop": 100, "text": "Hello and welcome." },
+				{ "start": 100, "stop": 12345, "text": "We grew 12% --> nice, \"really\" nice." },
+				{ "start": 12345, "stop": 36000000, "text": "  Long meeting.\r\nSecond line.  " }
+			]
+		},
+		"mixed": {
+			"version": 1,
+			"name": "",
+			"sourcePath": "",
+			"createdAt": "2026-01-02T03:04:05.000Z",
+			"segments": [
+				{ "start": 0, "stop": 250, "text": "First, with a speaker.", "speaker": 0 },
+				{ "start": 250, "stop": 499, "text": "No speaker here." },
+				{ "start": 499, "stop": 1000, "text": "Speaker eleven.", "speaker": 10 }
+			],
+			"summary": "Short **summary** with 'quotes' & <tags>.\n\n# Big\n\n## Smaller\n\n+ one\n+ two\n    + deep\n\n1. a\n- b\n\n___\nlast_line_with_underscores and _real italic_ and *star*"
+		}
+	},
+	"variants": [
+		{ "id": "hebrew-both", "record": "hebrew", "content": "both", "showTimestamps": true, "showSpeakers": true, "speakerLabel": "דובר", "rtl": true },
+		{ "id": "hebrew-transcript-plain", "record": "hebrew", "content": "transcript", "showTimestamps": false, "showSpeakers": false, "speakerLabel": "דובר", "rtl": true },
+		{ "id": "hebrew-summary", "record": "hebrew", "content": "summary", "showTimestamps": true, "showSpeakers": true, "speakerLabel": "Speaker", "rtl": true },
+		{ "id": "english-default", "record": "english", "content": "transcript", "showTimestamps": true, "showSpeakers": true, "speakerLabel": "Speaker", "rtl": false },
+		{ "id": "english-both-nosummary", "record": "english", "content": "both", "showTimestamps": true, "showSpeakers": false, "speakerLabel": "Speaker", "rtl": false },
+		{ "id": "mixed-both", "record": "mixed", "content": "both", "showTimestamps": true, "showSpeakers": true, "speakerLabel": "Speaker", "rtl": false },
+		{ "id": "mixed-summary-nots", "record": "mixed", "content": "summary", "showTimestamps": false, "showSpeakers": true, "speakerLabel": "Speaker", "rtl": false }
+	]
+}

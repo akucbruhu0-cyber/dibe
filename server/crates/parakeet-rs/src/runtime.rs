@@ -8,11 +8,26 @@ pub(crate) struct CpuRuntime {
     owned: bool,
     scheduler: sys::ggml_backend_sched_t,
     scheduler_cpu: sys::ggml_backend_t,
+    /// Null unless this runtime keeps its worker threads alive between graphs (see [`attach_threadpool`]).
+    threadpool: sys::ggml_threadpool_t,
 }
+
+pub(crate) use sys::attach_threadpool;
 
 impl CpuRuntime {
     pub fn new() -> Result<Self> {
         Self::with_threads(4)
+    }
+
+    /// The token-by-token decoder runs tiny graphs, so its thread count is tuned apart from the encoder's.
+    pub fn for_decoder() -> Result<Self> {
+        Self::with_threads(
+            std::env::var("PARAKEET_DECODER_THREADS")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .filter(|threads| *threads > 0)
+                .unwrap_or(4),
+        )
     }
 
     fn with_threads(threads: usize) -> Result<Self> {
@@ -20,11 +35,13 @@ impl CpuRuntime {
         if backend.is_null() {
             Err(Error::Ggml("cpu backend init"))
         } else {
+            let threadpool = unsafe { attach_threadpool(backend, threads.min(i32::MAX as usize) as i32) };
             Ok(Self {
                 backend,
                 owned: true,
                 scheduler: ptr::null_mut(),
                 scheduler_cpu: ptr::null_mut(),
+                threadpool,
             })
         }
     }
@@ -67,13 +84,15 @@ impl CpuRuntime {
             sys::ggml_backend_sched_graph_compute(self.scheduler, graph.graph)
         };
         if status == sys::ggml_status_GGML_STATUS_SUCCESS {
-            eprintln!(
-                "[parakeet][ggml] backend={} nodes={} inputs={} elapsed_ms={}",
-                if self.owned { "cpu" } else { "gpu" },
-                nodes,
-                inputs.len(),
-                started.elapsed().as_millis()
-            );
+            if crate::debug_logging() {
+                eprintln!(
+                    "[parakeet][ggml] backend={} nodes={} inputs={} elapsed_ms={}",
+                    if self.owned { "cpu" } else { "gpu" },
+                    nodes,
+                    inputs.len(),
+                    started.elapsed().as_millis()
+                );
+            }
             Ok(())
         } else {
             Err(Error::Ggml("ggml graph compute"))
@@ -88,20 +107,28 @@ pub(crate) fn accelerated_runtime(backend: Option<sys::ggml_backend_t>) -> Resul
             owned: false,
             scheduler: ptr::null_mut(),
             scheduler_cpu: ptr::null_mut(),
+            threadpool: ptr::null_mut(),
         }),
-        None => CpuRuntime::with_threads(
-            std::env::var("PARAKEET_THREADS")
-                .ok()
-                .and_then(|value| value.parse().ok())
-                .filter(|threads| *threads > 0)
-                .unwrap_or_else(|| {
-                    std::thread::available_parallelism()
-                        .map(|count| count.get())
-                        .map(|threads| (threads * 4 / 5).max(1))
-                        .unwrap_or(4)
-                }),
-        ),
+        None => CpuRuntime::with_threads(encoder_threads()),
     }
+}
+
+/// PARAKEET_THREADS, else 4 on Android (past the 4 faster cores the LITTLE ones hold every barrier up),
+/// else four fifths of the cores.
+pub(crate) fn encoder_threads() -> usize {
+    std::env::var("PARAKEET_THREADS")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .filter(|threads| *threads > 0)
+        .unwrap_or_else(|| {
+            if cfg!(target_os = "android") {
+                return 4;
+            }
+            std::thread::available_parallelism()
+                .map(|count| count.get())
+                .map(|threads| (threads * 4 / 5).max(1))
+                .unwrap_or(4)
+        })
 }
 
 impl Drop for CpuRuntime {
@@ -115,6 +142,10 @@ impl Drop for CpuRuntime {
             }
             if self.owned {
                 sys::ggml_backend_free(self.backend);
+            }
+            #[cfg(target_os = "android")]
+            if !self.threadpool.is_null() {
+                sys::ggml_threadpool_free(self.threadpool);
             }
         }
     }
@@ -198,7 +229,7 @@ unsafe fn set_backend_n_threads(backend: sys::ggml_backend_t, n_threads: i32) {
 
 /// Registry-based CPU backend init (`ggml_backend_cpu_init` does not link
 /// against GGML_BACKEND_DL builds).
-unsafe fn init_cpu_backend(n_threads: i32) -> sys::ggml_backend_t {
+pub(crate) unsafe fn init_cpu_backend(n_threads: i32) -> sys::ggml_backend_t {
     load_backends_once();
     let backend = sys::ggml_backend_init_by_type(sys::ggml_backend_dev_type_GGML_BACKEND_DEVICE_TYPE_CPU, std::ptr::null());
     if !backend.is_null() {

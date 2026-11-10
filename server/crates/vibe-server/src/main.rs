@@ -1,9 +1,10 @@
 mod audio;
 mod cli;
-mod engine;
 mod parent;
 mod pull;
 mod server;
+
+use dibe_core::engine;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

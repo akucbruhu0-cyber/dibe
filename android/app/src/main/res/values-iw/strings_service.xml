@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel">הקלטה ותמלול</string>
+    <string name="notification_recording">מקליט</string>
+    <string name="notification_paused">מושהה</string>
+    <string name="notification_finishing">מסיים…</string>
+    <string name="notification_decoding">מכין את השמע</string>
+    <string name="notification_transcribing">מתמלל…</string>
+    <string name="notification_ready">התמלול מוכן</string>
+    <string name="action_pause">השהיה</string>
+    <string name="action_resume">המשך</string>
+    <string name="action_stop">עצור</string>
+    <string name="action_cancel">ביטול</string>
+    <string name="service_file_time_limit">מגבלת הזמן של Android לעבודה ברקע הסתיימה, ולכן התמלול נעצר. נסו שוב כשהאפליקציה פתוחה.</string>
+    <string name="ui_problem_mic_in_use">אפליקציה אחרת משתמשת במיקרופון (למשל צילום וידאו), ולכן DIBE שומעת שקט. ההקלטה ממשיכה ותחזור לקלוט כשהיא תסיים.</string>
+</resources>

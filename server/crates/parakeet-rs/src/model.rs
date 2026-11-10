@@ -73,6 +73,10 @@ pub(crate) struct DeviceWeights {
     pub(crate) ctx: *mut sys::ggml_context,
     pub(crate) buffer: sys::ggml_backend_buffer_t,
     pub(crate) backend: sys::ggml_backend_t,
+    /// A CPU copy of the weights in the repacked buffer type, not a GPU upload.
+    pub(crate) cpu: bool,
+    /// The worker pool of a CPU backend (null for a GPU one), freed with the backend.
+    pub(crate) threadpool: sys::ggml_threadpool_t,
 }
 
 impl Drop for DeviceWeights {
@@ -81,6 +85,10 @@ impl Drop for DeviceWeights {
             sys::ggml_backend_buffer_free(self.buffer);
             sys::ggml_free(self.ctx);
             sys::ggml_backend_free(self.backend);
+            #[cfg(target_os = "android")]
+            if !self.threadpool.is_null() {
+                sys::ggml_threadpool_free(self.threadpool);
+            }
         }
     }
 }
@@ -251,7 +259,9 @@ impl Model {
                 1,
                 1,
             );
-            let built = build_encoder(graph.ctx, self, input, self.device.is_none());
+            // On the CPU the f16 pointwise conv weights are cast to f32 per chunk: measured faster than multiplying f16.
+            let promote = self.device.as_ref().map_or(true, |device| device.cpu);
+            let built = build_encoder(graph.ctx, self, input, promote);
             graph.output(built.output);
             let time = (*built.output).ne[1] as usize;
             let positions = positional_embedding(self.info.encoder_dimension as usize, time);
@@ -264,11 +274,13 @@ impl Model {
             let count = shape.iter().product::<i64>() as usize;
             let mut data = vec![0.0f32; count];
             sys::ggml_backend_tensor_get(built.output, data.as_mut_ptr().cast(), 0, data.len() * 4);
-            let min = data.iter().copied().fold(f32::INFINITY, f32::min);
-            let max = data.iter().copied().fold(f32::NEG_INFINITY, f32::max);
-            let mean = data.iter().sum::<f32>() / data.len().max(1) as f32;
-            let rms = (data.iter().map(|value| value * value).sum::<f32>() / data.len().max(1) as f32).sqrt();
-            eprintln!("[parakeet][encoder] shape={shape:?} min={min:.6} max={max:.6} mean={mean:.6} rms={rms:.6}");
+            if crate::debug_logging() {
+                let min = data.iter().copied().fold(f32::INFINITY, f32::min);
+                let max = data.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+                let mean = data.iter().sum::<f32>() / data.len().max(1) as f32;
+                let rms = (data.iter().map(|value| value * value).sum::<f32>() / data.len().max(1) as f32).sqrt();
+                eprintln!("[parakeet][encoder] shape={shape:?} min={min:.6} max={max:.6} mean={mean:.6} rms={rms:.6}");
+            }
             Ok((data, shape))
         }
     }
@@ -278,6 +290,14 @@ impl Model {
             return lookup_tensor(device.ctx, name);
         }
         self.cpu_tensor(name)
+    }
+
+    /// The decoder's weights: the repacked copy when the model keeps one on the CPU, else the plain CPU tensors.
+    pub(crate) fn decode_tensor(&self, name: &str) -> Option<*mut sys::ggml_tensor> {
+        match &self.device {
+            Some(device) if device.cpu => lookup_tensor(device.ctx, name),
+            _ => self.cpu_tensor(name),
+        }
     }
 
     pub(crate) fn cpu_tensor(&self, name: &str) -> Option<*mut sys::ggml_tensor> {

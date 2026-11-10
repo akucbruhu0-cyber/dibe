@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_share">Share recording</string>
+    <string name="recording_save">Save recording to device</string>
+    <string name="recording_saved">Recording saved</string>
+</resources>

@@ -2,7 +2,8 @@ use anyhow::{bail, Context as _};
 use serde::Serialize;
 use whisper_rs::{ContextOptions, Segment, StreamCallbacks, TranscribeOptions, TranscribeResult};
 
-#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 pub struct EngineCapabilities {
     pub engine: String,
     pub requires_vad: bool,
@@ -247,6 +248,65 @@ pub fn whisper_capabilities() -> EngineCapabilities {
         timestamps: true,
         text_prompts: true,
     }
+}
+
+/// What a model file can do, read from its header without loading it.
+pub fn metadata(path: &str) -> Result<EngineCapabilities, String> {
+    // Probing a whisper model with the GGUF readers only makes ggml log a
+    // magic mismatch, so files that are not GGUF go straight to whisper.
+    if !is_gguf(path) {
+        return whisper_rs::validate_model_file(path)
+            .map(|()| whisper_capabilities())
+            .map_err(|err| {
+                tracing::error!(model = path, "model metadata check failed: {err}");
+                err.to_string()
+            });
+    }
+
+    if let Ok(info) = parakeet_rs::Model::metadata(path) {
+        if info.architecture == "parakeet" && info.head_kind == "tdt" && info.variant.contains("v3") {
+            return Ok(EngineCapabilities {
+                engine: "parakeet".to_string(),
+                requires_vad: true,
+                languages: info.languages,
+                language_detection: info.language_detection,
+                streaming: false,
+                translation: false,
+                timestamps: true,
+                text_prompts: false,
+            });
+        }
+    }
+
+    match nemotron_rs::Model::metadata(path) {
+        Ok(info) if info.architecture == "parakeet" && info.head_kind == "rnnt" => Ok(EngineCapabilities {
+            engine: "nemotron".to_string(),
+            requires_vad: true,
+            languages: info.languages,
+            language_detection: info.language_detection,
+            streaming: false,
+            translation: false,
+            timestamps: true,
+            text_prompts: false,
+        }),
+        Ok(info) => Err(format!(
+            "unsupported GGUF architecture '{}' with head '{}'",
+            info.architecture, info.head_kind
+        )),
+        Err(err) => {
+            tracing::error!(model = path, "failed to read GGUF metadata: {err}");
+            Err(format!("failed to read GGUF metadata: {err}"))
+        }
+    }
+}
+
+/// Whether the file starts with the GGUF magic. Whisper models use the older
+/// GGML container and are handled by whisper.cpp instead.
+fn is_gguf(path: &str) -> bool {
+    use std::io::Read;
+
+    let mut magic = [0u8; 4];
+    std::fs::File::open(path).is_ok_and(|mut file| file.read_exact(&mut magic).is_ok()) && &magic == b"GGUF"
 }
 
 fn nemotron_segment(transcription: &nemotron_rs::Transcription) -> Option<Segment> {

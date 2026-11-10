@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shell, home, recording, onboarding (ui agent "main"). ui_* are used by shared components. -->
+<resources>
+    <!-- Navigation -->
+    <string name="nav_record">Record</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Shared components -->
+    <string name="ui_tier_light">Light</string>
+    <string name="ui_tier_medium">Balanced</string>
+    <string name="ui_tier_heavy">Heavy</string>
+    <string name="ui_fit_good">Runs well on this phone</string>
+    <string name="ui_fit_tight">A tight fit: close other apps first</string>
+    <string name="ui_fit_too_heavy">Too heavy for this phone</string>
+    <string name="ui_badge_hebrew">Best for Hebrew</string>
+    <string name="ui_badge_files_only">Files only</string>
+    <string name="ui_action_choose_model">Choose a model</string>
+    <string name="ui_action_choose_lighter_model">Choose a lighter model</string>
+    <string name="ui_action_open_settings">Open settings</string>
+    <string name="ui_action_free_space">Free up space</string>
+    <string name="ui_action_dismiss">Dismiss</string>
+    <string name="ui_action_run_anyway">Run anyway</string>
+    <string name="ui_problem_mic_permission">DIBE needs microphone access to record.</string>
+    <string name="ui_problem_notification_permission">Notifications are off, so you won\'t see progress outside the app.</string>
+    <string name="ui_problem_projection_denied">Permission to record the phone\'s audio was declined.</string>
+    <string name="ui_problem_capture_silent">This app doesn\'t allow its audio to be captured (or nothing is playing).</string>
+    <string name="ui_problem_capture_failed">Recording stopped: the microphone or audio source stopped responding.</string>
+    <string name="ui_problem_no_model">No transcription model is installed.</string>
+    <string name="ui_problem_low_memory">There isn\'t enough free memory for this model.</string>
+    <string name="ui_problem_model_not_live">This model transcribes after you stop.</string>
+    <string name="ui_problem_unsupported_format">This file format isn\'t supported.</string>
+    <string name="ui_problem_corrupt_file">This file couldn\'t be read. It may be damaged.</string>
+    <string name="ui_problem_engine_failed">Transcription stopped unexpectedly.</string>
+    <string name="ui_problem_no_space">Your phone is out of storage space.</string>
+
+    <!-- Home -->
+    <string name="home_eyebrow">On-device transcription</string>
+    <string name="home_title">Ready to listen</string>
+    <string name="home_title_recording">Recording in progress</string>
+    <string name="home_record_start">Start recording</string>
+    <string name="home_record_hint">Tap to record</string>
+    <string name="home_record_needs_model">Download a model to start</string>
+    <string name="home_record_open">Recording — tap to open</string>
+    <string name="home_source_mic">Mic</string>
+    <string name="home_source_system">System audio</string>
+    <string name="home_source_both">Both</string>
+    <string name="home_source_system_hint">Records what other apps play. Some apps don\'t allow it.</string>
+    <string name="home_or">or</string>
+    <string name="home_pick_file">Transcribe a file</string>
+    <string name="home_language_auto">Auto-detect</string>
+    <string name="home_language_desc">Language: %1$s. Change</string>
+    <string name="home_no_model_title">No model yet</string>
+    <string name="home_no_model_body">Download a transcription model to start. It runs entirely on this phone.</string>
+    <string name="home_model_failed_title">Download failed</string>
+    <string name="home_model_failed_body">The model download didn\'t finish. Try again or pick another model.</string>
+    <string name="home_model_downloading">Downloading</string>
+    <string name="home_model_waiting">Waiting for a connection…</string>
+    <string name="home_model_verifying">Checking the download…</string>
+    <string name="home_file_decoding">Preparing audio…</string>
+    <string name="home_file_transcribing">Transcribing · %1$d%%</string>
+    <string name="home_file_done">Transcript ready</string>
+    <string name="home_file_open">Open</string>
+    <string name="home_file_cancel">Cancel</string>
+    <string name="home_file_busy">Another file is still being transcribed. Try again when it\'s done.</string>
+
+    <!-- Permissions -->
+    <string name="perm_mic_title">Microphone access</string>
+    <string name="perm_mic_body">DIBE needs the microphone to record. Audio is transcribed on this phone and never leaves it.</string>
+    <string name="perm_mic_blocked_body">Microphone access is turned off for DIBE. Turn it on in the app\'s settings to record.</string>
+    <string name="perm_notifications_title">Stay in the loop</string>
+    <string name="perm_notifications_body">DIBE shows recording and transcription progress in a notification, so you can follow it from other apps. It works without it too.</string>
+    <string name="perm_allow">Allow</string>
+    <string name="perm_continue">Continue</string>
+    <string name="perm_not_now">Not now</string>
+
+    <!-- Recording -->
+    <string name="rec_back">Back</string>
+    <string name="rec_status_starting">Starting…</string>
+    <string name="rec_status_recording">Recording</string>
+    <string name="rec_status_paused">Paused</string>
+    <string name="rec_status_finishing">Finishing…</string>
+    <string name="rec_status_stopped">Stopped</string>
+    <string name="rec_pause">Pause</string>
+    <string name="rec_resume">Resume</string>
+    <string name="rec_stop">Stop</string>
+    <string name="rec_finishing">Finishing…</string>
+    <string name="rec_close">Close</string>
+    <string name="rec_empty_starting">Getting ready…</string>
+    <string name="rec_empty_listening">Listening… Text appears as you speak.</string>
+    <string name="rec_empty_after_stop">The transcript will appear after you stop.</string>
+    <string name="rec_jump_to_live">Jump to live</string>
+
+    <!-- Floating bubble -->
+    <string name="bubble_recording_desc">Recording, %1$s. Open the recording.</string>
+    <string name="bubble_paused_desc">Recording paused at %1$s. Open the recording.</string>
+    <string name="bubble_file_running_desc">Transcribing %1$s, %2$d percent. Open.</string>
+    <string name="bubble_file_ready">Ready</string>
+    <string name="bubble_file_ready_desc">%1$s is transcribed. Open the transcript.</string>
+    <string name="bubble_file_failed">Failed</string>
+    <string name="bubble_file_failed_desc">Couldn\'t transcribe %1$s. Open to see why.</string>
+
+    <!-- Onboarding -->
+    <string name="onb_skip_intro">Skip</string>
+    <string name="onb_next">Next</string>
+    <string name="onb_continue">Continue</string>
+    <string name="onb_download">Download · %1$s</string>
+    <string name="onb_page_desc">Page %1$d of %2$d</string>
+    <string name="onb_power_eyebrow">Good to know · Battery</string>
+    <string name="onb_power_title">Your phone does all the work</string>
+    <string name="onb_power_body">DIBE\'s AI runs right on your phone\'s processor. Long recordings use more battery and the phone may feel warm. That\'s normal, and a charger helps for long sessions.</string>
+    <string name="onb_hardware_eyebrow">Good to know · Speed</string>
+    <string name="onb_hardware_title">Your phone sets the pace</string>
+    <string name="onb_hardware_body">Nothing goes to the cloud, so your connection doesn\'t matter. Speed and accuracy come from your phone\'s processor and memory.</string>
+    <string name="onb_fit_eyebrow">Good to know · Memory</string>
+    <string name="onb_fit_title">We\'ll help you pick a model</string>
+    <string name="onb_fit_body">Bigger models are more accurate but need more memory. DIBE rates each one for this phone, so you can pick one that runs smoothly.</string>
+    <string name="onb_device_eyebrow">Your phone</string>
+    <string name="onb_device_title">The best fit for this phone</string>
+    <string name="onb_device_body">DIBE checked this phone\'s processor and memory.</string>
+    <string name="onb_device_processor">Processor</string>
+    <string name="onb_device_memory">Memory</string>
+    <string name="onb_device_fast_cores">Fast cores</string>
+    <string name="onb_recommended">Recommended</string>
+    <string name="onb_model_installed">Already installed</string>
+    <string name="onb_model_downloading">Downloading…</string>
+    <string name="onb_choose_another">Choose another</string>
+    <string name="onb_skip_for_now">Skip for now</string>
+</resources>

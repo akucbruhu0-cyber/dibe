@@ -1,0 +1,110 @@
+[
+	{
+		"markdown": "\n\n## סיכום הפגישה\r\n\r\nהפגישה עסקה ב**תקציב** וב*לוח הזמנים*. ראו [מסמך](https://example.com/doc) ו-`config_file`.\nשורה שממשיכה את הפסקה.\n\n### נקודות עיקריות\n- תקציב מאושר\n  - כולל _גיוס_ חדש\n- snake_case_name נשאר\n* פריט שני\n  ממשיך בשורה הבאה\n\n1. ראשון\n2) שני\n   1. פנימי\n- אחרי מספרים\n\n> ציטוט חשוב\n> שממשיך\n\n---\n\n#### הערה ##\nטקסט אחרון **מודגש *ונטוי* בפנים** ו__עוד__.\n\n***\n\n",
+		"text": "סיכום הפגישה\n\nהפגישה עסקה בתקציב ובלוח הזמנים. ראו מסמך ו-config_file. שורה שממשיכה את הפסקה.\n\nנקודות עיקריות\n\n• תקציב מאושר\n  • כולל גיוס חדש\n• snake_case_name נשאר\n• פריט שני ממשיך בשורה הבאה\n\n1. ראשון\n2) שני\n  1. פנימי\n\n• אחרי מספרים\n\nציטוט חשוב שממשיך\n\nהערה\n\nטקסט אחרון מודגש ונטוי בפנים ועוד.",
+		"html2": "<h2>סיכום הפגישה</h2>\n<p>הפגישה עסקה ב<strong>תקציב</strong> וב<em>לוח הזמנים</em>. ראו מסמך ו-<code>config_file</code>. שורה שממשיכה את הפסקה.</p>\n<h3>נקודות עיקריות</h3>\n<ul><li>תקציב מאושר<ul><li>כולל <em>גיוס</em> חדש</li></ul></li><li>snake_case_name נשאר</li><li>פריט שני ממשיך בשורה הבאה</li></ul><ol><li>ראשון</li><li>שני<ol><li>פנימי</li></ol></li></ol><ul><li>אחרי מספרים</li></ul>\n<blockquote>ציטוט חשוב שממשיך</blockquote>\n<hr>\n<h4>הערה</h4>\n<p>טקסט אחרון <strong>מודגש </strong><strong><em>ונטוי</em></strong><strong> בפנים</strong> ו<strong>עוד</strong>.</p>\n<hr>",
+		"html3": "<h3>סיכום הפגישה</h3>\n<p>הפגישה עסקה ב<strong>תקציב</strong> וב<em>לוח הזמנים</em>. ראו מסמך ו-<code>config_file</code>. שורה שממשיכה את הפסקה.</p>\n<h4>נקודות עיקריות</h4>\n<ul><li>תקציב מאושר<ul><li>כולל <em>גיוס</em> חדש</li></ul></li><li>snake_case_name נשאר</li><li>פריט שני ממשיך בשורה הבאה</li></ul><ol><li>ראשון</li><li>שני<ol><li>פנימי</li></ol></li></ol><ul><li>אחרי מספרים</li></ul>\n<blockquote>ציטוט חשוב שממשיך</blockquote>\n<hr>\n<h5>הערה</h5>\n<p>טקסט אחרון <strong>מודגש </strong><strong><em>ונטוי</em></strong><strong> בפנים</strong> ו<strong>עוד</strong>.</p>\n<hr>"
+	},
+	{
+		"markdown": "Short **summary** with 'quotes' & <tags>.\n\n# Big\n\n## Smaller\n\n+ one\n+ two\n    + deep\n\n1. a\n- b\n\n___\nlast_line_with_underscores and _real italic_ and *star*",
+		"text": "Short summary with 'quotes' & <tags>.\n\nBig\n\nSmaller\n\n• one\n• two\n    • deep\n\n1. a\n\n• b\n\nlast_line_with_underscores and real italic and star",
+		"html2": "<p>Short <strong>summary</strong> with &#39;quotes&#39; &amp; &lt;tags&gt;.</p>\n<h2>Big</h2>\n<h3>Smaller</h3>\n<ul><li>one</li><li>two<ul><li>deep</li></ul></li></ul><ol><li>a</li></ol><ul><li>b</li></ul>\n<hr>\n<p>last_line_with_underscores and <em>real italic</em> and <em>star</em></p>",
+		"html3": "<p>Short <strong>summary</strong> with &#39;quotes&#39; &amp; &lt;tags&gt;.</p>\n<h3>Big</h3>\n<h4>Smaller</h4>\n<ul><li>one</li><li>two<ul><li>deep</li></ul></li></ul><ol><li>a</li></ol><ul><li>b</li></ul>\n<hr>\n<p>last_line_with_underscores and <em>real italic</em> and <em>star</em></p>"
+	},
+	{
+		"markdown": "",
+		"text": "",
+		"html2": "",
+		"html3": ""
+	},
+	{
+		"markdown": "plain line",
+		"text": "plain line",
+		"html2": "<p>plain line</p>",
+		"html3": "<p>plain line</p>"
+	},
+	{
+		"markdown": "# Only\n# Headings\n### Three",
+		"text": "Only\n\nHeadings\n\nThree",
+		"html2": "<h2>Only</h2>\n<h2>Headings</h2>\n<h4>Three</h4>",
+		"html3": "<h3>Only</h3>\n<h3>Headings</h3>\n<h5>Three</h5>"
+	},
+	{
+		"markdown": "- a\n  - b\n    - c\n  - d\n- e\n1. x\n\n\n2. y",
+		"text": "• a\n  • b\n    • c\n  • d\n• e\n\n1. x\n2. y",
+		"html2": "<ul><li>a<ul><li>b<ul><li>c</li></ul></li><li>d</li></ul></li><li>e</li></ul><ol><li>x</li><li>y</li></ol>",
+		"html3": "<ul><li>a<ul><li>b<ul><li>c</li></ul></li><li>d</li></ul></li><li>e</li></ul><ol><li>x</li><li>y</li></ol>"
+	},
+	{
+		"markdown": "\t- tab indented\n- top\n\t\t1) deep",
+		"text": "  • tab indented\n• top\n\n    1) deep",
+		"html2": "<ul><li>tab indented</li></ul><ul><li>top<ol><li>deep</li></ol></li></ul>",
+		"html3": "<ul><li>tab indented</li></ul><ul><li>top<ol><li>deep</li></ol></li></ul>"
+	},
+	{
+		"markdown": "> q1\nlazy continuation\n> q2\n\n> separate",
+		"text": "q1 lazy continuation q2\n\nseparate",
+		"html2": "<blockquote>q1 lazy continuation q2</blockquote>\n<blockquote>separate</blockquote>",
+		"html3": "<blockquote>q1 lazy continuation q2</blockquote>\n<blockquote>separate</blockquote>"
+	},
+	{
+		"markdown": "para one\ncontinues\n- list\ncontinues list\n\npara two",
+		"text": "para one continues\n\n• list continues list\n\npara two",
+		"html2": "<p>para one continues</p>\n<ul><li>list continues list</li></ul>\n<p>para two</p>",
+		"html3": "<p>para one continues</p>\n<ul><li>list continues list</li></ul>\n<p>para two</p>"
+	},
+	{
+		"markdown": "**bold _inner_** `co*de*` [link **b**](http://x) [bad](a b) *a * b* _not_italic_ x_y_z",
+		"text": "bold inner co*de* link b [bad](a b) a * b not_italic x_y_z",
+		"html2": "<p><strong>bold </strong><strong><em>inner</em></strong> <code>co*de*</code> link <strong>b</strong> [bad](a b) <em>a * b</em> <em>not_italic</em> x_y_z</p>",
+		"html3": "<p><strong>bold </strong><strong><em>inner</em></strong> <code>co*de*</code> link <strong>b</strong> [bad](a b) <em>a * b</em> <em>not_italic</em> x_y_z</p>"
+	},
+	{
+		"markdown": "*** \n- - -\n_ _ _\n--\n**",
+		"text": "-- **",
+		"html2": "<hr>\n<hr>\n<hr>\n<p>-- **</p>",
+		"html3": "<hr>\n<hr>\n<hr>\n<p>-- **</p>"
+	},
+	{
+		"markdown": "#No space\n####### seven\n  ## indented ##   \n    ## four spaces",
+		"text": "#No space ####### seven\n\nindented\n\n## four spaces",
+		"html2": "<p>#No space ####### seven</p>\n<h2>indented</h2>\n<p>## four spaces</p>",
+		"html3": "<p>#No space ####### seven</p>\n<h3>indented</h3>\n<p>## four spaces</p>"
+	},
+	{
+		"markdown": "1234567890. too long number\n123456789. ok",
+		"text": "1234567890. too long number\n\n123456789. ok",
+		"html2": "<p>1234567890. too long number</p>\n<ol><li>ok</li></ol>",
+		"html3": "<p>1234567890. too long number</p>\n<ol><li>ok</li></ol>"
+	},
+	{
+		"markdown": "עברית **מודגש** ו_נטוי_ ו*כוכבית*",
+		"text": "עברית מודגש ו_נטוי_ וכוכבית",
+		"html2": "<p>עברית <strong>מודגש</strong> ו_נטוי_ ו<em>כוכבית</em></p>",
+		"html3": "<p>עברית <strong>מודגש</strong> ו_נטוי_ ו<em>כוכבית</em></p>"
+	},
+	{
+		"markdown": "x  \n \nafter nbsp line",
+		"text": "x\n\nafter nbsp line",
+		"html2": "<p>x</p>\n<p>after nbsp line</p>",
+		"html3": "<p>x</p>\n<p>after nbsp line</p>"
+	},
+	{
+		"markdown": "line\r\nwindows\rold mac",
+		"text": "line windows old mac",
+		"html2": "<p>line windows old mac</p>",
+		"html3": "<p>line windows old mac</p>"
+	},
+	{
+		"markdown": "a < b & c > \"d\" 'e'",
+		"text": "a < b & c > \"d\" 'e'",
+		"html2": "<p>a &lt; b &amp; c &gt; &quot;d&quot; &#39;e&#39;</p>",
+		"html3": "<p>a &lt; b &amp; c &gt; &quot;d&quot; &#39;e&#39;</p>"
+	},
+	{
+		"markdown": "😀 **emoji 😀** _😀_",
+		"text": "😀 emoji 😀 😀",
+		"html2": "<p>😀 <strong>emoji 😀</strong> <em>😀</em></p>",
+		"html3": "<p>😀 <strong>emoji 😀</strong> <em>😀</em></p>"
+	}
+]

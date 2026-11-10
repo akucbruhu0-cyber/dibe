@@ -1,0 +1,22 @@
+{
+  "direction": "ltr",
+  "title": "Quarterly review: Q3/Q4 \"final\" & <draft>",
+  "transcript": [
+    {
+      "text": "Hello and welcome.",
+      "start": 0.05,
+      "stop": 1
+    },
+    {
+      "text": "We grew 12% --> nice, \"really\" nice.",
+      "start": 1,
+      "stop": 123.45
+    },
+    {
+      "text": "Long meeting.\r\nSecond line.",
+      "start": 123.45,
+      "stop": 360000
+    }
+  ],
+  "summary": ""
+}

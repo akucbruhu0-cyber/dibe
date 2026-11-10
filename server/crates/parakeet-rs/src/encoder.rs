@@ -148,11 +148,13 @@ pub(crate) unsafe fn build_encoder(ctx: Context, model: &Model, mel: Tensor, pro
     let position = sys::ggml_new_tensor_2d(ctx, sys::ggml_type_GGML_TYPE_F32, dimension, 2 * time - 1);
     let mask = sys::ggml_new_tensor_4d(ctx, sys::ggml_type_GGML_TYPE_F32, time, time, 1, 1);
     for layer in 0..model.info().encoder_layers {
-        eprintln!(
-            "[parakeet][graph] build_encoder_layer={}/{}",
-            layer + 1,
-            model.info().encoder_layers
-        );
+        if crate::debug_logging() {
+            eprintln!(
+                "[parakeet][graph] build_encoder_layer={}/{}",
+                layer + 1,
+                model.info().encoder_layers
+            );
+        }
         x = block(ctx, model, x, position, mask, layer, promote_pointwise);
     }
     EncoderBuild {

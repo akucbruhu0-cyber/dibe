@@ -173,6 +173,9 @@ pub(crate) struct State {
     /// Backends in scheduling priority order — ACCEL (e.g. BLAS) first, CPU
     /// last, exactly like `whisper_backend_init` with `use_gpu = false`.
     pub backends: Vec<sys::ggml_backend_t>,
+    /// The CPU backend's persistent workers on Android (see `sys::attach_threadpool`), else null.
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    threadpool: sys::ggml_threadpool_t,
     pub kv_self: KvCache,
     pub kv_cross: KvCache,
     /// Scratch KV for the encoder's padded flash-attention window.
@@ -218,6 +221,11 @@ impl Drop for State {
                 if !backend.is_null() {
                     sys::ggml_backend_free(backend);
                 }
+            }
+            // Off Android there is no pool, and x86_64 builds rename this symbol (cpu_variant.rs).
+            #[cfg(target_os = "android")]
+            if !self.threadpool.is_null() {
+                sys::ggml_threadpool_free(self.threadpool);
             }
         }
     }
@@ -320,9 +328,10 @@ unsafe fn backend_init(use_gpu: bool, gpu_device: i32) -> Result<Vec<sys::ggml_b
 impl State {
     pub fn new(model: &Model, n_threads: i32, use_gpu: bool, gpu_device: i32) -> Result<Self, Error> {
         let hp = &model.hparams;
-        let _ = n_threads;
         unsafe {
             let backends = backend_init(use_gpu, gpu_device)?;
+            // backend_init puts the CPU backend last.
+            let threadpool = sys::attach_threadpool(*backends.last().expect("a CPU backend"), n_threads);
             let backend = backends[0];
 
             let kv_self = KvCache::new(
@@ -351,6 +360,7 @@ impl State {
 
             Ok(Self {
                 backends,
+                threadpool,
                 kv_self,
                 kv_cross,
                 kv_pad,

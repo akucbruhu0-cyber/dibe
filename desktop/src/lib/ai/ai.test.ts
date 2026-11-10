@@ -126,7 +126,10 @@ describe('createClient', () => {
 			{ name: 'deck.pdf', kind: 'pdf', mime: 'application/pdf', data: 'JVBE' },
 		]
 		const prompt = inlineTextFiles('Summarize', files)
-		expect(prompt).toBe('Summarize\n\n--- Attached file: notes.md ---\n# Agenda')
+		expect(prompt).toBe(
+			'Summarize\n\nAttached files: slide.png, notes.md, deck.pdf. Read them and use what they contain, together with the transcript, to do the task above.\n\n--- Attached file: notes.md ---\n# Agenda',
+		)
+		expect(inlineTextFiles('Summarize', [])).toBe('Summarize')
 
 		fetchMock.mockImplementation(async () => streamResponse([]))
 		await createClient({ ...DEFAULT_AI.connection, platform: 'claude' }).stream(prompt, () => {}, files)

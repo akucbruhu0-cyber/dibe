@@ -3,9 +3,7 @@ use whisper_rs::{Segment, TranscribeResult};
 
 use crate::server::diarization;
 
-pub fn cs_to_seconds(cs: i64) -> f64 {
-    cs as f64 / 100.0
-}
+pub use dibe_core::cs_to_seconds;
 
 fn cs_to_srt_time(cs: i64) -> String {
     let mut ms = cs * 10;

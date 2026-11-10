@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel">Recording &amp; transcription</string>
+    <string name="notification_recording">Recording</string>
+    <string name="notification_paused">Paused</string>
+    <string name="notification_finishing">Finishing…</string>
+    <string name="notification_decoding">Preparing the audio</string>
+    <string name="notification_transcribing">Transcribing…</string>
+    <string name="notification_ready">Transcript ready</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="service_file_time_limit">Android\'s time limit for background work ran out, so the transcription was stopped. Try again with the app open.</string>
+    <string name="ui_problem_mic_in_use">Another app is using the microphone (for example, recording a video), so DIBE hears silence. Recording continues and picks up again when it\'s done.</string>
+</resources>

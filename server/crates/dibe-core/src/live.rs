@@ -11,7 +11,7 @@ use serde::Serialize;
 use vad_rs::SpeechSegment;
 use whisper_rs::Segment;
 
-use crate::server::format::cs_to_seconds;
+use crate::cs_to_seconds;
 
 /// Silence after speech that closes an utterance.
 pub const SILENCE_COMMIT_MS: u64 = 600;
@@ -31,7 +31,8 @@ const LEAD_IN_MS: u64 = 1_000;
 const SAMPLES_PER_MS: usize = vad_rs::SAMPLE_RATE / 1000;
 
 /// At most one partial is current: a `Final`, or a `Partial` with empty text, replaces or clears it.
-#[derive(Debug, Clone, PartialEq, Serialize, utoipa::ToSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum LiveEvent {
     Final {

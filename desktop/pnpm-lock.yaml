@@ -122,6 +122,9 @@ importers:
       docx:
         specifier: ^9.15.0
         version: 9.15.0
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       format-duration:
         specifier: ^3.0.2
         version: 3.0.2

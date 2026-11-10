@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AI settings: the model picker. -->
+<resources>
+    <string name="settings_ai_model_type">הקלדת שם מודל…</string>
+    <string name="settings_ai_model_back_to_list">בחירה מהרשימה</string>
+    <string name="settings_ai_model_refresh">רענון רשימת המודלים</string>
+    <string name="settings_ai_model_loading">טוען מודלים…</string>
+    <string name="settings_ai_model_offline">לא הצלחנו לטעון את הרשימה מהספק. מוצגים מודלים מומלצים.</string>
+    <string name="settings_ai_model_custom">מותאם אישית</string>
+    <string name="settings_ai_model_free">חינמי</string>
+    <string name="settings_ai_model_local">מקומי</string>
+    <string name="settings_ai_model_low_cost">הכי זול</string>
+</resources>
