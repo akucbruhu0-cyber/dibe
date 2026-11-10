@@ -434,12 +434,29 @@ export async function updateTranscriptThread(path: string, thread: AiThreadEntry
 	}
 }
 
+const summaryFlags = new Map<string, Promise<boolean>>()
+
+/**
+ * Whether a saved transcript has an AI summary. The list is built from names only, so each row asks
+ * when it first shows and the answer is kept for the session; saving a summary updates it.
+ */
+export function hasSummary(path: string): Promise<boolean> {
+	let flag = summaryFlags.get(path)
+	if (!flag) {
+		flag = readTranscript(path).then((record) => Boolean(record?.summary?.trim()))
+		summaryFlags.set(path, flag)
+	}
+	return flag
+}
+
 /** Store the AI summary alongside an already saved transcript. @returns whether it was written. */
 export async function updateTranscriptSummary(path: string, summary: string): Promise<boolean> {
 	try {
 		const record = await readTranscript(path)
 		if (!record) return false
 		await writeRecordAtomic(path, { ...record, summary })
+		summaryFlags.set(path, Promise.resolve(summary.trim().length > 0))
+		notifyTranscriptsChanged()
 		return true
 	} catch (error) {
 		console.warn('failed to update transcript summary:', path, error)

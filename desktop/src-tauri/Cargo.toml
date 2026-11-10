@@ -47,6 +47,8 @@ once_cell = "1.21.3"
 serde = { version = "^1.0.228", features = ["derive"] }
 url = "2.5.8"
 showfile = "0.1.1"
+# Total RAM and CPU for the first-run model recommendation; the same version whisper-rs uses.
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 futures = "0.3.31"
 futures-util = "0.3"
 cpal = { git = "https://github.com/thewh1teagle/cpal", branch = "feat/macos-system-audio-permission-check" }

@@ -18,7 +18,7 @@ export const virtualFs = new Map<string, string | Uint8Array | null>([
 
 // Pre-saved transcripts so the Recents sidebar has entries to open on first load.
 // Shape, folder layout and stamp must match src/lib/transcripts-store.ts.
-function record(name: string, texts: string[], audioFile?: string) {
+function record(name: string, texts: string[], audioFile?: string, summary?: string) {
 	return JSON.stringify({
 		version: 1,
 		name,
@@ -27,22 +27,24 @@ function record(name: string, texts: string[], audioFile?: string) {
 		language: 'english',
 		modelPath: `${MODELS_FOLDER}/${DEFAULT_MODEL_FILE}`,
 		...(audioFile ? { audioFile } : {}),
+		...(summary ? { summary } : {}),
 		segments: texts.map((text, index) => ({ start: index * 300, stop: index * 300 + 280, text })),
 	})
 }
 
 /** A project folder: the record plus the copy of the media it was transcribed from. */
-function seedProject(name: string, stamp: string, texts: string[]) {
+function seedProject(name: string, stamp: string, texts: string[], summary?: string) {
 	const folder = `${DOCUMENTS_FOLDER}/DIBE/${name}-${stamp}`
-	virtualFs.set(`${folder}/transcript.vibe.json`, record(name, texts, 'audio.mp3'))
+	virtualFs.set(`${folder}/transcript.vibe.json`, record(name, texts, 'audio.mp3', summary))
 	virtualFs.set(`${folder}/audio.mp3`, null)
 }
 
-seedProject('team-standup', '20260820-093015', [
-	'Quick recap of what everyone shipped yesterday.',
-	'The new release is scheduled for Friday morning.',
-	'Open blockers move to the afternoon sync.',
-])
+seedProject(
+	'team-standup',
+	'20260820-093015',
+	['Quick recap of what everyone shipped yesterday.', 'The new release is scheduled for Friday morning.', 'Open blockers move to the afternoon sync.'],
+	'- Release on Friday morning\n- Blockers go to the afternoon sync',
+)
 seedProject('podcast-episode', '20260818-174200', [
 	'Welcome back to the show, today we talk about local AI.',
 	'On-device transcription keeps your audio private.',

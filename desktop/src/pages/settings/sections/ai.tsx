@@ -6,6 +6,8 @@ import { m } from '~/paraglide/messages.js'
 import { ReactComponent as LinkIcon } from '~/icons/link.svg'
 import * as config from '~/lib/config'
 import { defaultModel, type AiPlatform, type AiSettings } from '~/lib/ai'
+import { aiModelOptions } from '~/lib/ai/models'
+import { AiModelPicker } from './ai-model-picker'
 import NumberField from '~/components/number-field'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -135,11 +137,11 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 									onClick={() => openUrl('https://docs.anthropic.com/en/docs/about-claude/models')}
 								/>
 							}>
-							<Input
+							<AiModelPicker
 								value={connection.model}
-								onChange={(e) => setConnection({ model: e.target.value })}
+								onChange={(model) => setConnection({ model })}
+								options={aiModelOptions('claude', connection.openaiBaseUrl)}
 								placeholder={defaultModel('claude')}
-								className={`w-64 ${rowControlClass}`}
 							/>
 						</SettingsRow>
 					</>
@@ -159,11 +161,11 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 							/>
 						</SettingsRow>
 						<SettingsRow label={<LabelWithLink label={m.llmModel()} tooltip={m.findHere()} onClick={() => openUrl(config.geminiModelsUrl)} />}>
-							<Input
+							<AiModelPicker
 								value={connection.model}
-								onChange={(e) => setConnection({ model: e.target.value })}
+								onChange={(model) => setConnection({ model })}
+								options={aiModelOptions('gemini', connection.openaiBaseUrl)}
 								placeholder={defaultModel('gemini')}
-								className={`w-64 ${rowControlClass}`}
 							/>
 						</SettingsRow>
 					</>
@@ -186,11 +188,11 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 									onClick={() => openUrl(`https://ollama.com/library/${connection.model}`)}
 								/>
 							}>
-							<Input
+							<AiModelPicker
 								value={connection.model}
-								onChange={(e) => setConnection({ model: e.target.value })}
+								onChange={(model) => setConnection({ model })}
+								options={aiModelOptions('ollama', connection.openaiBaseUrl)}
 								placeholder={defaultModel('ollama')}
-								className={`w-64 ${rowControlClass}`}
 							/>
 						</SettingsRow>
 					</>
@@ -216,11 +218,11 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 							/>
 						</SettingsRow>
 						<SettingsRow label={m.llmModel()}>
-							<Input
+							<AiModelPicker
 								value={connection.model}
-								onChange={(e) => setConnection({ model: e.target.value })}
+								onChange={(model) => setConnection({ model })}
+								options={aiModelOptions('openai', connection.openaiBaseUrl)}
 								placeholder={defaultModel('openai')}
-								className={`w-64 ${rowControlClass}`}
 							/>
 						</SettingsRow>
 					</>

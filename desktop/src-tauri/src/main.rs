@@ -116,6 +116,7 @@ async fn main() -> Result<()> {
             cmd::server_cmd::stop_api_server,
             cmd::app::get_commit_hash,
             cmd::app::is_avx2_enabled,
+            cmd::app::get_system_info,
             cmd::app::is_online,
             cmd::files::get_path_dst,
             cmd::app::get_logs,

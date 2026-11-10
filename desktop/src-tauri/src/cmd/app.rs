@@ -41,6 +41,31 @@ pub fn is_avx2_enabled() -> bool {
     }
 }
 
+#[derive(serde::Serialize)]
+pub struct SystemInfo {
+    /// Physical RAM in bytes.
+    total_memory: u64,
+    cpu_name: String,
+    cpu_cores: usize,
+}
+
+/// What the first-run screen shows and recommends a model by.
+#[tauri::command]
+pub fn get_system_info() -> SystemInfo {
+    let mut system = sysinfo::System::new();
+    system.refresh_memory();
+    system.refresh_cpu_list(sysinfo::CpuRefreshKind::nothing());
+    let cpu_name = system.cpus().first().map(|cpu| cpu.brand().trim().to_string()).unwrap_or_default();
+    let cpu_cores = sysinfo::System::physical_core_count()
+        .or_else(|| std::thread::available_parallelism().ok().map(|n| n.get()))
+        .unwrap_or(0);
+    SystemInfo {
+        total_memory: system.total_memory(),
+        cpu_name,
+        cpu_cores,
+    }
+}
+
 #[tauri::command]
 pub fn get_logs_folder(app_handle: tauri::AppHandle) -> Result<PathBuf> {
     Ok(app_handle.path().app_config_dir()?)

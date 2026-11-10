@@ -11,6 +11,8 @@ export const CONFIG_KEYS = {
 	theme: 'general.theme',
 	firstRun: 'general.firstRun',
 	skippedSetup: 'general.skippedSetup',
+	/** The first-run intro was seen; later visits to setup go straight to the model list. */
+	onboardingDone: 'general.onboardingDone',
 	closeToTray: 'general.closeToTray',
 	preventSleep: 'general.preventSleep',
 

@@ -1,0 +1,19 @@
+{
+  "_note": "Exactly what was pasted into Google AI Studio (Gemini 3.8 Flash TTS, voice Fola, temperature 0.7). Hebrew uses niqqud on tricky words; product names in Latin. Style prompt: Confident, warm and upbeat product-launch narrator. Natural conversational pace, crisp clear enunciation, a slight smile in the voice, short natural pauses between sentences.",
+  "he": [
+    "הַקְלָטָה נִכְנֶסֶת. סִיכּוּם יוֹצֵא. דַיבּ מְתַמְלֵל הַקְלָטוֹת, מִקּוֹבֶץ, לַיְיב אוֹ מִקִּישּׁוּר, וּמְסַכֵּם אוֹתָן לְפִי פְּרוֹמְפְּט מוּתְאָם אִישִׁית. לְסְטוּדֶנְטִים, לְאַנְשֵׁי עֲסָקִים, לִפְגִישׁוֹת וְעוֹד.",
+    "מְתַמְלְלִים בְּלַיְיב, בִּזְמַן שֶׁמְּדַבְּרִים. אוֹ מִקּוֹבֶץ שֶׁכְּבָר יֵשׁ לָכֶם. אוֹ יָשָׁר מִקִּישּׁוּר.",
+    "בּוֹחֲרִים אֶת הַמּוֹדֶל שֶׁמַּתְאִים לָכֶם: Whisper, Nemotron, אוֹ Parakeet. הַכֹּל רָץ עַל הַמַּחְשֵׁב שֶׁלָּכֶם, בְּלִי אִינְטֶרְנֶט.",
+    "מְחַבְּרִים בִּינָה מְלָאכוּתִית דֶּרֶךְ API: Gemini, קְלוֹד, אוֹלָמָה, אוֹ כָּל שֵׁרוּת תּוֹאֵם OpenAI. כּוֹתְבִים פְּרוֹמְפְּט מִשֶּׁלָּכֶם, מְצָרְפִים קְבָצִים, וּמְקַבְּלִים סִיכּוּם בְּדִיּוּק כְּמוֹ שֶׁבִּיקַּשְׁתֶּם.",
+    "וְעִם סְקִילִים, מַתְקִינִים אֶת דַיבּ בִּלְחִיצָה אַחַת לִקְלוֹד קוֹד אוֹ לְקוֹדֶקְס, וְהַסּוֹכֵן שֶׁלָּכֶם מְתַמְלֵל וּמְסַכֵּם בִּשְׁבִילְכֶם.",
+    "דַיבּ. תִּמְלוּל פְּרָטִי, בְּלַיְיב. חִנָּם, וְקוֹד פָּתוּחַ."
+  ],
+  "en": [
+    "Recording in. Summary out. Dybe transcribes recordings, from a file, live, or from a link, and summarizes them with your own custom prompt. Made for students, business people, meetings, and more.",
+    "Transcribe live, as you speak. Or from a file you already have. Or straight from a link.",
+    "Pick the model that suits you: Whisper, Nemotron, or Parakeet. It all runs on your computer, with no internet.",
+    "Connect your AI through an API: Gemini, Claude, Ollama, or any OpenAI-compatible service. Write your own prompt, attach files, and get a summary exactly the way you asked.",
+    "And with skills, install Dybe in one click into Claude Code or Codex, and your agent transcribes and summarizes for you.",
+    "Dybe. Private transcription, live. Free, and open source."
+  ]
+}

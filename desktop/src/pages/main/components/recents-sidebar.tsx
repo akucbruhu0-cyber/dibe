@@ -12,6 +12,7 @@ import { cn } from '~/lib/style'
 import {
 	deleteProjectAudio,
 	deleteTranscript,
+	hasSummary,
 	listTranscripts,
 	readTranscript,
 	renameTranscript,
@@ -150,6 +151,22 @@ interface RowMenuState {
 	hasAudio: boolean
 }
 
+/** The green dot's state for one row; follows summaries saved while the list is open. */
+function useHasSummary(path: string) {
+	const [summarized, setSummarized] = useState(false)
+	useEffect(() => {
+		let live = true
+		const check = () => void hasSummary(path).then((value) => live && setSummarized(value))
+		check()
+		window.addEventListener(TRANSCRIPTS_CHANGED_EVENT, check)
+		return () => {
+			live = false
+			window.removeEventListener(TRANSCRIPTS_CHANGED_EVENT, check)
+		}
+	}, [path])
+	return summarized
+}
+
 function RecentRow({
 	entry,
 	active,
@@ -170,6 +187,7 @@ function RecentRow({
 	const [renaming, setRenaming] = useState(false)
 	const [retranscribing, setRetranscribing] = useState(false)
 	const [draftName, setDraftName] = useState(entry.name)
+	const summarized = useHasSummary(entry.path)
 
 	// The list is built from names only, so the media is located lazily — the first time the row's
 	// menu opens — to decide whether "Re-transcribe" can do anything. The original file wins; the
@@ -263,7 +281,12 @@ function RecentRow({
 				disabled={disabled}
 				title={entry.name}
 				className="min-w-0 flex-1 cursor-pointer px-3 py-2 text-start disabled:cursor-default disabled:opacity-50">
-				<p className="truncate text-[13px] font-medium text-foreground">{entry.name}</p>
+				<p className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+					<span className="truncate">{entry.name}</span>
+					{summarized && (
+						<span role="img" aria-label={m.hasAiSummary()} title={m.hasAiSummary()} className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
+					)}
+				</p>
 				<p className="mt-0.5 truncate text-[11px] text-muted-foreground">{relativeDate(entry.createdAt)}</p>
 			</button>
 

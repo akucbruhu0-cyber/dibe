@@ -232,6 +232,7 @@ export const serverHandlers: CommandHandlerMap = {
 	},
 
 	is_avx2_enabled: () => true,
+	get_system_info: () => ({ total_memory: 16 * 1024 ** 3, cpu_name: 'Mock CPU (Apple M-series)', cpu_cores: 8 }),
 
 	get_commit_hash: () => 'mockhash',
 

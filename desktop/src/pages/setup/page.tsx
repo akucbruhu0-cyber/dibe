@@ -6,9 +6,30 @@ import { Spinner } from '~/components/ui/spinner'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent } from '~/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
+import { CONFIG_KEYS } from '~/lib/config-keys'
+import { usePersisted } from '~/lib/config-store'
+import { Intro } from './intro'
+import { ChooseModel } from './choose-model'
 
 function App() {
 	const vm = viewModel()
+	const [onboardingDone, setOnboardingDone] = usePersisted(CONFIG_KEYS.onboardingDone, false)
+
+	if (!vm.downloading && !vm.direct) {
+		return (
+			// The window may be shorter than the model list: centred when it fits, scrolls when it does not.
+			<div className="flex h-screen flex-col overflow-y-auto px-5 py-10">
+				<div className="m-auto flex w-full justify-center">
+					{onboardingDone ? (
+						<ChooseModel system={vm.system} recommended={vm.recommended} onDownload={vm.downloadIfOnline} onSkip={vm.cancelSetup} />
+					) : (
+						<Intro onDone={() => setOnboardingDone(true)} />
+					)}
+				</div>
+				<OfflineDialog vm={vm} />
+			</div>
+		)
+	}
 
 	return (
 		<div className="flex min-h-screen items-center justify-center px-5 py-10">
@@ -52,21 +73,27 @@ function App() {
 				</Tooltip>
 			</motion.div>
 
-			<Dialog open={vm.isOnline === false}>
-				<DialogContent className="rounded-2xl">
-					<h2 className="text-center text-[22px] font-semibold tracking-[-0.03em]">{m.noConnection()}</h2>
-					<p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">{m.infoManualDownload()}</p>
-					<div className="mt-6 flex flex-col justify-center gap-2">
-						<Button className="rounded-full" onClick={vm.downloadIfOnline}>
-							{m.tryAgain()}
-						</Button>
-						<Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={vm.cancelSetup}>
-							{m.iPreferManualSetup()}
-						</Button>
-					</div>
-				</DialogContent>
-			</Dialog>
+			<OfflineDialog vm={vm} />
 		</div>
+	)
+}
+
+function OfflineDialog({ vm }: { vm: ReturnType<typeof viewModel> }) {
+	return (
+		<Dialog open={vm.isOnline === false}>
+			<DialogContent className="rounded-2xl">
+				<h2 className="text-center text-[22px] font-semibold tracking-[-0.03em]">{m.noConnection()}</h2>
+				<p className="mt-2 text-center text-[13px] leading-relaxed text-muted-foreground">{m.infoManualDownload()}</p>
+				<div className="mt-6 flex flex-col justify-center gap-2">
+					<Button className="rounded-full" onClick={vm.retry}>
+						{m.tryAgain()}
+					</Button>
+					<Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={vm.cancelSetup}>
+						{m.iPreferManualSetup()}
+					</Button>
+				</div>
+			</DialogContent>
+		</Dialog>
 	)
 }
 

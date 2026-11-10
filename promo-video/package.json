@@ -1,0 +1,25 @@
+{
+  "name": "dibe-promo-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DIBE promo video (Remotion, 1920x1080, 60s)",
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion render DibePromo out/dibe-promo.mp4",
+    "render:onboarding": "remotion render OnboardingWelcome ../android/app/src/main/res/raw/onboarding_welcome.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingWelcome ../android/app/src/main/res/drawable-nodpi/onboarding_welcome_poster.png --frame=0 && remotion render OnboardingPower ../android/app/src/main/res/raw/onboarding_power.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingPower ../android/app/src/main/res/drawable-nodpi/onboarding_power_poster.png --frame=75 && remotion render OnboardingHardware ../android/app/src/main/res/raw/onboarding_hardware.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingHardware ../android/app/src/main/res/drawable-nodpi/onboarding_hardware_poster.png --frame=60 && remotion render OnboardingFit ../android/app/src/main/res/raw/onboarding_fit.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingFit ../android/app/src/main/res/drawable-nodpi/onboarding_fit_poster.png --frame=78",
+    "typecheck": "tsc --noEmit",
+    "render:onboarding:desktop": "remotion render OnboardingWelcome ../desktop/src/assets/onboarding/welcome.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingWelcome ../desktop/src/assets/onboarding/welcome.jpg --frame=0 --image-format=jpeg --jpeg-quality=80 && remotion render OnboardingPowerLaptop ../desktop/src/assets/onboarding/power.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingPowerLaptop ../desktop/src/assets/onboarding/power.jpg --frame=75 --image-format=jpeg --jpeg-quality=80 && remotion render OnboardingHardware ../desktop/src/assets/onboarding/hardware.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingHardware ../desktop/src/assets/onboarding/hardware.jpg --frame=60 --image-format=jpeg --jpeg-quality=80 && remotion render OnboardingFit ../desktop/src/assets/onboarding/fit.mp4 --codec=h264 --pixel-format=yuv420p --muted --crf=30 && remotion still OnboardingFit ../desktop/src/assets/onboarding/fit.jpg --frame=78 --image-format=jpeg --jpeg-quality=80"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.536",
+    "@remotion/google-fonts": "4.0.536",
+    "@remotion/media": "4.0.536",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.536"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}
