@@ -8,6 +8,7 @@ import { m } from '~/paraglide/messages.js'
 import { formatExtensions, type TextFormat } from '~/components/format-select'
 import { openPath } from '~/lib/app'
 import { toDocx } from '~/lib/docx'
+import { visualToPng } from '~/lib/visual-png'
 import { projectExportFilename } from '~/lib/project-name'
 import { transcriptToPdf } from '~/lib/pdf/transcript-pdf'
 import { serializeTranscriptExport, type TranscriptExportContent, type TranscriptExportOptions } from '~/lib/transcript-export'
@@ -116,6 +117,7 @@ export function useTranscriptExport({
 				summary,
 				transcriptLabel: m.exportTranscript(),
 				summaryLabel: m.exportSummary(),
+				drawVisual: visualToPng,
 			})
 			await fs.writeFile(target, new Uint8Array(await document.arrayBuffer()))
 		} else {

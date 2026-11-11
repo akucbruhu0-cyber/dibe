@@ -17,9 +17,17 @@ android {
         versionName = "0.1.0"
         // The engine is built with -march=armv8.7a; other ABIs are not shipped.
         ndk { abiFilters += "arm64-v8a" }
+        manifestPlaceholders["appLabel"] = "@string/app_name"
     }
 
     buildTypes {
+        // "DIBE TEST": installs beside the real app (own id, own data) to try features first.
+        create("labs") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".test"
+            manifestPlaceholders["appLabel"] = "DIBE TEST"
+            matchingFallbacks += "debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

@@ -808,5 +808,8 @@
 	"modelAccuracyBasic": "דיוק בסיסי",
 	"modelAccuracyGood": "דיוק טוב",
 	"modelAccuracyBest": "דיוק גבוה",
-	"modelNeedsRam": "לפחות {gb} GB זיכרון"
+	"modelNeedsRam": "לפחות {gb} GB זיכרון",
+	"visualBack": "חזרה",
+	"visualDrawing": "מכין תרשימים…",
+	"visualStartOver": "מההתחלה"
 }

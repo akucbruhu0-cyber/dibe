@@ -45,6 +45,25 @@ seedProject(
 	['Quick recap of what everyone shipped yesterday.', 'The new release is scheduled for Friday morning.', 'Open blockers move to the afternoon sync.'],
 	'- Release on Friday morning\n- Blockers go to the afternoon sync',
 )
+// Every visual kind a summary can carry (src/lib/visuals.ts), right to left.
+seedProject(
+	'visuals-demo',
+	'20260821-120000',
+	['הרצאה על ו׳ החיבור וגישות לניתוח משמעות.'],
+	[
+		'הרצאה על ו׳ החיבור: מה מקודד במילה ומה נגזר מההקשר.',
+		'### גישות מרכזיות',
+		'- **מינימליסטית:** קוניונקציה לוגית בלבד.\n- **פרגמטית:** המשמעות נבנית בהקשר.',
+		'```dibe:chart\ntype: pie\ntitle: התפלגות תפיסת המשמעות\nקוניונקציה לוגית | 20 | #007AFF\nמשמעויות מקודדות | 30 | #FF3B30\nהשתמעויות פרגמטיות | 50 | #34C759\n```',
+		'```dibe:compare\ntitle: שלוש הגישות\nגישה | מה מקודד במילה | מקור המשמעות\nמינימליסטית | קוניונקציה בלבד | לוגיקה\nמקסימליסטית | סיבתיות, ניגוד | הדקדוק\nפרגמטית | מעט מאוד | הקשר וידע עולם\n```',
+		'### אבולוציה של משמעות',
+		'```dibe:flow\ntitle: מיד על הלב להעצמה\nתגובה פיזיולוגית -> הבעת רגש (פחד/הפתעה)\nהבעת רגש -> ביטוי כנות\nביטוי כנות -> סמן העצמה\n```',
+		'```dibe:chart\ntype: bar\ntitle: שמות צבעים בסיסיים לפי שפה\nעברית | 12\nאנגלית | 11\nהנונו | 4\n```',
+		'### המשך',
+		'```dibe:timeline\ntitle: שלבי עבודה\nשבועיים קרובים | גיבוש נושא | בחירת מאמרים\nבמהלך הסמסטר | הצגת רפרט\nסוף הסמסטר | הגשה\n```',
+		'```dibe:tree\ntitle: בחירת נתיב המחקר\nstart::מהו מוקד המחקר?\n- ניתוח תיאורטי => theory\n- בחינת שטח => field\n\ntheory::סקירת ספרות רחבה\nהשוואת מודלים של מנהיגות.\n\nfield::מחקר איכותני\nראיונות עם סגני מנהלים.\n```',
+	].join('\n\n'),
+)
 seedProject('podcast-episode', '20260818-174200', [
 	'Welcome back to the show, today we talk about local AI.',
 	'On-device transcription keeps your audio private.',

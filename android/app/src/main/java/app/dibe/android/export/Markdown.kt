@@ -4,6 +4,7 @@ import app.dibe.android.data.JS_NON_SPACE
 import app.dibe.android.data.JS_SPACE
 import app.dibe.android.data.JS_SPACES
 import app.dibe.android.data.jsTrim
+import app.dibe.android.ui.transcript.visualsAsMarkdown
 
 /**
  * Port of desktop/src/lib/markdown-blocks.ts: the Markdown subset AI summaries use, read into blocks
@@ -47,7 +48,7 @@ internal fun parseMarkdown(markdown: String): List<Block> {
     val raw = mutableListOf<Raw>()
     // The block a following line continues; a blank line or any other block closes it.
     var open: Raw? = null
-    for (line in markdown.replace(Regex("\r\n?"), "\n").split("\n")) {
+    for (line in visualsAsMarkdown(markdown.replace(Regex("\r\n?"), "\n")).split("\n")) {
         if (line.jsTrim().isEmpty()) {
             open = null
             continue

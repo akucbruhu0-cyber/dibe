@@ -48,6 +48,17 @@ class AiClient {
         }
     }
 
+    /**
+     * [summary] with charts and diagrams added under its headings (see [VisualPass]). The transcript
+     * goes along as far as it fits beside the summary; a long one is cut, the summary still carries it.
+     * Throws [AiException].
+     */
+    suspend fun visualize(record: TranscriptRecord, summary: String, settings: AiSettings, uiLanguage: String, speakerLabel: String = "Speaker"): String {
+        val template = VisualPass.PROMPT.replace("{summary}", summary)
+        val transcript = chunkLines(transcriptText(record, speakerLabel).split("\n"), fillPrompt(template, transcript = "", language = uiLanguage), settings.contextTokens)[0]
+        return VisualPass.merge(summary, complete(settings, fillPrompt(template, transcript = transcript, language = uiLanguage)))
+    }
+
     /** Answer to a question about [record], with its earlier thread as context. Throws [AiException]. */
     suspend fun ask(record: TranscriptRecord, question: String, settings: AiSettings, uiLanguage: String, speakerLabel: String = "Speaker"): String {
         if (question.jsTrim().isEmpty()) throw AiException(AiException.Kind.BAD_RESPONSE, "The question is empty")

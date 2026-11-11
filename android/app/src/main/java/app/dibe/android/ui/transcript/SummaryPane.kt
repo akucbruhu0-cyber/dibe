@@ -137,6 +137,7 @@ internal fun SummaryPane(
             if (summary != null) {
                 SectionLabel(stringResource(R.string.summary_title))
                 SelectionContainer { MarkdownText(summary) }
+                if (state.visualizing) VisualSkeleton()
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { onCopy(summary) }) {
                         Icon(Icons.Outlined.ContentCopy, contentDescription = stringResource(R.string.lib_copy))
@@ -144,7 +145,7 @@ internal fun SummaryPane(
                     IconButton(onClick = { onShare(summary) }) {
                         Icon(Icons.Outlined.Share, contentDescription = stringResource(R.string.lib_share))
                     }
-                    if (canSummarize && !state.summarizing) {
+                    if (canSummarize && !state.summarizing && !state.visualizing) {
                         PresetPicker(preset, state.aiPreset == AiPresets.CUSTOM) { preset = it }
                         TextButton(onClick = { actions.summarize(preset) }) {
                             Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))

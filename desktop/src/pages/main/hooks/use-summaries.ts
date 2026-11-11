@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { m } from '~/paraglide/messages.js'
 import { appLanguageName, chunkLines, createClient, fillPrompt, inlineTextFiles, inputBudgetBytes, utf8Bytes, type AiClient, type Attachment } from '~/lib/ai'
 import { asText } from '~/lib/transcript'
+import { mergeVisuals, VISUAL_PROMPT, visualsApply } from '~/lib/visuals'
 import { usePreferenceProvider } from '~/providers/preference'
 import type { Job, TranscribeQueue } from './use-transcribe-queue'
 
@@ -31,6 +32,8 @@ export interface Summaries {
 	answerDrafts: Record<string, string>
 	/** Job ids waiting on an answer. */
 	asking: Record<string, boolean>
+	/** Job ids whose summary is written and whose charts are still being drawn. */
+	visualizing: Record<string, boolean>
 	removeThreadEntry: (job: Job, index: number) => void
 	/** Job whose summary just started or arrived, so the view can switch to it once. */
 	showSummary: string | null
@@ -76,6 +79,7 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 	const [errors, setError, clearError] = useRecord<string>()
 	const [answerDrafts, setAnswerDraft, clearAnswerDraft] = useRecord<string>()
 	const [asking, setAskingFor, clearAsking] = useRecord<boolean>()
+	const [visualizing, setVisualizing, clearVisualizing] = useRecord<boolean>()
 	const [showSummary, setShowSummary] = useState<string | null>(null)
 	// State updates are not synchronous; these sets close the gap where two callers can start the
 	// same job before `pending` renders.
@@ -126,6 +130,27 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 				text = text.trim()
 				if (!text) throw new Error(m.summaryFailed())
 				queue.setJobSummary(job.id, text)
+				if (visualsApply(template)) {
+					// Visuals are extra: the summary is saved already, so a failure here costs nothing.
+					setVisualizing(job.id, true)
+					try {
+						const visualPrompt = VISUAL_PROMPT.replace('{summary}', text)
+						const room = fillPrompt(visualPrompt, { ...values, transcript: '' })
+						const transcript = chunkLines(transcriptOf(job).split('\n'), room, connection.contextTokens)[0]
+						let answer = ''
+						// Each block joins the summary the moment it closes, so charts arrive one by one.
+						await client.stream(fillPrompt(visualPrompt, { ...values, transcript }), (token) => {
+							answer += token
+							setDraft(job.id, mergeVisuals(text, answer))
+						})
+						const merged = mergeVisuals(text, answer)
+						if (merged !== text) queue.setJobSummary(job.id, merged)
+					} catch (error) {
+						console.warn('visuals failed:', error)
+					} finally {
+						clearVisualizing(job.id)
+					}
+				}
 				return true
 			} catch (error) {
 				console.error('summarize failed:', error)
@@ -154,6 +179,8 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 			clearPending,
 			clearProgress,
 			clearDraft,
+			setVisualizing,
+			clearVisualizing,
 		],
 	)
 
@@ -238,5 +265,5 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 
 	const clearShowSummary = useCallback(() => setShowSummary(null), [])
 
-	return { enabled, pending, drafts, progress, errors, summarize, ask, answerDrafts, asking, removeThreadEntry, showSummary, clearShowSummary }
+	return { enabled, pending, drafts, progress, errors, summarize, ask, answerDrafts, asking, visualizing, removeThreadEntry, showSummary, clearShowSummary }
 }

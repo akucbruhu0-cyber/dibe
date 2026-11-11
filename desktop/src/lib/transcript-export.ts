@@ -1,5 +1,7 @@
 import type { TextFormat } from '~/components/format-select'
 import { markdownToHtml, markdownToText } from '~/lib/markdown-blocks'
+import { DARK_INK, LIGHT_INK, visualToSvg } from '~/lib/visual-svg'
+import { withVisualMarks } from '~/lib/visuals'
 import { formatTimestamp, speakerName, type Segment, type SpeakerNames } from '~/lib/transcript'
 
 export type TranscriptExportContent = 'transcript' | 'summary' | 'both'
@@ -125,7 +127,13 @@ function serializeHtml(segments: Segment[], summary: string, options: Transcript
 	if (includesSummary(options.content)) {
 		// Under the page's own "Summary" heading when there is one, so the levels stay in order.
 		const both = options.content === 'both'
-		sections.push(`<section class="summary">${both ? '<h2>Summary</h2>' : ''}${markdownToHtml(summary, both ? 3 : 2)}</section>`)
+		// Each visual is drawn where its marker paragraph lands, as an inline SVG.
+		const { text, visuals } = withVisualMarks(summary)
+		const body = markdownToHtml(text, both ? 3 : 2).replace(
+			/<p>@@dibe-visual-(\d+)@@<\/p>/g,
+			(_, index: string) => `<figure class="visual">${visualToSvg(visuals[Number(index)], dark ? DARK_INK : LIGHT_INK).svg}</figure>`,
+		)
+		sections.push(`<section class="summary">${both ? '<h2>Summary</h2>' : ''}${body}</section>`)
 	}
 	const title = options.title.trim()
 	return [
@@ -135,7 +143,7 @@ function serializeHtml(segments: Segment[], summary: string, options: Transcript
 		'<meta charset="utf-8">',
 		`<meta name="color-scheme" content="${dark ? 'dark' : 'light'}">`,
 		`<title>${escapeHtml(title)}</title>`,
-		`<style>:root{color-scheme:${dark ? 'dark' : 'light'}}html,body{min-height:100%;margin:0;background:${palette.background};color:${palette.foreground}}.html{box-sizing:border-box;min-height:100vh;font-family:Roboto,Arial,sans-serif;max-width:1000px;margin:auto;padding:22px;line-height:1.5;background:${palette.background};color:${palette.foreground}}.html h1{text-align:center;color:${palette.primary}}.html h2{border-bottom:1px solid ${palette.border};padding-bottom:.35rem}.html .segment{margin-top:18px}.html .metadata{font-size:.8rem;font-weight:600;color:${palette.muted}}.html .segment p,.html .summary p{white-space:normal}.html .summary hr{border:0;border-top:1px solid ${palette.border};margin:1.25rem 0}.html .summary blockquote{margin:0;padding-inline-start:1rem;border-inline-start:3px solid ${palette.border};color:${palette.muted}}.html .summary ul,.html .summary ol{padding-inline-start:1.5rem}</style>`,
+		`<style>:root{color-scheme:${dark ? 'dark' : 'light'}}html,body{min-height:100%;margin:0;background:${palette.background};color:${palette.foreground}}.html{box-sizing:border-box;min-height:100vh;font-family:Roboto,Arial,sans-serif;max-width:1000px;margin:auto;padding:22px;line-height:1.5;background:${palette.background};color:${palette.foreground}}.html h1{text-align:center;color:${palette.primary}}.html h2{border-bottom:1px solid ${palette.border};padding-bottom:.35rem}.html .segment{margin-top:18px}.html .metadata{font-size:.8rem;font-weight:600;color:${palette.muted}}.html .segment p,.html .summary p{white-space:normal}.html .summary hr{border:0;border-top:1px solid ${palette.border};margin:1.25rem 0}.html .summary blockquote{margin:0;padding-inline-start:1rem;border-inline-start:3px solid ${palette.border};color:${palette.muted}}.html .summary ul,.html .summary ol{padding-inline-start:1.5rem}.html .visual{margin:1.25rem 0}.html .visual svg{display:block;max-width:100%;height:auto}</style>`,
 		'</head>',
 		'<body>',
 		`<main class="html printable" dir="${options.direction}">`,

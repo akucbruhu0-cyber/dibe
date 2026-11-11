@@ -18,7 +18,8 @@ import type { Segment, SpeakerNames } from './transcript'
  * disk, a missing folder or a corrupt file can never break the transcription flow.
  */
 
-export const TRANSCRIPTS_FOLDER = 'DIBE'
+// DIBE TEST keeps its own folder, so trying a feature never rewrites the real app's transcripts.
+export const TRANSCRIPTS_FOLDER = import.meta.env.VITE_DIBE_TEST === '1' ? 'DIBE TEST' : 'DIBE'
 export const TRANSCRIPT_EXTENSION = '.vibe.json'
 /** Name of the record inside a project folder. */
 export const TRANSCRIPT_FILENAME = `transcript${TRANSCRIPT_EXTENSION}`

@@ -10,4 +10,7 @@
     <string name="settings_ai_model_free">Free tier</string>
     <string name="settings_ai_model_local">Local</string>
     <string name="settings_ai_model_low_cost">Lowest cost</string>
+    <string name="visual_drawing">Drawing charts…</string>
+    <string name="visual_back">Back</string>
+    <string name="visual_start_over">Start over</string>
 </resources>

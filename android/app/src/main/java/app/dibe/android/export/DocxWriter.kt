@@ -2,6 +2,9 @@ package app.dibe.android.export
 
 import app.dibe.android.data.TranscriptRecord
 import app.dibe.android.data.jsTrim
+import app.dibe.android.ui.transcript.Visual
+import app.dibe.android.ui.transcript.extractVisuals
+import app.dibe.android.ui.transcript.visualAt
 import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -43,23 +46,31 @@ internal object DocxWriter {
     fun write(record: TranscriptRecord, options: ExportOptions, out: OutputStream) {
         val title = record.name
         val zip = ZipOutputStream(out)
+        val images = mutableListOf<ByteArray>()
+        val document = document(record, options, images)
         for ((name, content) in listOf(
-            "[Content_Types].xml" to CONTENT_TYPES,
+            "[Content_Types].xml" to contentTypes(images.isNotEmpty()),
             "_rels/.rels" to ROOT_RELS,
             "docProps/core.xml" to core(title),
-            "word/_rels/document.xml.rels" to DOCUMENT_RELS,
+            "word/_rels/document.xml.rels" to documentRels(images.size),
             "word/styles.xml" to STYLES,
-            "word/document.xml" to document(record, options),
+            "word/document.xml" to document,
         )) {
             zip.putNextEntry(ZipEntry(name))
             zip.write(content.toByteArray())
+            zip.closeEntry()
+        }
+        images.forEachIndexed { i, png ->
+            zip.putNextEntry(ZipEntry("word/media/image${i + 1}.png"))
+            zip.write(png)
             zip.closeEntry()
         }
         // finish, not close: the caller owns [out].
         zip.finish()
     }
 
-    fun document(record: TranscriptRecord, options: ExportOptions): String {
+    /** [images] collects the summary's visuals as PNGs, in the order `image1.png`, `image2.png`…. */
+    fun document(record: TranscriptRecord, options: ExportOptions, images: MutableList<ByteArray> = mutableListOf()): String {
         val rtl = options.rtl
         val body = StringBuilder()
         // Bidi paragraphs carry no w:jc: their default (start) is the right edge in every reader, while
@@ -99,19 +110,22 @@ internal object DocxWriter {
         val summary = record.summary ?: ""
         if (options.content != ExportContent.TRANSCRIPT && summary.jsTrim().isNotEmpty()) {
             if (both) heading(options.summaryLabel)
-            summary(body, summary, rtl, align)
+            summary(body, summary, rtl, align, images)
         }
-        return "$XML_HEADER<w:document xmlns:w=\"$W\"><w:body>$body" +
+        // The drawing namespaces only when there is a drawing, so a plain export stays byte for byte the desktop's.
+        val namespaces = if (images.isEmpty()) "" else " xmlns:r=\"$R\" xmlns:wp=\"$WP\" xmlns:a=\"$A\" xmlns:pic=\"$PIC\""
+        return "$XML_HEADER<w:document xmlns:w=\"$W\"$namespaces><w:body>$body" +
             "<w:sectPr><w:pgSz w:w=\"11906\" w:h=\"16838\"/>" +
             "<w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/>" +
             "</w:sectPr></w:body></w:document>"
     }
 
     /** The AI summary's Markdown as real headings, bold and italic runs, lists, quotes and rules. */
-    private fun summary(body: StringBuilder, summary: String, rtl: Boolean, align: String?) {
+    private fun summary(body: StringBuilder, summary: String, rtl: Boolean, align: String?, images: MutableList<ByteArray>) {
         fun runs(items: List<Run>, size: Int = BODY_SIZE, bold: Boolean = false, italic: Boolean = false, color: String = INK) =
             items.map { Text(it.text, size, color, bold || it.bold, italic || it.italic, it.code, rtl) }
-        for (block in parseMarkdown(summary)) {
+        val (marked, visuals) = extractVisuals(summary)
+        for (block in parseMarkdown(marked)) {
             when (block) {
                 is Block.Heading -> {
                     val (style, size) = SUMMARY_HEADINGS[minOf(block.rank, SUMMARY_HEADINGS.lastIndex)]
@@ -136,9 +150,30 @@ internal object DocxWriter {
                         runs = listOf(Text("$marker\t", rtl = rtl)) + runs(items),
                     )
                 }
-                is Block.Paragraph -> body.paragraph(align = align, bidi = rtl, line = LINE, after = PARAGRAPH_GAP, runs = runs(block.runs))
+                is Block.Paragraph -> {
+                    val visual = visualAt(block.runs.joinToString("") { it.text }, visuals)
+                    if (visual != null) body.picture(visual, images)
+                    else body.paragraph(align = align, bidi = rtl, line = LINE, after = PARAGRAPH_GAP, runs = runs(block.runs))
+                }
             }
         }
+    }
+
+    /** [visual] as an inline PNG the width of the text column, its title as the alt text. */
+    private fun StringBuilder.picture(visual: Visual, images: MutableList<ByteArray>) {
+        val drawing = VisualDrawing(visual, TEXT_WIDTH_PT)
+        images += drawing.png(3f)
+        val n = images.size
+        val cx = (TEXT_WIDTH_PT * EMU_PER_PT).toLong()
+        val cy = (drawing.height * EMU_PER_PT).toLong()
+        val alt = xmlText(visual.title)
+        append("<w:p><w:pPr><w:keepLines/><w:spacing w:before=\"200\" w:after=\"200\"/><w:jc w:val=\"center\"/></w:pPr><w:r><w:drawing>")
+        append("<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\"><wp:extent cx=\"$cx\" cy=\"$cy\"/>")
+        append("<wp:docPr id=\"$n\" name=\"Chart $n\" descr=\"$alt\"/>")
+        append("<a:graphic><a:graphicData uri=\"$PIC\"><pic:pic><pic:nvPicPr><pic:cNvPr id=\"$n\" name=\"image$n.png\"/><pic:cNvPicPr/></pic:nvPicPr>")
+        append("<pic:blipFill><a:blip r:embed=\"rIdImage$n\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>")
+        append("<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"$cx\" cy=\"$cy\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr>")
+        append("</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>")
     }
 
     /** Children in the order the schema requires (CT_PPr, CT_RPr); Word rejects files that reorder them. */
@@ -222,6 +257,23 @@ internal object DocxWriter {
 
     private const val XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
     private const val W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+    private const val R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    private const val WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+    private const val A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    private const val PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+
+    /** A4 less the two 1440-twip margins, in points; the width every visual is drawn at. */
+    private const val TEXT_WIDTH_PT = (11906 - 2 * 1440) / 20f
+    private const val EMU_PER_PT = 12700f
+
+    private fun contentTypes(png: Boolean) =
+        if (png) CONTENT_TYPES.replace("<Default Extension=\"xml\"", "<Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"xml\"") else CONTENT_TYPES
+
+    private fun documentRels(images: Int) = DOCUMENT_RELS.replace(
+        "</Relationships>",
+        (1..images).joinToString("") { "<Relationship Id=\"rIdImage$it\" Type=\"$R/image\" Target=\"media/image$it.png\"/>" } + "</Relationships>",
+    )
 
     private const val CONTENT_TYPES = XML_HEADER +
         "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +

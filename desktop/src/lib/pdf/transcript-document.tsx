@@ -1,5 +1,7 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import { parseMarkdown, type Run } from '~/lib/markdown-blocks'
+import { markedVisual, withVisualMarks, type Visual } from '~/lib/visuals'
+import { PdfVisual, type PdfInk } from './pdf-visual'
 import type { Segment } from '~/lib/transcript'
 import { includesSummary, includesTranscript, segmentMetadata, type TranscriptExportOptions } from '~/lib/transcript-export'
 
@@ -59,15 +61,20 @@ function RunsText({ runs, direction }: { runs: Run[]; direction: 'rtl' | 'ltr' }
 	))
 }
 
-/** An AI summary (Markdown) as headings, paragraphs, lists, quotes and rules. */
-function SummaryBlocks({ summary, styles, direction }: { summary: string; styles: ReturnType<typeof sheet>; direction: 'rtl' | 'ltr' }) {
+/** An AI summary (Markdown) as headings, paragraphs, lists, quotes and rules, with its visuals drawn. */
+function SummaryBlocks({ summary, styles, direction, ink }: { summary: string; styles: ReturnType<typeof sheet>; direction: 'rtl' | 'ltr'; ink: PdfInk }) {
 	const indent = direction === 'rtl' ? 'paddingRight' : 'paddingLeft'
-	return parseMarkdown(summary).map((block, index) => {
+	const { text, visuals } = withVisualMarks(summary)
+	return parseMarkdown(text).map((block, index) => {
+		const visual: Visual | null = block.type === 'paragraph' ? markedVisual(block.runs.map((run) => run.text).join(''), visuals) : null
+		if (visual) return <PdfVisual key={index} visual={visual} ink={ink} fallback={direction} />
 		switch (block.type) {
 			case 'heading':
 				return (
+					// A heading never ends a page alone: it moves to the next page with what it introduces.
 					<Text
 						key={index}
+						minPresenceAhead={60}
 						style={[styles.summaryHeading, { fontSize: SUMMARY_HEADING_SIZES[Math.min(block.rank, SUMMARY_HEADING_SIZES.length - 1)] }]}>
 						<RunsText runs={block.runs} direction={direction} />
 					</Text>
@@ -144,7 +151,7 @@ export function TranscriptDocument({ segments, summary, options, labels }: Trans
 					})}
 
 				{showSummary && both && <Text style={styles.heading}>{plain(labels.summary)}</Text>}
-				{showSummary && <SummaryBlocks summary={summary} styles={styles} direction={options.direction} />}
+				{showSummary && <SummaryBlocks summary={summary} styles={styles} direction={options.direction} ink={palette} />}
 
 				<Text style={styles.footer} fixed render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
 			</Page>

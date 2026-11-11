@@ -19,6 +19,8 @@ import androidx.core.content.res.ResourcesCompat
 import app.dibe.android.R
 import app.dibe.android.data.TranscriptRecord
 import app.dibe.android.data.jsTrim
+import app.dibe.android.ui.transcript.extractVisuals
+import app.dibe.android.ui.transcript.visualAt
 import java.io.OutputStream
 
 /**
@@ -198,7 +200,8 @@ internal object PdfWriter {
 
         private fun summary(summary: String) {
             val body = paint(11f, INK)
-            for (block in parseMarkdown(summary)) {
+            val (marked, visuals) = extractVisuals(summary)
+            for (block in parseMarkdown(marked)) {
                 when (block) {
                     is Block.Heading -> {
                         pages.gap(14f)
@@ -237,6 +240,17 @@ internal object PdfWriter {
                         pages.text(textLayout, textX)
                     }
                     is Block.Paragraph -> {
+                        val visual = visualAt(block.runs.joinToString("") { it.text }, visuals)
+                        if (visual != null) {
+                            pages.gap(14f)
+                            val drawing = VisualDrawing(visual, CONTENT_WIDTH, regular, bold)
+                            // ponytail: a visual taller than a page is clipped by the page edge; none has had 8 rows that tall.
+                            pages.keep(drawing.height)
+                            val y = pages.y
+                            pages.draw { it.save(); it.translate(MARGIN, y); drawing.draw(it); it.restore() }
+                            pages.y += drawing.height
+                            continue
+                        }
                         pages.gap(12f)
                         pages.text(typeset(runs(block.runs), body), MARGIN)
                     }

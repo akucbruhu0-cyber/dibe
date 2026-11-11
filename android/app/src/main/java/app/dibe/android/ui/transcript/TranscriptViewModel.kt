@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import app.dibe.android.DibeApp
 import app.dibe.android.R
 import app.dibe.android.ai.AiException
+import app.dibe.android.ai.VisualPass
 import app.dibe.android.data.AiThreadEntry
 import app.dibe.android.data.TranscriptRecord
 import app.dibe.android.export.ExportContent
@@ -49,6 +50,8 @@ data class TranscriptUiState(
     val aiReady: Boolean = false,
     val aiPreset: String = "summary",
     val summarizing: Boolean = false,
+    /** The summary is shown; its charts are still being drawn. */
+    val visualizing: Boolean = false,
     @StringRes val summaryError: Int? = null,
     /** The question whose answer is on its way. */
     val asking: String? = null,
@@ -169,6 +172,17 @@ class TranscriptViewModel(private val app: DibeApp, private val handle: SavedSta
                 val summary = app.ai.summarize(record, settings, uiLanguage())
                 val updated = store.update(id) { it.copy(summary = summary) }
                 _state.update { it.copy(record = updated) }
+                if (VisualPass.appliesTo(preset)) {
+                    _state.update { it.copy(summarizing = false, visualizing = true) }
+                    // Visuals are extra: if this pass fails, the summary above already stands.
+                    val drawn = runCatching { app.ai.visualize(record, summary, settings, uiLanguage()) }
+                        .onFailure { if (it is CancellationException) throw it; Log.w(TAG, "visuals failed", it) }
+                        .getOrNull()
+                    if (drawn != null && drawn != summary) {
+                        val withVisuals = store.update(id) { it.copy(summary = drawn) }
+                        _state.update { it.copy(record = withVisuals) }
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: AiException) {
@@ -178,7 +192,7 @@ class TranscriptViewModel(private val app: DibeApp, private val handle: SavedSta
             } catch (e: Exception) {
                 _state.update { it.copy(summaryError = aiErrorText(null)) }
             } finally {
-                _state.update { it.copy(summarizing = false) }
+                _state.update { it.copy(summarizing = false, visualizing = false) }
             }
         }
     }

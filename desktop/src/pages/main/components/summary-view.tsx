@@ -1,5 +1,5 @@
 import { ArrowUp, Sparkles, X } from 'lucide-react'
-import Markdown from 'react-markdown'
+import Markdown, { type Components } from 'react-markdown'
 import { useEffect, useRef, useState } from 'react'
 import { m } from '~/paraglide/messages.js'
 import { Button } from '~/components/ui/button'
@@ -9,13 +9,30 @@ import { usePreferenceProvider } from '~/providers/preference'
 import { useSession } from '../session'
 import type { Job } from '../hooks/use-transcribe-queue'
 import { textSizeClass, type TranscriptViewOptions } from '../hooks/use-transcript-view'
+import { parseVisual, visualKind } from '~/lib/visuals'
+import { VisualCard, VisualSkeleton } from './visual-card'
 
-/** Markdown with a blinking caret at the end while text is still arriving. */
-function Streaming({ text, size }: { text: string; size: TranscriptViewOptions['textSize'] }) {
+/** A ```` ```dibe:… ```` block draws as a visual; one that doesn't parse is left out rather than shown raw. */
+const components: Components = {
+	pre({ node, children, ...rest }) {
+		const code = node?.children[0]
+		if (code?.type === 'element') {
+			const kind = visualKind(String((code.properties.className as string[] | undefined)?.[0] ?? ''))
+			if (kind) {
+				const visual = parseVisual(kind, code.children.map((child) => (child.type === 'text' ? child.value : '')).join(''))
+				return visual ? <VisualCard visual={visual} /> : null
+			}
+		}
+		return <pre {...rest}>{children}</pre>
+	},
+}
+
+/** Markdown with a blinking caret at the end while text is still arriving, or a chart skeleton while charts are. */
+function Streaming({ text, size, drawing = false }: { text: string; size: TranscriptViewOptions['textSize']; drawing?: boolean }) {
 	return (
 		<div className={cn('prose prose-neutral max-w-none dark:prose-invert', textSizeClass[size])}>
-			<Markdown>{text}</Markdown>
-			<span aria-hidden className="ms-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-foreground/60 align-text-bottom" />
+			<Markdown components={components}>{text}</Markdown>
+			{drawing ? <VisualSkeleton /> : <span aria-hidden className="ms-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-foreground/60 align-text-bottom" />}
 		</div>
 	)
 }
@@ -81,11 +98,11 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 					)}
 
 					{summarizing && draft ? (
-						<Streaming text={draft} size={options.textSize} />
+						<Streaming text={draft} size={options.textSize} drawing={Boolean(summaries.visualizing[job.id])} />
 					) : job.summary ? (
 						// The models answer in markdown; render it rather than showing the syntax.
 						<div className={cn('prose prose-neutral max-w-none dark:prose-invert', textSizeClass[options.textSize])}>
-							<Markdown>{job.summary}</Markdown>
+							<Markdown components={components}>{job.summary}</Markdown>
 						</div>
 					) : summarizing ? (
 						<p className="flex items-center gap-2 text-sm text-muted-foreground">

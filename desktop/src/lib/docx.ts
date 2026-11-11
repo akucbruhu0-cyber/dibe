@@ -1,6 +1,7 @@
-import { AlignmentType, BorderStyle, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx'
+import { AlignmentType, BorderStyle, Document, HeadingLevel, ImageRun, Packer, Paragraph, TextRun } from 'docx'
 import { formatDuration } from '~/components/html-view'
 import { parseMarkdown, type Run } from './markdown-blocks'
+import { markedVisual, withVisualMarks, type Visual } from './visuals'
 import { speakerName, type Segment, type SpeakerNames } from './transcript'
 
 export interface DocxExportOptions {
@@ -11,7 +12,19 @@ export interface DocxExportOptions {
 	summary?: string
 	transcriptLabel?: string
 	summaryLabel?: string
+	/** Draws a summary's visual as a PNG (the app rasterizes its SVG); without it visuals are written out as lists. */
+	drawVisual?: (visual: Visual) => Promise<DrawnVisual>
 }
+
+export interface DrawnVisual {
+	png: Uint8Array
+	/** CSS pixels. */
+	width: number
+	height: number
+}
+
+/** The widest a picture goes on an A4/Letter page with Word's default margins, in pixels at 96 dpi. */
+const PAGE_WIDTH_PX = 600
 
 /**
  * Word documents get edited, printed and mailed on, so this one is set for paper: an ordinary
@@ -48,7 +61,10 @@ const SECTION_GAP = 360
  * An AI summary (Markdown) as Word paragraphs: real headings, bold and italic runs, lists, quotes and
  * rules, instead of the `###`, `**` and `---` the text is written with.
  */
-function summaryParagraphs(summary: string, isRtl: boolean) {
+async function summaryParagraphs(summary: string, isRtl: boolean, drawVisual?: DocxExportOptions['drawVisual']) {
+	const marked = drawVisual ? withVisualMarks(summary) : { text: summary, visuals: [] }
+	const drawn = new Map<Visual, DrawnVisual>()
+	for (const visual of marked.visuals) drawn.set(visual, await drawVisual!(visual))
 	const alignment = isRtl ? AlignmentType.RIGHT : AlignmentType.LEFT
 	const runs = (items: Run[], extra: { size?: number; bold?: boolean; italics?: boolean; color?: string } = {}) =>
 		items.map(
@@ -63,8 +79,19 @@ function summaryParagraphs(summary: string, isRtl: boolean) {
 					...(run.code ? { font: 'Courier New' } : {}),
 				}),
 		)
-	return parseMarkdown(summary).map((block) => {
+	return parseMarkdown(marked.text).map((block) => {
 		const base = { alignment, bidirectional: isRtl, spacing: { line: LINE, after: PARAGRAPH_GAP } }
+		const visual = block.type === 'paragraph' ? markedVisual(block.runs.map((run) => run.text).join(''), marked.visuals) : null
+		const picture = visual && drawn.get(visual)
+		if (picture) {
+			const scale = Math.min(1, PAGE_WIDTH_PX / picture.width)
+			return new Paragraph({
+				alignment: AlignmentType.CENTER,
+				spacing: { before: 120, after: PARAGRAPH_GAP },
+				keepLines: true,
+				children: [new ImageRun({ type: 'png', data: picture.png, transformation: { width: Math.round(picture.width * scale), height: Math.round(picture.height * scale) } })],
+			})
+		}
 		switch (block.type) {
 			case 'heading': {
 				const heading = SUMMARY_HEADINGS[Math.min(block.rank, SUMMARY_HEADINGS.length - 1)]
@@ -157,6 +184,7 @@ export async function toDocx(title: string, segments: Segment[], direction: 'rtl
 		paragraphs.push(body(text))
 	}
 
+	const summary = includeSummary ? await summaryParagraphs(options.summary ?? '', isRtl, options.drawVisual) : []
 	const doc = new Document({
 		title,
 		description: 'Transcript exported from DIBE',
@@ -181,7 +209,7 @@ export async function toDocx(title: string, segments: Segment[], direction: 'rtl
 					}),
 					...(includeTranscript ? [...(content === 'both' ? [heading(options.transcriptLabel ?? 'Transcript')] : []), ...paragraphs] : []),
 					...(includeSummary
-						? [...(content === 'both' ? [heading(options.summaryLabel ?? 'Summary')] : []), ...summaryParagraphs(options.summary ?? '', isRtl)]
+						? [...(content === 'both' ? [heading(options.summaryLabel ?? 'Summary')] : []), ...summary]
 						: []),
 				],
 			},

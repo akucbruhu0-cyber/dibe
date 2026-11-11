@@ -808,5 +808,8 @@
 	"modelAccuracyBasic": "Basic accuracy",
 	"modelAccuracyGood": "Good accuracy",
 	"modelAccuracyBest": "High accuracy",
-	"modelNeedsRam": "{gb} GB RAM min."
+	"modelNeedsRam": "{gb} GB RAM min.",
+	"visualBack": "Back",
+	"visualDrawing": "Drawing charts…",
+	"visualStartOver": "Start over"
 }

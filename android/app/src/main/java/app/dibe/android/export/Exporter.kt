@@ -11,7 +11,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import app.dibe.android.ui.transcript.extractVisuals
+import app.dibe.android.ui.transcript.visualAt
 import java.io.OutputStream
+import java.util.Base64
 
 /** The desktop's nine formats (desktop/src/components/format-select.tsx). */
 enum class ExportFormat(val extension: String, val mime: String) {
@@ -127,7 +130,7 @@ object Exporter {
             if (options.content != ExportContent.SUMMARY) add("<section class=\"transcript\">${if (both) "<h2>Transcript</h2>" else ""}$transcript</section>")
             // Under the page's own "Summary" heading when there is one, so the levels stay in order.
             if (options.content != ExportContent.TRANSCRIPT) {
-                add("<section class=\"summary\">${if (both) "<h2>Summary</h2>" else ""}${markdownToHtml(summary, if (both) 3 else 2)}</section>")
+                add("<section class=\"summary\">${if (both) "<h2>Summary</h2>" else ""}${summaryHtml(summary, if (both) 3 else 2)}</section>")
             }
         }
         val title = record.name.jsTrim()
@@ -155,6 +158,17 @@ object Exporter {
             "</body>",
             "</html>",
         ).filter { it.isNotEmpty() }.joinToString("\n")
+    }
+
+    /** The summary's HTML, each visual drawn as an embedded PNG (the page needs no script or network). */
+    private fun summaryHtml(summary: String, topLevel: Int): String {
+        val (marked, visuals) = extractVisuals(summary)
+        if (visuals.isEmpty()) return markdownToHtml(summary, topLevel)
+        return markdownToHtml(marked, topLevel).replace(Regex("<p>(\uE000\\d+\uE000)</p>")) { match ->
+            val visual = visualAt(match.groupValues[1], visuals) ?: return@replace ""
+            val png = Base64.getEncoder().encodeToString(VisualDrawing(visual, 480f).png(2f))
+            "<figure class=\"visual\"><img src=\"data:image/png;base64,$png\" alt=\"${escapeHtml(visual.title)}\" style=\"width:480px;max-width:100%\"></figure>"
+        }
     }
 
     @OptIn(ExperimentalSerializationApi::class)

@@ -1,3 +1,4 @@
+import { visualsAsMarkdown } from './visuals'
 /**
  * The Markdown an AI summary is written in, read into blocks that every export draws in its own
  * terms: Word paragraphs, PDF views, HTML elements or plain lines. Without this the files showed
@@ -53,7 +54,7 @@ export function parseMarkdown(markdown: string): Block[] {
 	/** The block a following line continues; a blank line or any other block closes it. */
 	let open: Exclude<Raw, { type: 'rule' | 'heading-raw' }> | null = null
 
-	for (const line of markdown.replace(/\r\n?/g, '\n').split('\n')) {
+	for (const line of visualsAsMarkdown(markdown.replace(/\r\n?/g, '\n')).split('\n')) {
 		if (!line.trim()) {
 			open = null
 			continue

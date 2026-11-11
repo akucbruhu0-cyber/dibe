@@ -118,6 +118,20 @@ describe('transcript pdf', () => {
 		expect(text).toContain('•')
 	}, 30_000)
 
+	// Pocket's own PDF lost every Hebrew label of its charts and printed "(%02)" for 20%.
+	it('draws a summary’s charts with their Hebrew labels and numbers intact', async () => {
+		const summary =
+			'### גישות\n\n```dibe:chart\ntype: pie\ntitle: התפלגות הגישות\nקוניונקציה לוגית | 20\nהשתמעויות פרגמטיות | 80\n```\n\n```dibe:compare\nגישה | מקור\nמינימליסטית | לוגיקה\nפרגמטית | הקשר\n```\n\n```dibe:flow\nרגש -> כנות\nכנות -> העצמה\n```'
+		const text = await extractText(await renderPdf(HEBREW, 'rtl', summary))
+		expect(text).not.toContain('```')
+		expect(text).not.toContain('dibe:')
+		for (const label of ['התפלגות הגישות', 'קוניונקציה לוגית', 'השתמעויות פרגמטיות', 'מינימליסטית', 'לוגיקה', 'כנות', 'העצמה']) {
+			expect(text, label).toContain(label)
+		}
+		expect(text).toContain('20%')
+		expect(text).toContain('80%')
+	}, 30_000)
+
 	it('keeps the fonts embedded, so the text is real rather than an image', async () => {
 		const pdf = await renderPdf(HEBREW, 'rtl')
 		expect(Buffer.from(pdf).subarray(0, 5).toString()).toBe('%PDF-')

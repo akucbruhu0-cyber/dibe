@@ -3,6 +3,7 @@ import * as pathApi from '@tauri-apps/api/path'
 import * as fs from '@tauri-apps/plugin-fs'
 import { formatExtensions, type TextFormat } from '~/components/format-select'
 import { toDocx } from '~/lib/docx'
+import { visualToPng } from '~/lib/visual-png'
 import { transcriptToPdf } from '~/lib/pdf/transcript-pdf'
 import { projectExportFilename } from '~/lib/project-name'
 import type { Segment, SpeakerNames } from '~/lib/transcript'
@@ -116,6 +117,7 @@ export async function renderExport(format: TextFormat, input: ExportInput, rende
 			summary: input.summary,
 			transcriptLabel: rendering.labels.transcript,
 			summaryLabel: rendering.labels.summary,
+			drawVisual: visualToPng,
 		})
 		return new Uint8Array(await document.arrayBuffer())
 	}

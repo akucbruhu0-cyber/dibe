@@ -47,6 +47,8 @@ sealed interface MdBlock {
     data class Item(val text: AnnotatedString, val depth: Int, val marker: String, val checked: Boolean? = null) : MdBlock
     data class Quote(val text: AnnotatedString) : MdBlock
     data class Code(val text: String) : MdBlock
+    /** A ```` ```dibe:… ```` block that parsed; one that didn't is dropped rather than shown raw. */
+    data class Graphic(val visual: Visual) : MdBlock
     data object Rule : MdBlock
 }
 
@@ -80,7 +82,9 @@ fun parseMarkdown(source: String, code: SpanStyle = PlainCode): List<MdBlock> {
             val body = mutableListOf<String>()
             while (i < lines.size && !lines[i].trimStart().startsWith("```")) body += lines[i++]
             i++
-            blocks += MdBlock.Code(body.joinToString("\n"))
+            val kind = visualKind(line)
+            if (kind == null) blocks += MdBlock.Code(body.joinToString("\n"))
+            else parseVisual(kind, body.joinToString("\n"))?.let { blocks += MdBlock.Graphic(it) }
             continue
         }
         if (line.isBlank()) { flush(); continue }
@@ -233,6 +237,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
                         .padding(12.dp),
                     style = type.bodyMedium.copy(fontFamily = FontFamily.Monospace),
                 )
+                is MdBlock.Graphic -> VisualCard(block.visual, spaced.padding(vertical = 4.dp))
                 MdBlock.Rule -> HorizontalDivider(spaced.padding(vertical = 4.dp), color = colors.outlineVariant)
             }
         }
