@@ -1,11 +1,11 @@
 package app.dibe.android.ui.home
 
+import app.dibe.android.ui.components.pastelBorder
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +49,9 @@ import app.dibe.android.service.FileJobState
 import app.dibe.android.service.FilePhase
 import app.dibe.android.service.Problem
 import app.dibe.android.ui.components.ProblemCard
+import app.dibe.android.ui.components.hairlineBorder
+import app.dibe.android.ui.components.pillButtonColors
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.components.label
 import app.dibe.android.ui.theme.DibeTheme
 
@@ -72,28 +75,29 @@ fun ModelCard(model: ModelState, onOpenModels: () -> Unit, modifier: Modifier = 
             onClick = onOpenModels,
             modifier = modifier.heightIn(min = 48.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.background,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            border = pastelBorder(),
         ) {
             Row(Modifier.padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.GraphicEq, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Outlined.GraphicEq, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 Spacer(Modifier.width(8.dp))
                 Text(model.spec.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     " · " + stringResource(model.spec.tier.label()),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     maxLines = 1,
                 )
-                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
         is ModelState.Fetching -> Surface(
             onClick = onOpenModels,
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier.fillMaxWidth().softShadow(MaterialTheme.shapes.large),
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            color = MaterialTheme.colorScheme.surface,
+            border = hairlineBorder(),
         ) {
             Column(Modifier.padding(16.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
                 val status = model.status
@@ -134,7 +138,7 @@ fun ModelCard(model: ModelState, onOpenModels: () -> Unit, modifier: Modifier = 
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Spacer(Modifier.height(12.dp))
-                Button(onOpenModels, Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.ui_action_choose_model)) }
+                Button(onOpenModels, Modifier.heightIn(min = 48.dp), colors = pillButtonColors()) { Text(stringResource(R.string.ui_action_choose_model)) }
             }
         }
     }
@@ -165,10 +169,10 @@ fun FileJobCard(
     }
     val done = job.phase == FilePhase.DONE
     Surface(
-        modifier.fillMaxWidth(),
+        modifier.fillMaxWidth().softShadow(MaterialTheme.shapes.large),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = MaterialTheme.colorScheme.surface,
+        border = hairlineBorder(),
     ) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 8.dp)) {
             Row(Modifier.padding(end = 8.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }, verticalAlignment = Alignment.CenterVertically) {
@@ -213,7 +217,7 @@ fun FileJobCard(
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
                 if (done) {
                     TextButton(onDismiss) { Text(stringResource(R.string.ui_action_dismiss)) }
-                    job.savedId?.let { id -> Button({ onOpen(id) }) { Text(stringResource(R.string.home_file_open)) } }
+                    job.savedId?.let { id -> Button({ onOpen(id) }, colors = pillButtonColors()) { Text(stringResource(R.string.home_file_open)) } }
                 } else {
                     TextButton(onCancel) { Text(stringResource(R.string.home_file_cancel)) }
                 }

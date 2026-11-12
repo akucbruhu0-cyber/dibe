@@ -94,7 +94,7 @@ internal fun DevicePage(
             RecommendedModel(recommended, fit, status)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onChooseAnother, Modifier.weight(1f).heightIn(min = 48.dp), shape = MaterialTheme.shapes.medium) {
+                OutlinedButton(onChooseAnother, Modifier.weight(1f).heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.onb_choose_another), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 TextButton(onSkip, Modifier.weight(1f).heightIn(min = 48.dp)) {

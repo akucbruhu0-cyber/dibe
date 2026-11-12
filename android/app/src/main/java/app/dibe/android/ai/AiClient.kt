@@ -68,6 +68,10 @@ class AiClient {
         }
     }
 
+    /** A short title for [record] ([AutoTitle]); empty when the reply held none. Throws [AiException]. */
+    suspend fun title(record: TranscriptRecord, settings: AiSettings, speakerLabel: String = "Speaker"): String =
+        AutoTitle.clean(complete(settings, AutoTitle.prompt(transcriptText(record, speakerLabel))))
+
     /** Throws [AiException] when the connection or key is wrong. */
     suspend fun test(settings: AiSettings) {
         complete(settings, "Reply with the single word OK.")

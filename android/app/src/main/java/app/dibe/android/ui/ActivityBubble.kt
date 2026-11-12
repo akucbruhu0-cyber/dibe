@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -47,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -80,7 +80,9 @@ import app.dibe.android.ui.components.LevelMeter
 import app.dibe.android.ui.components.LocalReducedMotion
 import app.dibe.android.ui.components.PulseDot
 import app.dibe.android.ui.components.formatClock
-import app.dibe.android.ui.components.raisedSurfaceColor
+import app.dibe.android.ui.components.GlowBehind
+import app.dibe.android.ui.components.glass
+import app.dibe.android.ui.components.pillIconButtonColors
 import app.dibe.android.ui.theme.Brand
 import app.dibe.android.ui.theme.DibeTheme
 import kotlinx.coroutines.launch
@@ -217,13 +219,12 @@ private fun DraggableBubble(visible: Boolean, bottomReserve: Dp, content: @Compo
 
 @Composable
 private fun BubbleSurface(description: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+    // Floats over any screen's content: the denser glass, since nothing blurs what is behind it.
     Surface(
         onClick = onClick,
-        modifier = Modifier.semantics { contentDescription = description },
+        modifier = Modifier.glass(CircleShape, strong = true).semantics { contentDescription = description },
         shape = CircleShape,
-        color = raisedSurfaceColor(),
-        shadowElevation = 8.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        color = Color.Transparent,
         content = content,
     )
 }
@@ -234,28 +235,31 @@ private fun RecordingPill(state: RecordingState, onOpen: () -> Unit, onStop: () 
     val paused = state.phase == RecordingPhase.PAUSED
     val time = formatClock(state.elapsedMs)
     val description = stringResource(if (paused) R.string.bubble_paused_desc else R.string.bubble_recording_desc, time)
-    BubbleSurface(description, onOpen) {
-        Row(Modifier.height(56.dp).padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
-                PulseDot(if (paused) MaterialTheme.colorScheme.onSurfaceVariant else Brand.Green, pulsing = !paused, size = 10.dp)
-                Spacer(Modifier.width(10.dp))
-                Text(time, fontFamily = ClockFamily, style = MaterialTheme.typography.titleSmall)
-                Spacer(Modifier.width(10.dp))
-                LevelMeter(if (paused) 0f else state.level, barWidth = 2.dp, gap = 2.dp, minHeight = 4.dp, maxHeight = 16.dp)
-            }
-            Spacer(Modifier.width(4.dp))
-            if (state.phase == RecordingPhase.FINISHING) {
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+    GlowBehind(active = !paused) {
+        BubbleSurface(description, onOpen) {
+            Row(Modifier.height(56.dp).padding(start = 18.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
+                    PulseDot(if (paused) MaterialTheme.colorScheme.onSurfaceVariant else Brand.Green, pulsing = !paused, size = 10.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(time, fontFamily = ClockFamily, style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.width(10.dp))
+                    LevelMeter(if (paused) 0f else state.level, barWidth = 2.dp, gap = 2.dp, minHeight = 4.dp, maxHeight = 16.dp)
                 }
-            } else {
-                FilledIconButton(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        onStop()
-                    },
-                    enabled = state.phase != RecordingPhase.STARTING,
-                ) { Icon(Icons.Rounded.Stop, stringResource(R.string.rec_stop)) }
+                Spacer(Modifier.width(4.dp))
+                if (state.phase == RecordingPhase.FINISHING) {
+                    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    }
+                } else {
+                    FilledIconButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                            onStop()
+                        },
+                        enabled = state.phase != RecordingPhase.STARTING,
+                        colors = pillIconButtonColors(),
+                    ) { Icon(Icons.Rounded.Stop, stringResource(R.string.rec_stop)) }
+                }
             }
         }
     }

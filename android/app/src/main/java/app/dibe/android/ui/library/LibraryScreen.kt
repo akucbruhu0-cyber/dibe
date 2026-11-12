@@ -2,10 +2,12 @@
 
 package app.dibe.android.ui.library
 
+import app.dibe.android.ui.components.bottomFade
 import android.text.format.DateUtils
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
@@ -59,6 +62,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -81,8 +88,14 @@ import app.dibe.android.app
 import app.dibe.android.data.TranscriptEntry
 import app.dibe.android.data.TranscriptStore
 import app.dibe.android.service.Sessions
-import app.dibe.android.ui.transcript.isFilling
+import app.dibe.android.ui.components.hairlineBorder
+import app.dibe.android.ui.components.shellBarColors
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.theme.DibeTheme
+import app.dibe.android.ui.theme.LocalDibeColors
+import app.dibe.android.ui.transcript.isFilling
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,8 +105,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.ZoneId
 
 data class LibraryUiState(
     val loaded: Boolean = false,
@@ -198,7 +209,8 @@ private fun LibraryContent(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-        topBar = { LargeTopAppBar(title = { Text(stringResource(R.string.history_title)) }, scrollBehavior = scroll) },
+        containerColor = Color.Transparent,
+        topBar = { LargeTopAppBar(title = { Text(stringResource(R.string.history_title)) }, colors = shellBarColors(), scrollBehavior = scroll) },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -213,14 +225,15 @@ private fun LibraryContent(
                         stringResource(R.string.history_no_matches_body, query.text.toString().trim()),
                     )
                     else -> LazyColumn(
-                        Modifier.fillMaxSize().align(Alignment.TopCenter).widthIn(max = 720.dp),
-                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 24.dp),
+                        Modifier.fillMaxSize().align(Alignment.TopCenter).widthIn(max = 720.dp).bottomFade(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         state.groups.forEach { (group, entries) ->
                             item(key = "group-$group", contentType = "header") {
                                 SectionLabel(
                                     stringResource(group.label),
-                                    Modifier.animateItem().padding(start = 12.dp, end = 12.dp, top = 16.dp, bottom = 6.dp),
+                                    Modifier.animateItem().padding(start = 8.dp, end = 8.dp, top = 12.dp),
                                 )
                             }
                             items(entries, key = { it.id }, contentType = { "entry" }) { entry ->
@@ -277,7 +290,7 @@ private val DayGroup.label: Int
 private fun SearchField(state: TextFieldState, modifier: Modifier = Modifier) {
     TextField(
         state = state,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().softShadow(CircleShape, 3.dp),
         placeholder = { Text(stringResource(R.string.history_search)) },
         leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
         trailingIcon = {
@@ -291,8 +304,8 @@ private fun SearchField(state: TextFieldState, modifier: Modifier = Modifier) {
         textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
         shape = CircleShape,
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent,
         ),
@@ -313,7 +326,10 @@ private fun EntryRow(
         Row(
             Modifier
                 .fillMaxWidth()
+                .softShadow(MaterialTheme.shapes.medium, 3.dp)
                 .clip(MaterialTheme.shapes.medium)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(hairlineBorder(), MaterialTheme.shapes.medium)
                 .combinedClickable(
                     onClick = onOpen,
                     onLongClick = { menu = true },
@@ -323,10 +339,10 @@ private fun EntryRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainer),
+                Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(thumbBrush(entry.id)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Description, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                Icon(Icons.Outlined.Description, contentDescription = null, tint = thumbIconTint(), modifier = Modifier.size(20.dp))
             }
             Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                 Text(
@@ -368,6 +384,32 @@ private fun EntryRow(
         }
     }
 }
+
+/**
+ * Pocket's per-recording thumb: three glow hues, picked and angled by the id, the same every time.
+ * The hues are washed 75% into the card so the icon on top keeps >= 6:1 in both themes (the raw glow
+ * hues are too saturated to carry text or an icon).
+ */
+@Composable
+private fun thumbBrush(id: String): Brush {
+    val card = MaterialTheme.colorScheme.surface
+    val hues = LocalDibeColors.current.glow.take(4).map { lerp(it, card, 0.75f) }
+    val h = id.hashCode()
+    val a = Math.floorMod(h, 4)
+    val b = (a + 1 + Math.floorMod(h shr 2, 3)) % 4
+    val c = (b + 1 + Math.floorMod(h shr 4, 2)) % 4
+    val flip = (h shr 6) and 1 == 1
+    return Brush.linearGradient(
+        listOf(hues[a], hues[b], hues[c]),
+        start = if (flip) Offset(Float.POSITIVE_INFINITY, 0f) else Offset.Zero,
+        end = if (flip) Offset(0f, Float.POSITIVE_INFINITY) else Offset.Infinite,
+    )
+}
+
+/** Dark green on the washed thumb in light mode, the light foreground on it in dark mode. */
+@Composable
+private fun thumbIconTint(): Color =
+    if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
 
 /** Today: "12 minutes ago"; yesterday: the time; earlier: date and time, in the phone's own format. */
 @Composable

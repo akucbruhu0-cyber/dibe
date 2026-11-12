@@ -3,7 +3,7 @@
 <resources>
     <!-- Navigation -->
     <string name="nav_record">Record</string>
-    <string name="nav_history">History</string>
+    <string name="nav_history">Recordings</string>
     <string name="nav_settings">Settings</string>
 
     <!-- Shared components -->

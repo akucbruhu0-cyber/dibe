@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -26,21 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-
-/** A surface that reads as raised on the muted track, in light and in dark. */
-@Composable
-fun raisedSurfaceColor(): Color =
-    MaterialTheme.colorScheme.run { if (background.luminance() > 0.5f) background else surfaceContainerHigh }
+import app.dibe.android.ui.theme.LocalDibeColors
 
 /**
- * The desktop's joined source switcher: a muted pill track, the active segment raised on it and
- * sliding (a spring, so a quick second tap redirects it mid-way). Radio semantics for TalkBack.
+ * Pocket's segmented pill: a white floating track, the active segment a dark pill sliding on it
+ * (a spring, so a quick second tap redirects it mid-way). Radio semantics for TalkBack.
  */
 @Composable
 fun <T> PillSegmented(
@@ -52,13 +46,15 @@ fun <T> PillSegmented(
     enabled: Boolean = true,
 ) {
     val reduced = LocalReducedMotion.current
+    val pill = LocalDibeColors.current
     BoxWithConstraints(
         modifier
             .fillMaxWidth()
             .height(56.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(4.dp)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(pastelBorder(), CircleShape)
+            .padding(3.dp)
             .alpha(if (enabled) 1f else 0.5f),
     ) {
         val segment = maxWidth / options.size
@@ -72,14 +68,13 @@ fun <T> PillSegmented(
                 .offset(x = indicator)
                 .width(segment)
                 .fillMaxHeight()
-                .shadow(2.dp, CircleShape)
-                .background(raisedSurfaceColor(), CircleShape),
+                .background(pill.pillDark, CircleShape),
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight().selectableGroup()) {
             options.forEach { option ->
                 val active = option == selected
                 val color by animateColorAsState(
-                    if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    if (active) pill.onPillDark else MaterialTheme.colorScheme.onPrimaryContainer,
                     label = "segmentText",
                 )
                 Box(

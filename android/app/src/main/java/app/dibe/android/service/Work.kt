@@ -88,9 +88,15 @@ internal fun recordingStartedAt(file: File): LocalDateTime? = try {
 }
 
 /** The desktop's default names: `autoProjectName(..., 'record')` over its local-time stem. */
-internal fun recordingName(at: LocalDateTime) = "Record-${NAME_STAMP.format(at)}"
+internal fun recordingName(at: LocalDateTime) = "$RECORD_PREFIX${NAME_STAMP.format(at)}"
 
-internal fun fileProjectName(displayName: String) = "File-${displayName.substringBeforeLast('.').ifBlank { displayName }}"
+private const val RECORD_PREFIX = "Record-"
+private const val FILE_PREFIX = "File-"
+
+/** Still a name the app gave it ([recordingName], [fileProjectName]), i.e. the user has not named it (desktop `isAutoProjectName`). */
+internal fun isAutoProjectName(name: String) = name.startsWith(RECORD_PREFIX) || name.startsWith(FILE_PREFIX)
+
+internal fun fileProjectName(displayName: String) = "$FILE_PREFIX${displayName.substringBeforeLast('.').ifBlank { displayName }}"
 
 internal fun isoNow(): String = Instant.now().truncatedTo(ChronoUnit.MILLIS).toString()
 
@@ -108,5 +114,22 @@ internal suspend fun DibeApp.autoSummarize(id: String) {
         throw e
     } catch (e: Exception) {
         Log.w(TAG, "auto summary of $id failed", e)
+    }
+}
+
+/** Names a project from its transcript while it keeps the name the app gave it. Like [autoSummarize], a failure only logs. */
+internal suspend fun DibeApp.autoTitle(id: String) {
+    val ai = settings.settings.value.ai
+    if (!ai.autoTitle || !ai.isReady()) return
+    try {
+        val record = store.read(id) ?: return
+        if (!isAutoProjectName(record.name) || record.segments.isEmpty()) return
+        val title = this.ai.title(record, ai)
+        // The user may have renamed it while the model was writing; the store checks under its lock.
+        if (title.isNotEmpty() && title != record.name) store.rename(id, title, onlyIfNamed = record.name)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "auto title of $id failed", e)
     }
 }

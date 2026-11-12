@@ -2,7 +2,7 @@
 <resources>
     <!-- Navigation -->
     <string name="nav_record">הקלטה</string>
-    <string name="nav_history">היסטוריה</string>
+    <string name="nav_history">הקלטות</string>
     <string name="nav_settings">הגדרות</string>
 
     <!-- Shared components -->

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -59,8 +61,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -83,6 +87,8 @@ import app.dibe.android.R
 import app.dibe.android.app
 import app.dibe.android.ui.components.PillSegmented
 import app.dibe.android.ui.components.formatClock
+import app.dibe.android.ui.components.shellBarColors
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.library.ConfirmDialog
 import app.dibe.android.ui.library.EmptyState
 import app.dibe.android.ui.library.TextInputDialog
@@ -168,9 +174,11 @@ fun TranscriptScreen(id: String, onBack: () -> Unit, onDeleted: () -> Unit) {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             Column {
                 TopAppBar(
+                    colors = shellBarColors(),
                     navigationIcon = {
                         IconButton(onClick = if (searching) closeSearch else onBack) {
                             Icon(
@@ -276,7 +284,13 @@ fun TranscriptScreen(id: String, onBack: () -> Unit, onDeleted: () -> Unit) {
         },
         snackbarHost = { SnackbarHost(snackbar) },
     ) { padding ->
-        val body = Modifier.padding(padding)
+        // The page itself: one white sheet floating on the shell, under the bar and the tabs.
+        val body = Modifier
+            .padding(padding)
+            .padding(start = 8.dp, end = 8.dp, top = 6.dp)
+            .softShadow(SheetShape)
+            .clip(SheetShape)
+            .background(MaterialTheme.colorScheme.surface)
         when {
             state.loading -> Box(body.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             record == null -> EmptyState(
@@ -374,6 +388,8 @@ fun TranscriptScreen(id: String, onBack: () -> Unit, onDeleted: () -> Unit) {
     }
     if (aiSetup) AiSetupSheet(onDismiss = { aiSetup = false })
 }
+
+private val SheetShape = RoundedCornerShape(20.dp)
 
 @Composable
 private fun SearchInput(state: TextFieldState, onNext: () -> Unit) {

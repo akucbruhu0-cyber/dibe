@@ -2,6 +2,8 @@
 
 package app.dibe.android.ui.settings
 
+import app.dibe.android.ui.components.pastelBorder
+import app.dibe.android.ui.components.pastelButtonColors
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,13 +21,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeveloperBoard
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SdStorage
@@ -59,6 +61,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -90,10 +93,15 @@ import app.dibe.android.service.ACTIVE_FILE_PHASES
 import app.dibe.android.service.RecordingPhase
 import app.dibe.android.service.Sessions
 import app.dibe.android.ui.components.formatSize
+import app.dibe.android.ui.components.hairlineBorder
+import app.dibe.android.ui.components.pillButtonColors
+import app.dibe.android.ui.components.shellBarColors
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.library.ConfirmDialog
 import app.dibe.android.ui.library.Pill
 import app.dibe.android.ui.library.SectionLabel
 import app.dibe.android.ui.theme.DibeTheme
+import kotlin.math.ceil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -109,7 +117,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.ceil
 
 data class ModelsUiState(
     val catalog: List<ModelSpec> = emptyList(),
@@ -218,9 +225,11 @@ private fun ModelsContent(
     var confirmDelete by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.models_title)) },
+                colors = shellBarColors(),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.lib_back))
@@ -329,10 +338,10 @@ private fun ModelCard(
 ) {
     val colors = MaterialTheme.colorScheme
     Surface(
-        modifier,
+        modifier.softShadow(MaterialTheme.shapes.large),
         shape = MaterialTheme.shapes.large,
-        color = colors.surfaceContainerLow,
-        border = if (active) BorderStroke(1.5.dp, colors.primary) else BorderStroke(1.dp, colors.outlineVariant),
+        color = colors.surface,
+        border = if (active) BorderStroke(1.5.dp, colors.primary) else hairlineBorder(),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.Top) {
@@ -403,7 +412,7 @@ private fun ModelStatusArea(
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.models_download))
             }
-            if (fit == Fit.TOO_HEAVY) OutlinedButton(onClick = onDownload) { content() }
+            if (fit == Fit.TOO_HEAVY) OutlinedButton(onClick = onDownload, colors = pastelButtonColors(), border = pastelBorder()) { content() }
             else FilledTonalButton(onClick = onDownload) { content() }
         }
         is ModelStatus.Downloading -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -434,7 +443,7 @@ private fun ModelStatusArea(
                 Text(stringResource(R.string.lib_delete))
             }
             Spacer(Modifier.weight(1f))
-            if (!active) Button(onClick = onUse) { Text(stringResource(R.string.models_use)) }
+            if (!active) Button(onClick = onUse, colors = pillButtonColors()) { Text(stringResource(R.string.models_use)) }
         }
         is ModelStatus.Failed -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(

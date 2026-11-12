@@ -1,5 +1,7 @@
 package app.dibe.android.ui.home
 
+import app.dibe.android.ui.components.pastelBorder
+import app.dibe.android.ui.components.pastelButtonColors
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -15,9 +17,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -52,6 +54,7 @@ import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -76,7 +79,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -101,12 +103,17 @@ import app.dibe.android.models.EngineKind
 import app.dibe.android.models.ModelSpec
 import app.dibe.android.models.Tier
 import app.dibe.android.service.AudioSource
+import app.dibe.android.ui.components.EaseOutStrong
 import app.dibe.android.ui.components.Eyebrow
+import app.dibe.android.ui.components.GlowBehind
 import app.dibe.android.ui.components.LocalReducedMotion
 import app.dibe.android.ui.components.PillSegmented
 import app.dibe.android.ui.components.ProblemCard
+import app.dibe.android.ui.components.hairlineBorder
 import app.dibe.android.ui.components.languageName
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.theme.DibeTheme
+import app.dibe.android.ui.theme.LocalDibeColors
 import kotlinx.coroutines.launch
 
 @Stable
@@ -295,9 +302,10 @@ private fun HomeContent(state: HomeUiState, source: AudioSource, actions: HomeAc
                         OutlinedButton(
                             onClick = actions::pickFile,
                             enabled = state.canStart,
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = MaterialTheme.shapes.medium,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier.fillMaxWidth().height(56.dp).softShadow(CircleShape, 2.dp),
+                            shape = CircleShape,
+                            colors = pastelButtonColors(),
+                            border = pastelBorder(),
                         ) {
                             Icon(Icons.Outlined.UploadFile, null, Modifier.size(20.dp))
                             Spacer(Modifier.width(10.dp))
@@ -318,20 +326,23 @@ private fun AudioSource.label() = when (this) {
     AudioSource.BOTH -> R.string.home_source_both
 }
 
-/** The hero: a big green key. Presses in, and while a recording runs, a ring breathes out of it. */
+/**
+ * The hero: a pastel-green key on a sliding glow. Presses in, and while a recording runs, a ring
+ * breathes out of it.
+ */
 @Composable
 private fun RecordButton(active: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val haptics = LocalHapticFeedback.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, tween(140), label = "recordPress")
+    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, tween(140, easing = EaseOutStrong), label = "recordPress")
     val ring = if (active && !LocalReducedMotion.current) {
         rememberInfiniteTransition(label = "ring").animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = LinearOutSlowInEasing)), label = "ringProgress")
     } else {
         null
     }
-    val primary = MaterialTheme.colorScheme.primary
-    val halo = MaterialTheme.colorScheme.primaryContainer
+    val strong = MaterialTheme.colorScheme.primary
+    val fill = MaterialTheme.colorScheme.primaryContainer
     val label = stringResource(if (active) R.string.home_record_open else R.string.home_record_start)
 
     Box(
@@ -339,34 +350,41 @@ private fun RecordButton(active: Boolean, enabled: Boolean, onClick: () -> Unit)
             .size(168.dp)
             .drawBehind {
                 val radius = size.minDimension / 2
-                drawCircle(halo, radius * 0.81f)
-                ring?.let { drawCircle(primary.copy(alpha = 0.28f * (1 - it.value)), radius * (0.67f + 0.33f * it.value)) }
+                ring?.let { drawCircle(strong.copy(alpha = 0.22f * (1 - it.value)), radius * (0.67f + 0.33f * it.value)) }
             },
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier
-                .size(112.dp)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .shadow(if (enabled) 14.dp else 0.dp, CircleShape, ambientColor = primary, spotColor = primary)
-                .clip(CircleShape)
-                .background(if (enabled) primary else primary.copy(alpha = 0.38f))
-                .clickable(
-                    interactionSource = interaction,
-                    indication = ripple(color = MaterialTheme.colorScheme.onPrimary),
-                    enabled = enabled,
-                    onClickLabel = label,
-                    role = Role.Button,
-                ) {
-                    haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                    onClick()
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(if (active) Icons.Rounded.GraphicEq else Icons.Rounded.Mic, label, Modifier.size(44.dp), tint = MaterialTheme.colorScheme.onPrimary)
+        GlowBehind(active = enabled, spread = 22.dp) {
+            Box(
+                Modifier
+                    .size(112.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .softShadow(CircleShape, if (enabled) 10.dp else 0.dp)
+                    .clip(CircleShape)
+                    .background(if (enabled) fill else fill.copy(alpha = 0.45f))
+                    .border(1.dp, LocalDibeColors.current.glassBorder, CircleShape)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = ripple(color = MaterialTheme.colorScheme.onPrimaryContainer),
+                        enabled = enabled,
+                        onClickLabel = label,
+                        role = Role.Button,
+                    ) {
+                        haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                        onClick()
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    if (active) Icons.Rounded.GraphicEq else Icons.Rounded.Mic,
+                    label,
+                    Modifier.size(44.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = if (enabled) 1f else 0.5f),
+                )
+            }
         }
     }
 }
@@ -381,14 +399,15 @@ private fun LanguageChip(languages: List<String>, selected: String, onSelect: (S
             onClick = { open = true },
             modifier = Modifier.heightIn(min = 48.dp).semantics { this.contentDescription = description },
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.background,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            color = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            border = pastelBorder(),
         ) {
             Row(Modifier.padding(start = 14.dp, end = 8.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Translate, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.Translate, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 Spacer(Modifier.width(8.dp))
                 Text(languageName(selected, auto), style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                Icon(Icons.Outlined.ArrowDropDown, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.ArrowDropDown, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
         DropdownMenu(open, onDismissRequest = { open = false }, shape = MaterialTheme.shapes.medium) {

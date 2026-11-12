@@ -2,6 +2,8 @@
 
 package app.dibe.android.ui.settings
 
+import app.dibe.android.ui.components.pastelBorder
+import app.dibe.android.ui.components.pastelButtonColors
 import android.os.SystemClock
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
@@ -286,6 +288,13 @@ internal fun AiSettingsFields(
         }
         PromptEditor(ai, onChange)
     }
+    // The settings screen puts the auto-summary switch right below, so the two automatic AI steps sit together.
+    SwitchRow(
+        title = stringResource(R.string.settings_ai_title),
+        subtitle = stringResource(R.string.settings_ai_title_body),
+        checked = ai.autoTitle,
+        onCheckedChange = { on -> onChange { it.copy(autoTitle = on) } },
+    )
 }
 
 /**
@@ -468,7 +477,7 @@ private fun PromptEditor(ai: AiSettings, onChange: ((AiSettings) -> AiSettings) 
 @Composable
 private fun TestConnection(test: AiTest?, onTest: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedButton(onClick = onTest, enabled = test != AiTest.Running) { Text(stringResource(R.string.settings_ai_test)) }
+        OutlinedButton(onClick = onTest, enabled = test != AiTest.Running, colors = pastelButtonColors(), border = pastelBorder()) { Text(stringResource(R.string.settings_ai_test)) }
         Row(
             Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.CenterVertically,

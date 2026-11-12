@@ -97,7 +97,9 @@ class TranscriptStoreTest {
 
         val renamed = store.rename(entry.id, "שם חדש")
         assertEquals("שם חדש-$stamp", renamed)
-        assertNull(store.read(entry.id))
+        // A screen still holding the old id follows the rename; a guarded rename leaves a renamed project alone.
+        assertEquals("שם חדש", store.read(entry.id)!!.name)
+        assertEquals(renamed, store.rename(entry.id, "AI title", onlyIfNamed = "Meeting- Q3-Q4"))
         val afterRename = store.read(renamed)!!
         assertEquals("שם חדש", afterRename.name)
         assertEquals(File(File(root, renamed), "audio.m4a").absolutePath, afterRename.sourcePath)

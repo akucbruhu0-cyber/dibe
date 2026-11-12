@@ -2,7 +2,9 @@
 
 package app.dibe.android.ui.transcript
 
+import app.dibe.android.ui.components.bottomFade
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +51,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -80,6 +83,11 @@ import app.dibe.android.ai.AiPresets
 import app.dibe.android.data.AiThreadEntry
 import app.dibe.android.data.Segment
 import app.dibe.android.data.TranscriptRecord
+import app.dibe.android.ui.components.GlowBehind
+import app.dibe.android.ui.components.pillButtonColors
+import app.dibe.android.ui.components.pillIconButtonColors
+import app.dibe.android.ui.components.shimmer
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.library.SectionLabel
 import app.dibe.android.ui.settings.presetLabel
 import app.dibe.android.ui.theme.DibeTheme
@@ -113,9 +121,9 @@ internal fun SummaryPane(
         if (state.asking != null || thread.isNotEmpty()) scroll.animateScrollTo(scroll.maxValue)
     }
 
-    Box(modifier.fillMaxSize().verticalScroll(scroll), contentAlignment = Alignment.TopCenter) {
+    Box(modifier.fillMaxSize().bottomFade().verticalScroll(scroll), contentAlignment = Alignment.TopCenter) {
         Column(
-            Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (!state.aiReady) SetupCard(onSetUpAi)
@@ -127,7 +135,7 @@ internal fun SummaryPane(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Text(stringResource(R.string.summary_loading), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.summary_loading), Modifier.weight(1f).shimmer(), style = MaterialTheme.typography.bodyMedium)
                     TextButton(onClick = actions::cancelSummary) { Text(stringResource(R.string.lib_cancel)) }
                 }
                 state.summaryError != null -> ErrorLine(stringResource(state.summaryError)) { actions.summarize(preset) }
@@ -175,7 +183,7 @@ internal fun SummaryPane(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Text(stringResource(R.string.summary_thinking), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.summary_thinking), Modifier.shimmer(), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
                 state.askError?.let { error ->
@@ -194,7 +202,7 @@ private fun SetupCard(onSetUpAi: () -> Unit) {
             Icon(Icons.Outlined.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(stringResource(R.string.summary_setup_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             Text(stringResource(R.string.summary_setup_body), style = MaterialTheme.typography.bodyMedium)
-            Button(onClick = onSetUpAi, modifier = Modifier.padding(top = 4.dp)) { Text(stringResource(R.string.summary_setup_action)) }
+            Button(onClick = onSetUpAi, modifier = Modifier.padding(top = 4.dp), colors = pillButtonColors()) { Text(stringResource(R.string.summary_setup_action)) }
         }
     }
 }
@@ -212,7 +220,7 @@ private fun SummaryIntro(preset: String, hasCustom: Boolean, onPreset: (String) 
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             PresetPicker(preset, hasCustom, onPreset)
-            Button(onClick = onSummarize) {
+            Button(onClick = onSummarize, colors = pillButtonColors()) {
                 Icon(Icons.Outlined.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.summary_summarize))
@@ -296,40 +304,55 @@ internal fun AskBar(asking: Boolean, onAsk: (String) -> Unit, modifier: Modifier
             question.clearText()
         }
     }
-    Surface(modifier, color = MaterialTheme.colorScheme.background) {
+    // Pocket's Ask dock: a white pill with a green-tinted edge, on the sliding glow.
+    Surface(modifier, color = Color.Transparent) {
         Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Row(
-                    Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TextField(
-                        state = question,
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text(stringResource(R.string.summary_ask_placeholder)) },
-                        lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        onKeyboardAction = { send() },
-                        textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                        ),
-                    )
-                    FilledIconButton(onClick = send, enabled = canSend, modifier = Modifier.padding(bottom = 4.dp).size(48.dp)) {
-                        if (asking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                        else Icon(Icons.Outlined.ArrowUpward, contentDescription = stringResource(R.string.summary_ask_send))
+                GlowBehind(Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), shape = DockShape) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .softShadow(DockShape, 2.dp)
+                            .background(MaterialTheme.colorScheme.surface, DockShape)
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.24f), DockShape)
+                            .padding(4.dp),
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        TextField(
+                            state = question,
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text(stringResource(R.string.summary_ask_placeholder)) },
+                            lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                            onKeyboardAction = { send() },
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                            ),
+                        )
+                        FilledIconButton(
+                            onClick = send,
+                            enabled = canSend,
+                            modifier = Modifier.padding(bottom = 4.dp).size(48.dp),
+                            colors = pillIconButtonColors(),
+                        ) {
+                            if (asking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = LocalContentColor.current)
+                            else Icon(Icons.Outlined.ArrowUpward, contentDescription = stringResource(R.string.summary_ask_send))
+                        }
                     }
                 }
             }
         }
     }
 }
+
+private val DockShape = RoundedCornerShape(28.dp)
 
 @Preview(showBackground = true)
 @Composable

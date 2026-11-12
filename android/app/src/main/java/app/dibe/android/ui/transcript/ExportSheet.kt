@@ -2,6 +2,9 @@
 
 package app.dibe.android.ui.transcript
 
+import app.dibe.android.ui.components.dibeSwitchColors
+import app.dibe.android.ui.components.pastelBorder
+import app.dibe.android.ui.components.pastelButtonColors
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -27,10 +31,12 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SelectableChipColors
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -50,7 +56,9 @@ import app.dibe.android.R
 import app.dibe.android.export.ExportContent
 import app.dibe.android.export.ExportFormat
 import app.dibe.android.export.ExportOptions
+import app.dibe.android.ui.components.pillButtonColors
 import app.dibe.android.ui.library.SectionLabel
+import app.dibe.android.ui.theme.LocalDibeColors
 import kotlinx.coroutines.launch
 
 /** `CreateDocument` with the MIME type chosen at launch time rather than when the launcher is made. */
@@ -123,7 +131,7 @@ internal fun ExportSheet(
                 SectionLabel(stringResource(R.string.export_format))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExportFormat.entries.forEach { option ->
-                        FilterChip(selected = option == format, onClick = { format = option }, label = { Text(option.name) })
+                        FilterChip(selected = option == format, onClick = { format = option }, label = { Text(option.name) }, shape = CircleShape, colors = darkPillChip())
                     }
                 }
                 Text(stringResource(formatDescription(format)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -138,6 +146,8 @@ internal fun ExportSheet(
                             onClick = { content = option },
                             enabled = hasSummary || option == ExportContent.TRANSCRIPT,
                             label = { Text(stringResource(contentLabel(option))) },
+                            shape = CircleShape,
+                            colors = darkPillChip(),
                         )
                     }
                 }
@@ -153,12 +163,12 @@ internal fun ExportSheet(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { finish(onShare) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Button(onClick = { finish(onShare) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = pillButtonColors()) {
                     Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.lib_share))
                 }
-                OutlinedButton(onClick = { finish(onSave) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                OutlinedButton(onClick = { finish(onSave) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), colors = pastelButtonColors(), border = pastelBorder()) {
                     Icon(Icons.Outlined.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.export_save))
@@ -179,6 +189,12 @@ private fun ToggleRow(title: String, checked: Boolean, enabled: Boolean, onChang
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled, colors = dibeSwitchColors())
     }
+}
+
+/** Pocket's active filter: the dark pill. */
+@Composable
+private fun darkPillChip(): SelectableChipColors = LocalDibeColors.current.let {
+    FilterChipDefaults.filterChipColors(selectedContainerColor = it.pillDark, selectedLabelColor = it.onPillDark)
 }

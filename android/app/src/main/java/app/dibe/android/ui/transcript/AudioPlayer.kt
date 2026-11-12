@@ -12,13 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay10
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -45,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import app.dibe.android.R
 import app.dibe.android.ui.components.ClockFamily
 import app.dibe.android.ui.components.formatClock
+import app.dibe.android.ui.components.glass
+import app.dibe.android.ui.components.pillIconButtonColors
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,7 +58,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.io.File
 
 data class PlayerState(
     val ready: Boolean = false,
@@ -152,12 +155,16 @@ private fun speedLabel(speed: Float) = if (speed % 1f == 0f) "${speed.toInt()}×
 @Composable
 internal fun PlayerBar(player: AudioPlayer, state: PlayerState, modifier: Modifier = Modifier) {
     var dragging by remember { mutableStateOf<Float?>(null) }
-    Surface(modifier, color = MaterialTheme.colorScheme.background) {
+    // A glass dock floating on the shell, under the transcript's sheet.
+    Surface(modifier, color = Color.Transparent) {
         Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars)) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                 Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .glass(RoundedCornerShape(24.dp), strong = true)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     val clock = TextStyle(fontFamily = ClockFamily).merge(MaterialTheme.typography.labelMedium)
@@ -184,7 +191,7 @@ internal fun PlayerBar(player: AudioPlayer, state: PlayerState, modifier: Modifi
                             IconButton(onClick = { player.skip(-10_000) }, enabled = state.ready) {
                                 Icon(Icons.Outlined.Replay10, contentDescription = stringResource(R.string.player_back_10))
                             }
-                            FilledIconButton(onClick = player::toggle, enabled = state.ready, modifier = Modifier.size(52.dp)) {
+                            FilledIconButton(onClick = player::toggle, enabled = state.ready, modifier = Modifier.size(52.dp), colors = pillIconButtonColors()) {
                                 Icon(
                                     if (state.playing) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                                     contentDescription = stringResource(if (state.playing) R.string.player_pause else R.string.player_play),

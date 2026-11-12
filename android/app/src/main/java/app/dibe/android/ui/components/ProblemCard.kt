@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -99,9 +100,10 @@ fun ProblemCard(
     val context = LocalContext.current
     val fix = problem.fix()
     Surface(
-        modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        modifier.fillMaxWidth().softShadow(MaterialTheme.shapes.large).semantics { liveRegion = LiveRegionMode.Polite },
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.error.copy(alpha = 0.06f),
+        // A white card with a faint red wash: it floats like the others, and still reads as a failure.
+        color = MaterialTheme.colorScheme.error.copy(alpha = 0.05f).compositeOver(MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.22f)),
     ) {
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 8.dp)) {
@@ -124,6 +126,7 @@ fun ProblemCard(
                 if (fix != null) {
                     Spacer(Modifier.width(4.dp))
                     Button(
+                        colors = pillButtonColors(),
                         onClick = {
                             when (fix) {
                                 Fix.MODELS, Fix.LIGHTER_MODEL -> onOpenModels()

@@ -8,17 +8,16 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.HorizontalDivider
@@ -41,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -61,6 +61,7 @@ import app.dibe.android.service.RecordingPhase
 import app.dibe.android.service.RecordingState
 import app.dibe.android.ui.components.EaseOutStrong
 import app.dibe.android.ui.components.LocalReducedMotion
+import app.dibe.android.ui.components.ShellBackground
 import app.dibe.android.ui.components.message
 import app.dibe.android.ui.components.prefersReducedMotion
 import app.dibe.android.ui.home.HomeScreen
@@ -69,6 +70,7 @@ import app.dibe.android.ui.onboarding.OnboardingScreen
 import app.dibe.android.ui.recording.RecordingScreen
 import app.dibe.android.ui.settings.ModelsScreen
 import app.dibe.android.ui.settings.SettingsScreen
+import app.dibe.android.ui.theme.LocalDibeColors
 import app.dibe.android.ui.transcript.TranscriptScreen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -99,7 +101,7 @@ private val CUT_SHORT = setOf(Problem.CAPTURE_FAILED, Problem.NO_SPACE)
 
 private enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
     HOME(Routes.HOME, R.string.nav_record, Icons.Outlined.Mic, Icons.Rounded.Mic),
-    HISTORY(Routes.HISTORY, R.string.nav_history, Icons.Outlined.History, Icons.Rounded.History),
+    HISTORY(Routes.HISTORY, R.string.nav_history, Icons.Outlined.AudioFile, Icons.Rounded.AudioFile),
     SETTINGS(Routes.SETTINGS, R.string.nav_settings, Icons.Outlined.Settings, Icons.Rounded.Settings),
 }
 
@@ -186,13 +188,13 @@ fun AppRoot(requests: Flow<AppRequest>) {
 
     val tabs = Tab.entries.any { it.route == route }
     CompositionLocalProvider(LocalReducedMotion provides reduced) {
-        Box(Modifier.fillMaxSize()) {
+        ShellBackground {
             Scaffold(
                 bottomBar = { if (tabs) DibeNavigationBar(route) { nav.openTab(it) } },
                 snackbarHost = { SnackbarHost(snackbar) },
                 // Each screen owns its top inset; the bar (or the screen, when hidden) owns the bottom.
                 contentWindowInsets = WindowInsets(0),
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = Color.Transparent,
             ) { padding ->
                 NavHost(
                     navController = nav,
@@ -245,10 +247,10 @@ fun AppRoot(requests: Flow<AppRequest>) {
             }
             ActivityBubble(
                 route = route,
-                // Clear of the navigation bar on tabs, and of the transcript's player bar (~130dp tall).
+                // Clear of the navigation bar on tabs, and of the transcript's floating player (~150dp tall).
                 bottomReserve = when {
                     tabs -> 81.dp
-                    route == Routes.TRANSCRIPT -> 140.dp
+                    route == Routes.TRANSCRIPT -> 160.dp
                     else -> 0.dp
                 },
                 onOpenRecording = { nav.navigate(Routes.RECORDING) { launchSingleTop = true } },
@@ -262,12 +264,12 @@ fun AppRoot(requests: Flow<AppRequest>) {
     }
 }
 
-/** Hairline-topped, background-coloured: the desktop's quiet chrome, with a green active pill. */
+/** Glass over the shell, hairline-topped, with the pastel-green active pill. */
 @Composable
 private fun DibeNavigationBar(route: String?, onSelect: (String) -> Unit) {
     Column {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        NavigationBar(containerColor = MaterialTheme.colorScheme.background, tonalElevation = 0.dp) {
+        HorizontalDivider(color = LocalDibeColors.current.hairline)
+        NavigationBar(containerColor = LocalDibeColors.current.glass, tonalElevation = 0.dp) {
             Tab.entries.forEach { tab ->
                 val selected = route == tab.route
                 NavigationBarItem(

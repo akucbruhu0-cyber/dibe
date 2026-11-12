@@ -1,7 +1,10 @@
 package app.dibe.android.ui.recording
 
+import app.dibe.android.ui.components.pastelBorder
+import app.dibe.android.ui.components.pastelButtonColors
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +21,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,13 +32,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -54,11 +58,17 @@ import app.dibe.android.service.Problem
 import app.dibe.android.service.RecordingPhase
 import app.dibe.android.service.RecordingState
 import app.dibe.android.ui.components.ClockFamily
+import app.dibe.android.ui.components.GlowBehind
 import app.dibe.android.ui.components.LevelMeter
 import app.dibe.android.ui.components.NoticeBanner
 import app.dibe.android.ui.components.ProblemCard
 import app.dibe.android.ui.components.PulseDot
 import app.dibe.android.ui.components.formatClock
+import app.dibe.android.ui.components.glass
+import app.dibe.android.ui.components.hairlineBorder
+import app.dibe.android.ui.components.pillButtonColors
+import app.dibe.android.ui.components.shellBarColors
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.components.message
 import app.dibe.android.ui.theme.Brand
 import app.dibe.android.ui.theme.DibeTheme
@@ -107,53 +117,66 @@ private fun RecordingContent(
     val failed = state.phase == RecordingPhase.IDLE && state.error != null
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
         topBar = {
             CenterAlignedTopAppBar(
                 title = { StatusLine(state.phase) },
                 navigationIcon = {
                     IconButton(onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.rec_back)) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = shellBarColors(),
             )
         },
         bottomBar = {
             if (!failed) {
-                Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                // The live controls: a glass capsule on the glow, the screen's one live thing.
+                GlowBehind(
+                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 16.dp),
+                    shape = CircleShape,
+                    active = state.phase == RecordingPhase.RECORDING,
                 ) {
-                    OutlinedButton(
-                        onClick = onPauseResume,
-                        enabled = running,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = MaterialTheme.shapes.medium,
+                    Row(
+                        Modifier.fillMaxWidth().glass(CircleShape).padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(if (paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, null, Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(if (paused) R.string.rec_resume else R.string.rec_pause))
-                    }
-                    Button(
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                            onStop()
-                        },
-                        enabled = running,
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape = MaterialTheme.shapes.medium,
-                    ) {
-                        if (finishing) {
-                            CircularProgressIndicator(Modifier.size(18.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Rounded.Stop, null, Modifier.size(20.dp))
+                        OutlinedButton(
+                            onClick = onPauseResume,
+                            enabled = running,
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            colors = pastelButtonColors(),
+                            border = pastelBorder(),
+                        ) {
+                            Icon(if (paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, null, Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(if (paused) R.string.rec_resume else R.string.rec_pause))
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(if (finishing) R.string.rec_finishing else R.string.rec_stop))
+                        Button(
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                onStop()
+                            },
+                            enabled = running,
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            colors = pillButtonColors(),
+                        ) {
+                            if (finishing) {
+                                CircularProgressIndicator(Modifier.size(18.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Rounded.Stop, null, Modifier.size(20.dp))
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(if (finishing) R.string.rec_finishing else R.string.rec_stop))
+                        }
                     }
                 }
             } else {
                 Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(20.dp)) {
-                    OutlinedButton(onClose, Modifier.fillMaxWidth().height(56.dp), shape = MaterialTheme.shapes.medium) {
+                    OutlinedButton(
+                        onClose,
+                        Modifier.fillMaxWidth().height(56.dp).softShadow(CircleShape, 2.dp),
+                        colors = pastelButtonColors(),
+                        border = pastelBorder(),
+                    ) {
                         Text(stringResource(R.string.rec_close))
                     }
                 }

@@ -29,6 +29,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.GregorianCalendar
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Folder of project folders under [root]: `<name>-<yyyyMMdd-HHmmss>/transcript.vibe.json` plus
@@ -40,6 +41,9 @@ import java.util.Locale
 class TranscriptStore(private val root: File) {
     private val _entries = MutableStateFlow<List<TranscriptEntry>>(emptyList())
     private val writes = Mutex()
+
+    /** Old id to new: a screen or chore holding an id from before a rename (say, the AI's) still finds its project. */
+    private val moved = ConcurrentHashMap<String, String>()
 
     /** Newest first. Refreshed after every write. */
     val entries: StateFlow<List<TranscriptEntry>> = _entries.asStateFlow()
@@ -58,9 +62,12 @@ class TranscriptStore(private val root: File) {
 
     suspend fun read(id: String): TranscriptRecord? = withContext(Dispatchers.IO) { folder(id)?.let(::readRecord) }
 
-    /** Returns the new id (the folder is renamed). */
-    suspend fun rename(id: String, name: String): String {
-        val newId = writes.withLock { withContext(Dispatchers.IO) { renameBlocking(id, name) } }
+    /**
+     * Returns the new id (the folder is renamed). With [onlyIfNamed], the project is left as it is
+     * unless its name still is that one, checked under the write lock.
+     */
+    suspend fun rename(id: String, name: String, onlyIfNamed: String? = null): String {
+        val newId = writes.withLock { withContext(Dispatchers.IO) { renameBlocking(id, name, onlyIfNamed) } }
         refresh()
         return newId
     }
@@ -96,9 +103,18 @@ class TranscriptStore(private val root: File) {
             .sortedWith(compareByDescending<TranscriptEntry> { it.createdAtMillis }.thenByDescending { it.id })
     }
 
+    /** The id a project has now, following renames made since [id] was handed out; null for an invalid id. */
+    fun currentId(id: String): String? = folder(id)?.name
+
     /** Ids come from the UI and the share sheet; anything that could leave [root] is no id. */
-    private fun folder(id: String): File? =
-        if (id.isEmpty() || id == "." || id == ".." || '/' in id || '\\' in id) null else File(root, id)
+    private fun folder(id: String): File? {
+        if (id.isEmpty() || id == "." || id == ".." || '/' in id || '\\' in id) return null
+        var current = id
+        var hops = 0
+        // Bounded, so a cycle of renames whose folders are all gone ends.
+        while (!File(root, current).exists() && hops++ < moved.size) current = moved[current] ?: break
+        return File(root, current)
+    }
 
     private fun readRecord(folder: File): TranscriptRecord? =
         try {
@@ -155,13 +171,15 @@ class TranscriptStore(private val root: File) {
         }
     }
 
-    private fun renameBlocking(id: String, newName: String): String {
+    private fun renameBlocking(id: String, newName: String, onlyIfNamed: String?): String {
         val folder = folder(id) ?: throw IOException("no transcript $id")
         val record = readRecord(folder) ?: throw IOException("unreadable transcript $id")
+        if (onlyIfNamed != null && record.name != onlyIfNamed) return folder.name
         val stem = toFileStem(newName)
-        val keptStamp = STAMP.find(id)?.let { id.substring(it.range.first) } ?: "-${stamp(System.currentTimeMillis())}"
+        val current = folder.name
+        val keptStamp = STAMP.find(current)?.let { current.substring(it.range.first) } ?: "-${stamp(System.currentTimeMillis())}"
         var renamed = folder
-        if ("$stem$keptStamp" != id) {
+        if ("$stem$keptStamp" != current) {
             var attempt = 1
             while (true) {
                 val candidate = File(root, "$stem${if (attempt == 1) "" else "-$attempt"}$keptStamp")
@@ -170,9 +188,10 @@ class TranscriptStore(private val root: File) {
                 if (candidate.exists()) continue
                 if (folder.renameTo(candidate)) {
                     renamed = candidate
+                    moved[current] = candidate.name
                     break
                 }
-                if (!candidate.exists()) throw IOException("cannot rename $id")
+                if (!candidate.exists()) throw IOException("cannot rename $current")
             }
         }
         val oldAudio = record.audioFile?.let { File(folder, it).absolutePath }
@@ -180,7 +199,9 @@ class TranscriptStore(private val root: File) {
         try {
             writeAtomic(File(renamed, RECORD), record.copy(name = stem, sourcePath = sourcePath))
         } catch (e: IOException) {
-            if (renamed != folder && !renamed.renameTo(folder)) Log.e(TAG, "failed to roll back rename of $id")
+            if (renamed != folder) {
+                if (renamed.renameTo(folder)) moved.remove(current) else Log.e(TAG, "failed to roll back rename of $current")
+            }
             throw e
         }
         return renamed.name

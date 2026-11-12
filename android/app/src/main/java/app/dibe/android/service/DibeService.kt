@@ -160,6 +160,8 @@ class DibeService : LifecycleService() {
             try {
                 session.run()?.let { entry ->
                     notifications.ready(entry)
+                    // Side by side: the store finds a project by its pre-rename id, so the summary lands either way.
+                    chore { app.autoTitle(entry.id) }
                     chore { app.autoSummarize(entry.id) }
                 }
             } catch (e: CancellationException) {
@@ -198,6 +200,8 @@ class DibeService : LifecycleService() {
             try {
                 FileJob(this@DibeService, uri, force, intent.getStringExtra(EXTRA_TARGET)).run()?.let { entry ->
                     notifications.ready(entry)
+                    // Imported files and re-transcribed recordings are titled too while they keep the app's name.
+                    chore { app.autoTitle(entry.id) }
                     chore { app.autoSummarize(entry.id) }
                 }
             } catch (e: CancellationException) {

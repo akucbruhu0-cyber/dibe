@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -45,7 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -59,11 +59,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.dibe.android.R
-import app.dibe.android.models.CATALOG
 import app.dibe.android.app
+import app.dibe.android.models.CATALOG
 import app.dibe.android.models.ModelStatus
 import app.dibe.android.ui.components.Eyebrow
 import app.dibe.android.ui.components.formatSize
+import app.dibe.android.ui.components.pillButtonColors
 import app.dibe.android.ui.theme.DibeTheme
 import kotlinx.coroutines.launch
 
@@ -150,7 +151,7 @@ fun OnboardingScreen(onFinished: (openModels: Boolean) -> Unit) {
                     }
                 },
                 modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().height(56.dp),
-                shape = MaterialTheme.shapes.medium,
+                colors = pillButtonColors(),
             ) {
                 AnimatedContent(primary, transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(100)) }, label = "primary") {
                     Text(it, style = MaterialTheme.typography.labelLarge)

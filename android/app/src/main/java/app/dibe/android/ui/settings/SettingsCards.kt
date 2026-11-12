@@ -1,6 +1,6 @@
 package app.dibe.android.ui.settings
 
-import androidx.compose.foundation.BorderStroke
+import app.dibe.android.ui.components.dibeSwitchColors
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -23,6 +23,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import app.dibe.android.ui.components.hairlineBorder
+import app.dibe.android.ui.components.softShadow
 import app.dibe.android.ui.library.SectionLabel
 
 /** A labelled group of settings: eyebrow above, rows inside one soft card. */
@@ -31,9 +33,10 @@ internal fun SettingsCard(title: String, modifier: Modifier = Modifier, content:
     Column(modifier) {
         SectionLabel(title, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
         Surface(
+            modifier = Modifier.softShadow(MaterialTheme.shapes.large),
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            color = MaterialTheme.colorScheme.surface,
+            border = hairlineBorder(),
         ) {
             Column(Modifier.fillMaxWidth(), content = content)
         }
@@ -91,6 +94,6 @@ internal fun SwitchRow(
         subtitle = subtitle,
         icon = icon,
         modifier = Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange),
-        trailing = { Switch(checked = checked, onCheckedChange = null) },
+        trailing = { Switch(checked = checked, onCheckedChange = null, colors = dibeSwitchColors()) },
     )
 }

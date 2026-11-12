@@ -2,6 +2,7 @@
 
 package app.dibe.android.ui.transcript
 
+import app.dibe.android.ui.components.bottomFade
 import android.text.format.DateUtils
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
@@ -108,9 +109,9 @@ internal fun TranscriptBody(
     CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                Modifier.widthIn(max = 720.dp).fillMaxSize(),
+                Modifier.widthIn(max = 720.dp).fillMaxSize().bottomFade(),
                 state = listState,
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 24.dp),
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
             ) {
                 item(key = "meta", contentType = "meta") { MetaLine(record, audioMs = playerState?.value?.durationMs?.takeIf { it > 0 }) }
                 if (segments.isEmpty()) {

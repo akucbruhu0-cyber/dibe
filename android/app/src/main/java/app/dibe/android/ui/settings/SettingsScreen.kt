@@ -2,6 +2,7 @@
 
 package app.dibe.android.ui.settings
 
+import app.dibe.android.ui.components.bottomFade
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,10 +27,10 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,14 +73,16 @@ import app.dibe.android.models.ModelSpec
 import app.dibe.android.models.Tier
 import app.dibe.android.settings.AppLanguage
 import app.dibe.android.settings.AppSettings
+import app.dibe.android.settings.ThemeMode
 import app.dibe.android.settings.appLanguage
 import app.dibe.android.settings.setAppLanguage
-import app.dibe.android.settings.ThemeMode
 import app.dibe.android.ui.components.PillSegmented
 import app.dibe.android.ui.components.formatSize
 import app.dibe.android.ui.components.languageName
 import app.dibe.android.ui.components.normalizeLanguage
+import app.dibe.android.ui.components.shellBarColors
 import app.dibe.android.ui.theme.DibeTheme
+import java.text.Collator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -87,7 +90,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
-import java.text.Collator
 
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
@@ -158,14 +160,15 @@ private fun SettingsContent(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-        topBar = { LargeTopAppBar(title = { Text(stringResource(R.string.settings_title)) }, scrollBehavior = scroll) },
+        containerColor = Color.Transparent,
+        topBar = { LargeTopAppBar(title = { Text(stringResource(R.string.settings_title)) }, colors = shellBarColors(), scrollBehavior = scroll) },
     ) { padding ->
         Column(
-            Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.padding(padding).fillMaxSize().bottomFade().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
-                Modifier.widthIn(max = 720.dp).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+                Modifier.widthIn(max = 720.dp).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(28.dp),
             ) {
                 SettingsCard(stringResource(R.string.settings_section_models)) {

@@ -2,6 +2,8 @@
 
 package app.dibe.android.ui.transcript
 
+import app.dibe.android.ui.components.pastelBorder
+import app.dibe.android.ui.components.pastelButtonColors
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -259,7 +261,7 @@ private fun Tree(tree: Visual.Tree) {
                 Text(node.body, style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Content), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             choices.forEach { (label, target) ->
-                OutlinedButton(onClick = { path = trail + target }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { path = trail + target }, modifier = Modifier.fillMaxWidth(), colors = pastelButtonColors(), border = pastelBorder()) {
                     Text(label, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Content), textAlign = TextAlign.Start)
                 }
             }

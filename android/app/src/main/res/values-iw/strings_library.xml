@@ -17,7 +17,7 @@
     <string name="lib_retry">ניסיון חוזר</string>
     <string name="lib_save">שמירה</string>
     <string name="lib_share">שיתוף</string>
-    <string name="history_title">היסטוריה</string>
+    <string name="history_title">הקלטות</string>
     <string name="history_search">חיפוש תמלולים</string>
     <string name="history_today">היום</string>
     <string name="history_yesterday">אתמול</string>
@@ -140,6 +140,8 @@
     <string name="settings_ai_test_ok">עובד · %1$d אלפיות שנייה</string>
     <string name="settings_ai_auto">סיכום אוטומטי של תמלולים חדשים</string>
     <string name="settings_ai_auto_body">רק תמלולים חדשים, לא תמלולים קיימים</string>
+    <string name="settings_ai_title">שם להקלטה בעזרת AI</string>
+    <string name="settings_ai_title_body">אחרי תמלול או סיכום, ה-AI נותן להקלטה או לקובץ כותרת קצרה. שם שהקלדת לא יוחלף.</string>
     <string name="settings_ai_setup_title">הגדרת סיכומי AI</string>
     <string name="settings_theme">ערכת נושא</string>
     <string name="settings_theme_system">מערכת</string>

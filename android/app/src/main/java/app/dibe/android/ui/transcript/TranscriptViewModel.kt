@@ -22,6 +22,7 @@ import app.dibe.android.export.Exporter
 import app.dibe.android.service.ACTIVE_FILE_PHASES
 import app.dibe.android.service.FilePhase
 import app.dibe.android.service.Sessions
+import app.dibe.android.service.autoTitle
 import app.dibe.android.ui.settings.aiErrorText
 import app.dibe.android.ui.settings.isReady
 import kotlinx.coroutines.CancellationException
@@ -114,6 +115,16 @@ class TranscriptViewModel(private val app: DibeApp, private val handle: SavedSta
         app.settings.settings
             .onEach { settings -> _state.update { it.copy(aiReady = settings.ai.isReady(), aiPreset = settings.ai.preset) } }
             .launchIn(viewModelScope)
+        // Renamed elsewhere (the AI titling a new recording while it is open): follow the folder and show the new name.
+        store.entries
+            .onEach {
+                val now = store.currentId(id)
+                if (now != null && now != id) {
+                    id = now
+                    store.read(now)?.let { record -> _state.update { it.copy(record = record) } }
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
     fun transcribeAudio() {
@@ -172,6 +183,8 @@ class TranscriptViewModel(private val app: DibeApp, private val handle: SavedSta
                 val summary = app.ai.summarize(record, settings, uiLanguage())
                 val updated = store.update(id) { it.copy(summary = summary) }
                 _state.update { it.copy(record = updated) }
+                // A (re)summary also names a project that still has the app's name; the store watcher above shows it.
+                viewModelScope.launch { app.autoTitle(id) }
                 if (VisualPass.appliesTo(preset)) {
                     _state.update { it.copy(summarizing = false, visualizing = true) }
                     // Visuals are extra: if this pass fails, the summary above already stands.

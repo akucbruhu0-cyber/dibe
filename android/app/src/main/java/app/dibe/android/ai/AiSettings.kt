@@ -20,6 +20,8 @@ data class AiSettings(
     val preset: String = "summary",
     val prompt: String = "",
     val autoSummarize: Boolean = false,
+    /** After a recording is transcribed, the AI renames it while it still has its default name. */
+    val autoTitle: Boolean = false,
 )
 
 /** The default model for a platform, so switching platforms never leaves a Claude model on Ollama. */

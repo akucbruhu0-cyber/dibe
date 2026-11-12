@@ -8,6 +8,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -27,53 +29,58 @@ val Rubik = FontFamily(
 )
 
 private val LightScheme = lightColorScheme(
-    primary = Brand.GreenDark,
-    onPrimary = Light.Background,
-    primaryContainer = Light.GreenTint,
-    onPrimaryContainer = Brand.GreenDeep,
-    secondary = Brand.Green,
-    onSecondary = Light.Background,
-    secondaryContainer = Light.Muted,
+    primary = Light.PrimaryStrong,
+    onPrimary = Color.White,
+    primaryContainer = Light.Primary,
+    onPrimaryContainer = Light.OnPrimary,
+    inversePrimary = Light.Primary,
+    secondary = Light.PillDark,
+    onSecondary = Color.White,
+    secondaryContainer = Light.Sidebar,
     onSecondaryContainer = Light.Foreground,
     tertiary = Brand.Orange,
     background = Light.Background,
     onBackground = Light.Foreground,
-    surface = Light.Background,
+    surface = Light.Card,
     onSurface = Light.Foreground,
     surfaceVariant = Light.Muted,
     onSurfaceVariant = Light.MutedForeground,
-    surfaceContainerLowest = Light.Background,
-    surfaceContainerLow = Light.Sidebar,
+    // Elevation is a shadow here, never a tint.
+    surfaceTint = Color.Transparent,
+    surfaceContainerLowest = Light.Card,
+    surfaceContainerLow = Light.Card,
     surfaceContainer = Light.Muted,
-    surfaceContainerHigh = Light.Muted,
+    surfaceContainerHigh = Light.Card,
     surfaceContainerHighest = Light.Border,
     // M3 draws the border and thumb of an off switch, and outlined fields, in `outline`: it needs 3:1
-    // on white. Decorative hairlines use outlineVariant (the desktop border).
+    // on white. Decorative hairlines use outlineVariant.
     outline = Light.Control,
     outlineVariant = Light.Border,
     error = Brand.Red,
-    onError = Light.Background,
+    onError = Color.White,
 )
 
 private val DarkScheme = darkColorScheme(
-    primary = Brand.Green,
-    onPrimary = Brand.Night,
-    primaryContainer = Dark.GreenTint,
-    onPrimaryContainer = Brand.GreenSoft,
-    secondary = Brand.GreenSoft,
-    onSecondary = Brand.Night,
+    primary = Dark.PrimaryStrong,
+    onPrimary = Dark.OnPrimary,
+    primaryContainer = Dark.Primary,
+    onPrimaryContainer = Dark.OnPrimary,
+    inversePrimary = Light.PrimaryStrong,
+    secondary = Dark.Foreground,
+    onSecondary = Dark.Background,
     secondaryContainer = Dark.Muted,
     onSecondaryContainer = Dark.Foreground,
     tertiary = Brand.Orange,
     background = Dark.Background,
     onBackground = Dark.Foreground,
-    surface = Dark.Background,
+    surface = Dark.Card,
     onSurface = Dark.Foreground,
     surfaceVariant = Dark.Muted,
     onSurfaceVariant = Dark.MutedForeground,
+    surfaceTint = Color.Transparent,
     surfaceContainerLowest = Dark.Background,
     surfaceContainerLow = Dark.Card,
-    surfaceContainer = Dark.Card,
+    surfaceContainer = Dark.Muted,
     surfaceContainerHigh = Dark.Popover,
     surfaceContainerHighest = Dark.Border,
     outline = Dark.Control,
@@ -87,7 +94,7 @@ private val DarkScheme = darkColorScheme(
  * language: a Hebrew transcript, name or summary reads right to left with its punctuation in place
  * even when the app runs in English, and English text stays left to right in a Hebrew UI.
  */
-private fun style(size: Int, weight: FontWeight = FontWeight.Normal, line: Float = 1.45f, tracking: Float = -0.01f) =
+private fun style(size: Int, weight: FontWeight = FontWeight.Normal, line: Float = 1.45f, tracking: Float = -0.015f) =
     TextStyle(
         fontFamily = Rubik,
         fontSize = size.sp,
@@ -97,12 +104,12 @@ private fun style(size: Int, weight: FontWeight = FontWeight.Normal, line: Float
         textDirection = TextDirection.Content,
     )
 
-/** Desktop scale: 14px body, tight headings (-0.03em), 11px uppercase eyebrow. */
+/** Desktop scale: 14px body, tight headings (-0.035em), 11px uppercase eyebrow. */
 private val DibeTypography = Typography(
-    displaySmall = style(32, FontWeight.SemiBold, 1.1f, -0.03f),
-    headlineMedium = style(28, FontWeight.SemiBold, 1.1f, -0.03f),
-    headlineSmall = style(22, FontWeight.SemiBold, 1.2f, -0.03f),
-    titleLarge = style(20, FontWeight.SemiBold, 1.25f, -0.02f),
+    displaySmall = style(32, FontWeight.SemiBold, 1.1f, -0.035f),
+    headlineMedium = style(28, FontWeight.SemiBold, 1.1f, -0.035f),
+    headlineSmall = style(22, FontWeight.SemiBold, 1.2f, -0.035f),
+    titleLarge = style(20, FontWeight.SemiBold, 1.25f, -0.025f),
     titleMedium = style(16, FontWeight.SemiBold, 1.3f),
     titleSmall = style(14, FontWeight.SemiBold, 1.3f),
     bodyLarge = style(16, line = 1.55f),
@@ -124,10 +131,12 @@ private val DibeShapes = Shapes(
 
 @Composable
 fun DibeTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (dark) DarkScheme else LightScheme,
-        typography = DibeTypography,
-        shapes = DibeShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalDibeColors provides if (dark) DarkDibeColors else LightDibeColors) {
+        MaterialTheme(
+            colorScheme = if (dark) DarkScheme else LightScheme,
+            typography = DibeTypography,
+            shapes = DibeShapes,
+            content = content,
+        )
+    }
 }

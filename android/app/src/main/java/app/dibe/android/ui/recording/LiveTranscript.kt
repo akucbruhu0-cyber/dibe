@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,20 +30,19 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
-import app.dibe.android.ui.transcript.isRtlText
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.dibe.android.R
 import app.dibe.android.data.Segment
@@ -52,6 +50,8 @@ import app.dibe.android.ui.components.ClockFamily
 import app.dibe.android.ui.components.EaseOutStrong
 import app.dibe.android.ui.components.LocalReducedMotion
 import app.dibe.android.ui.components.formatClock
+import app.dibe.android.ui.components.glass
+import app.dibe.android.ui.transcript.isRtlText
 import kotlinx.coroutines.launch
 
 private const val PARTIAL_KEY = "partial"
@@ -116,11 +116,9 @@ fun LiveTranscript(finals: List<Segment>, partial: String?, emptyText: String, m
         ) {
             Surface(
                 onClick = { scope.launch { listState.animateScrollToItem(0) } },
-                modifier = Modifier.minimumInteractiveComponentSize(),
+                modifier = Modifier.minimumInteractiveComponentSize().glass(CircleShape, strong = true),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                shadowElevation = 4.dp,
+                color = Color.Transparent,
             ) {
                 Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.ArrowDownward, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
