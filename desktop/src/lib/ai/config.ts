@@ -71,7 +71,7 @@ export const presets: Preset[] = [
 	{
 		id: 'summary',
 		task: 'summary',
-		prompt: `${RULE}\n\nWrite a concise summary of this transcript in {language} using markdown. Include:\n- A short overview paragraph\n- 3-5 key takeaways as bullet points\n- Action items as a checklist if there are any\n\n"""\n{transcript}\n"""`,
+		prompt: `${RULE}\n\nWrite a concise summary of this transcript in {language} using markdown, giving each part a short ## heading. Include:\n- A short overview paragraph\n- 3-5 key takeaways as bullet points\n- Action items as a checklist if there are any\n\n"""\n{transcript}\n"""`,
 	},
 	{
 		id: 'meeting-notes',

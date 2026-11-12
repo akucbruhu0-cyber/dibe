@@ -46,6 +46,8 @@ pub struct ActiveRecording {
     pub failed_devices: Vec<(usize, String)>,
     /// Set while the recording is paused; every writer of the session reads it.
     pub paused: Arc<AtomicBool>,
+    /// When the session began, for matching it to a calendar event.
+    pub started_at: std::time::SystemTime,
 }
 
 impl ActiveRecording {
@@ -60,6 +62,7 @@ impl ActiveRecording {
             live: None,
             failed_devices: Vec::new(),
             paused: Arc::default(),
+            started_at: std::time::SystemTime::now(),
         }
     }
 }

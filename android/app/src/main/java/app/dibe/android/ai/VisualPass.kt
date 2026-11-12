@@ -11,9 +11,18 @@ object VisualPass {
 
     const val PROMPT = """Output only the requested content. No introductions, explanations, or commentary.
 
-You add visuals to the summary of a recording below. Pick the 1 to 3 visuals that best help a reader grasp it at a glance, and write each as a fenced block in exactly one of these formats. All visible text is in {language}; labels are short (at most 6 words).
+You may add visuals to the summary of a recording below: 0 to 3 of them, each only where it shows something the text alone conveys poorly. When nothing fits, output nothing at all. Write each as a fenced block in exactly one of these formats. All visible text is in {language}; labels are short (at most 6 words).
 
-A chart, for amounts, proportions, counts or scores. type is bar or pie. One row per item: label | number | optional #hex color. When exact numbers were not said, estimate them from what was mentioned and how much weight each item got.
+Choose the kind by what the content holds:
+- numbers said in the recording (amounts, shares, counts, scores): chart
+- a process, or causes and their effects: flow
+- dates, deadlines, phases or an order of events: timeline
+- a choice the listener faces, with its outcomes: tree
+- two or more options, approaches or people side by side: compare
+
+Put each visual under the heading whose section it explains.
+
+A chart, for amounts, proportions, counts or scores. type is bar or pie. One row per item: label | number | optional #hex color. Use only numbers said in the recording; never estimate or invent them.
 ```dibe:chart
 after: <a heading of the summary, copied exactly>
 type: pie
@@ -38,7 +47,7 @@ title: <title>
 Week 1 | Kickoff | Define the scope
 ```
 
-A decision tree, for a choice the listener faces. Nodes are `id::Title`, an optional line of explanation, then `- Choice => id`. The first node is start.
+A decision tree, for a choice the listener faces. Nodes are `id::Title` (id is one short word), an optional line of explanation, then `- Choice => id`. The first node is start.
 ```dibe:tree
 after: <heading>
 title: <title>
@@ -62,7 +71,7 @@ First | ... | ...
 Second | ... | ...
 ```
 
-Prefer the kinds that match the content; do not repeat a kind unless the content clearly calls for it. Only blocks, nothing between them.
+Do not repeat a kind unless the content clearly calls for it. Only blocks, nothing between them.
 
 <summary>
 {summary}
@@ -74,9 +83,10 @@ Prefer the kinds that match the content; do not repeat a kind unless the content
 
     private val block = Regex("""```[ \t]*dibe[:-]([a-z]+)[ \t]*\n(.*?)\n[ \t]*```""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
     private val afterLine = Regex("""^\s*after\s*:\s*(.*)$""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
-    private val heading = Regex("""^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$""")
+    /** A `#` heading, or a line that is only bold (`**Key points:**`), which models often write instead. */
+    private val heading = Regex("""^\s{0,3}(?:#{1,6}\s+(.*?)\s*#*|\*\*([^*]+?)\*\*\s*:?|__([^_]+?)__\s*:?)\s*$""")
 
-    private fun plain(text: String) = text.replace(Regex("""[*_`#]"""), "").trim().lowercase()
+    private fun plain(text: String) = text.replace(Regex("""[*_`#]"""), "").trim().removeSuffix(":").trim().lowercase()
 
     /** [summary] with each block of [answer] at the end of the section its `after:` names; others go last. */
     fun merge(summary: String, answer: String): String {
@@ -97,7 +107,7 @@ Prefer the kinds that match the content; do not repeat a kind unless the content
     private fun sectionEnd(lines: List<String>, after: String): Int? {
         if (after.isEmpty()) return null
         val start = lines.indexOfFirst { line ->
-            heading.matchEntire(line)?.groupValues?.get(1)?.let(::plain)?.let { it.isNotEmpty() && (it == after || it.contains(after) || after.contains(it)) } == true
+            heading.matchEntire(line)?.groupValues?.drop(1)?.joinToString("")?.let(::plain)?.let { it.isNotEmpty() && (it == after || it.contains(after) || after.contains(it)) } == true
         }
         if (start < 0) return null
         var end = start + 1

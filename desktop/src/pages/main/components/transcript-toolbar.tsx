@@ -1,3 +1,4 @@
+import { platform } from '@tauri-apps/plugin-os'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronDown, Download, NotebookPen, Pencil, PilcrowLeft, PilcrowRight, Plus, Search, Settings2, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -18,6 +19,8 @@ import { useTranscriptExport } from '../hooks/use-transcript-export'
 import TranscriptExportDialog from './transcript-export-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '~/components/ui/dropdown-menu'
 import { useSession } from '../session'
+
+const isMacOS = platform() === 'macos'
 
 const TEXT_SIZES: { value: TranscriptTextSize; label: () => string }[] = [
 	{ value: 'sm', label: () => m.textSizeSmall() },
@@ -247,6 +250,7 @@ export default function TranscriptToolbar({
 		showTimestamps: exportOptions.showTimestamps,
 		showSpeakers: exportOptions.showSpeakers,
 		speakerNames: job?.speakerNames,
+		meeting: job?.meeting,
 	})
 
 	useEffect(() => {
@@ -425,6 +429,7 @@ export default function TranscriptToolbar({
 				onThemeChange={(theme) => updateExport({ theme })}
 				onCopy={exporter.copy}
 				onSave={saveExport}
+				onSendToNotes={isMacOS ? exporter.sendToNotes : undefined}
 			/>
 		</>
 	)

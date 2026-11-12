@@ -39,7 +39,7 @@ object AiPresets {
 
     /** Id to prompt, in the desktop's order. */
     val summary: Map<String, String> = linkedMapOf(
-        "summary" to "$RULE\n\nWrite a concise summary of this transcript in {language} using markdown. Include:\n- A short overview paragraph\n- 3-5 key takeaways as bullet points\n- Action items as a checklist if there are any\n\n\"\"\"\n{transcript}\n\"\"\"",
+        "summary" to "$RULE\n\nWrite a concise summary of this transcript in {language} using markdown, giving each part a short ## heading. Include:\n- A short overview paragraph\n- 3-5 key takeaways as bullet points\n- Action items as a checklist if there are any\n\n\"\"\"\n{transcript}\n\"\"\"",
         "meeting-notes" to "$RULE\n\nTurn this transcript into structured meeting notes in {language} using markdown. Include:\n- **Topics discussed** as headings\n- Key points under each topic\n- **Decisions** highlighted in bold\n- **Action items** as a checklist at the end\n\n\"\"\"\n{transcript}\n\"\"\"",
         "tldr" to "$RULE\n\nWrite a TL;DR of this transcript in {language} using markdown. Start with a one-paragraph overview, then list the 3-5 most important takeaways as bold bullet points.\n\n\"\"\"\n{transcript}\n\"\"\"",
         "translate" to "$RULE\n\nTranslate this transcript into {language} (the current app language). Preserve the original structure and formatting. Use markdown headings and paragraphs. Do not wrap the output in fenced code blocks.\n\n\"\"\"\n{transcript}\n\"\"\"",

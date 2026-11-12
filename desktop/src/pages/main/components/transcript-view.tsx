@@ -355,7 +355,7 @@ const SegmentBlock = memo(function SegmentBlock({
 							}
 						}}
 						className={cn(
-							'block whitespace-pre-wrap text-foreground',
+							'block whitespace-pre-wrap text-justify text-foreground',
 							textSizeClass[options.textSize],
 							editable && 'cursor-text rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
 						)}>

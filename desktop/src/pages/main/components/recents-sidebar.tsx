@@ -282,8 +282,8 @@ function RecentRow({
 				disabled={disabled}
 				title={entry.name}
 				className="min-w-0 flex-1 cursor-pointer px-3 py-2 text-start disabled:cursor-default disabled:opacity-50">
-				<p className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
-					<span className="truncate">{entry.name}</span>
+				<p className="flex items-baseline gap-1.5 text-[13px] font-medium text-foreground">
+					<span className="min-w-0 break-words">{entry.name}</span>
 					{summarized && (
 						<span role="img" aria-label={m.hasAiSummary()} title={m.hasAiSummary()} className="h-1.5 w-1.5 shrink-0 rounded-full bg-success" />
 					)}
@@ -347,7 +347,7 @@ function SessionRow({ job, active, onOpen }: { job: Job; active: boolean; onOpen
 	return (
 		<div className={cn('group relative flex items-center rounded-lg transition-colors duration-150', active ? 'bg-card/85 shadow-xs' : 'hover:bg-hover-fill')}>
 			<button type="button" onClick={onOpen} title={job.name} className="min-w-0 flex-1 cursor-pointer px-3 py-2 text-start">
-				<p className="truncate text-[13px] font-medium text-foreground">{job.name}</p>
+				<p className="break-words text-[13px] font-medium text-foreground">{job.name}</p>
 				{status && (
 					<p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-muted-foreground">
 						{job.status === 'running' && <Spinner className="h-3 w-3" />}

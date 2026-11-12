@@ -151,6 +151,8 @@
     <string name="settings_privacy">פרטיות</string>
     <string name="settings_privacy_body">הכול נשאר בטלפון. רק הורדות וסיכומי AI משתמשים באינטרנט.</string>
     <string name="settings_version">גרסה</string>
+    <string name="settings_support">קנו ל-DIBE קפה</string>
+    <string name="settings_support_body">ב-Buy Me a Coffee. עוזר לממן חתימה של אפל, בדיקות ופיתוח.</string>
     <string name="models_title">מודלים</string>
     <string name="models_intro">המודלים רצים על הטלפון. מודל כבד יותר מדויק יותר, אבל איטי יותר וצריך יותר זיכרון.</string>
     <string name="models_ram">&#x200F;%1$d GB זיכרון</string>

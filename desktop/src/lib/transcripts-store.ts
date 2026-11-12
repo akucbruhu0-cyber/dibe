@@ -1,6 +1,7 @@
 import * as pathApi from '@tauri-apps/api/path'
 import * as fs from '@tauri-apps/plugin-fs'
 import type { Segment, SpeakerNames } from './transcript'
+import { parseMeeting, type Meeting } from './calendar'
 
 /**
  * Transcript persistence.
@@ -43,6 +44,8 @@ export interface TranscriptRecord {
 	summary?: string
 	/** Questions asked about this transcript and the model's answers, oldest first. */
 	thread?: AiThreadEntry[]
+	/** The calendar event the recording was made during, when it was matched to one. */
+	meeting?: Meeting
 }
 
 export interface AiThreadEntry {
@@ -81,6 +84,7 @@ export interface SaveTranscriptInput {
 	language?: string
 	modelPath?: string | null
 	createdAt?: Date
+	meeting?: Meeting
 }
 
 export interface SaveTranscriptResult {
@@ -282,6 +286,7 @@ export async function saveTranscript(input: SaveTranscriptInput): Promise<SaveTr
 			language: input.language,
 			modelPath: input.modelPath ?? null,
 			segments: input.segments,
+			...(input.meeting ? { meeting: input.meeting } : {}),
 		}
 
 		let media: { audioFile: string; path: string } | undefined
@@ -369,6 +374,7 @@ export async function readTranscript(path: string): Promise<TranscriptRecord | n
 			speakerNames: parseSpeakerNames(parsed.speakerNames),
 			summary: typeof parsed.summary === 'string' ? parsed.summary : undefined,
 			thread: parseThread(parsed.thread),
+			meeting: parseMeeting(parsed.meeting),
 		}
 	} catch (error) {
 		console.warn('failed to read transcript:', path, error)

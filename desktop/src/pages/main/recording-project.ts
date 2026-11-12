@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { toast } from 'sonner'
+import { meetingDuring } from '~/lib/calendar'
 import { autoProjectName } from '~/lib/project-name'
 import type { RecordFinishPayload } from '~/lib/recording-origin'
 import type { Segment } from '~/lib/transcript'
@@ -15,6 +16,8 @@ export interface RecordingFile {
 	/** File name, which the project name is derived from. */
 	name: string
 	createdAt: Date
+	/** When the recording began; with `createdAt` (its end), what a calendar event is matched against. */
+	startedAt?: Date
 	/** Its live transcript, kept as the project's until a transcription of the file replaces it. */
 	segments?: Segment[]
 	/** Transcribe the file even though it has a live transcript: the user asked to, or that one is incomplete. */
@@ -34,7 +37,8 @@ export interface RecordingProjectDeps {
  * heard nothing, leaves the usual way.
  */
 export function finishedRecording(payload: RecordFinishPayload, preference: Pick<Preference, 'afterRecording'>): RecordingFile {
-	const file = { path: payload.path, name: payload.name, createdAt: new Date() }
+	const startedAt = payload.startedAt ? new Date(payload.startedAt) : undefined
+	const file = { path: payload.path, name: payload.name, createdAt: new Date(), startedAt }
 	if (!payload.liveSegments) return file
 	const segments = payload.liveSegments.length ? payload.liveSegments : undefined
 	if (preference.afterRecording === 'retranscribe') return { ...file, segments, again: 'asked' }
@@ -60,7 +64,9 @@ interface RecoveredRecording {
  * Resolves to whether the project was saved.
  */
 export async function createRecordingProject(file: RecordingFile, { preference, hydrate, transcribeJob }: RecordingProjectDeps): Promise<boolean> {
-	const name = autoProjectName(file.name, 'record')
+	// A recording made during a calendar event takes its name; the AI title then leaves it be.
+	const meeting = preference.calendarNaming && file.startedAt ? await meetingDuring(file.startedAt.getTime(), file.createdAt.getTime()) : null
+	const name = meeting?.title || autoProjectName(file.name, 'record')
 	const saved = await saveTranscript({
 		name,
 		sourcePath: file.path,
@@ -70,6 +76,7 @@ export async function createRecordingProject(file: RecordingFile, { preference, 
 		language: preference.modelOptions.lang,
 		modelPath: preference.modelPath,
 		createdAt: file.createdAt,
+		...(meeting ? { meeting } : {}),
 	})
 	if (!saved) {
 		const message = `Failed to save recording project; the recording remains at ${file.path}`
@@ -86,6 +93,7 @@ export async function createRecordingProject(file: RecordingFile, { preference, 
 		language: preference.modelOptions.lang,
 		modelPath: preference.modelPath,
 		segments: file.segments ?? [],
+		...(meeting ? { meeting } : {}),
 	}
 	const jobId = hydrate(record, saved.recordPath, saved.mediaPath, 'record')
 	notifyTranscriptsChanged()

@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.DisableSelection
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material3.Icon
@@ -90,21 +92,24 @@ fun LiveTranscript(finals: List<Segment>, partial: String?, emptyText: String, m
                 textAlign = TextAlign.Center,
             )
         }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            reverseLayout = true,
-            // Short transcripts start at the top like a page, not at the bottom like a chat.
-            verticalArrangement = Arrangement.Top,
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 72.dp),
-        ) {
-            if (forming != null) {
-                item(key = PARTIAL_KEY) { Line(null, forming, MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-            items(count = finals.size, key = { finals.size - 1 - it }) { position ->
-                val index = finals.size - 1 - position
-                val settle = !reduced && index >= firstNew && index == finals.lastIndex
-                FinalLine(finals[index], settle)
+        // Long-press selects words to copy, across the lines on screen; the times stay out of it.
+        SelectionContainer {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                reverseLayout = true,
+                // Short transcripts start at the top like a page, not at the bottom like a chat.
+                verticalArrangement = Arrangement.Top,
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 72.dp),
+            ) {
+                if (forming != null) {
+                    item(key = PARTIAL_KEY) { Line(null, forming, MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                items(count = finals.size, key = { finals.size - 1 - it }) { position ->
+                    val index = finals.size - 1 - position
+                    val settle = !reduced && index >= firstNew && index == finals.lastIndex
+                    FinalLine(finals[index], settle)
+                }
             }
         }
 
@@ -152,13 +157,15 @@ private fun Line(time: String?, text: String, color: Color) {
 @Composable
 private fun TimedRow(time: String?, text: String, color: Color) {
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Text(
-            time.orEmpty(),
-            Modifier.width(52.dp).padding(top = 4.dp),
-            style = MaterialTheme.typography.labelSmall,
-            fontFamily = ClockFamily,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = color)
+        DisableSelection {
+            Text(
+                time.orEmpty(),
+                Modifier.width(52.dp).padding(top = 4.dp),
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = ClockFamily,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = color, textAlign = TextAlign.Justify)
     }
 }

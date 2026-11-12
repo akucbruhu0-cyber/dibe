@@ -135,6 +135,9 @@ export interface Preference {
 	setMeetingDetectionEnabled: ModifyState<boolean>
 	autoTranscribeAfterRecording: boolean
 	setAutoTranscribeAfterRecording: ModifyState<boolean>
+	/** Name a finished recording after the calendar event it overlaps most. */
+	calendarNaming: boolean
+	setCalendarNaming: ModifyState<boolean>
 	/** Show the transcript while recording. Dictation never does. */
 	liveTranscription: boolean
 	livePartials: boolean
@@ -281,6 +284,7 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 	const [saveTranscripts, setSaveTranscripts] = usePersisted<boolean>(CONFIG_KEYS.saveTranscripts, true)
 	const [meetingDetectionEnabled, setMeetingDetectionEnabled] = usePersisted<boolean>(CONFIG_KEYS.meetingDetectionEnabled, false)
 	const [autoTranscribeAfterRecording, setAutoTranscribeAfterRecording] = usePersisted<boolean>(CONFIG_KEYS.autoTranscribeAfterRecording, false)
+	const [calendarNaming, setCalendarNaming] = usePersisted<boolean>(CONFIG_KEYS.calendarNaming, false)
 	const [liveTranscription, setLiveTranscription] = usePersisted<boolean>(CONFIG_KEYS.liveTranscription, true)
 	const [livePartials, setLivePartials] = usePersisted<boolean>(CONFIG_KEYS.livePartials, true)
 	const [livePushSeconds, setLivePushSeconds] = usePersisted<number>(CONFIG_KEYS.livePushSeconds, 0)
@@ -374,6 +378,7 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 		setAi(DEFAULT_AI)
 		setMeetingDetectionEnabled(false)
 		setAutoTranscribeAfterRecording(false)
+		setCalendarNaming(false)
 		setLiveTranscription(true)
 		setAfterRecording('keep')
 		message(m.successAction())
@@ -459,6 +464,8 @@ export function PreferenceProvider({ children }: { children: ReactNode }) {
 		setMeetingDetectionEnabled,
 		autoTranscribeAfterRecording,
 		setAutoTranscribeAfterRecording,
+		calendarNaming,
+		setCalendarNaming,
 		liveTranscription,
 		setLiveTranscription,
 		livePartials,

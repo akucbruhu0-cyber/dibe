@@ -7,6 +7,7 @@ import { visualToPng } from '~/lib/visual-png'
 import { transcriptToPdf } from '~/lib/pdf/transcript-pdf'
 import { projectExportFilename } from '~/lib/project-name'
 import type { Segment, SpeakerNames } from '~/lib/transcript'
+import type { Meeting } from '~/lib/calendar'
 import { serializeTranscriptExport, type TranscriptExportOptions } from '~/lib/transcript-export'
 import { transcriptsFolder } from '~/lib/transcripts-store'
 
@@ -57,6 +58,7 @@ export interface ExportInput {
 	segments: Segment[]
 	summary?: string
 	speakerNames?: SpeakerNames
+	meeting?: Meeting
 }
 
 export interface ExportRendering {
@@ -102,6 +104,7 @@ export async function renderExport(format: TextFormat, input: ExportInput, rende
 		speakerLabel: rendering.speakerLabel,
 		speakerNames: input.speakerNames,
 		title: input.name,
+		meeting: input.meeting,
 		direction: rendering.direction,
 		theme: rendering.theme,
 	}

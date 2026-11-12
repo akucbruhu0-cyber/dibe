@@ -124,8 +124,8 @@ export function ProjectNameEditor({
 				setDraft(name)
 				setEditing(true)
 			}}
-			className="mb-8 block max-w-full cursor-text truncate border-0 bg-transparent p-0 text-start font-sans text-base font-semibold tracking-tight text-foreground outline-none disabled:cursor-default">
-			<span ref={titleRef} className="truncate">
+			className="mb-8 block max-w-full cursor-text break-words border-0 bg-transparent p-0 text-start font-sans text-base font-semibold tracking-tight text-foreground outline-none disabled:cursor-default">
+			<span ref={titleRef}>
 				{name}
 			</span>
 		</button>

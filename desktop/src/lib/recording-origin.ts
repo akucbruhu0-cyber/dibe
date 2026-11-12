@@ -16,6 +16,8 @@ export interface RecordFinishPayload {
 	liveSegments?: Segment[] | null
 	/** Whether those finals cover all of the audio; null when the recording had no live transcription. */
 	liveComplete?: boolean | null
+	/** When the recording began, milliseconds since the epoch. */
+	startedAt?: number
 }
 
 export interface RecordErrorPayload {

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { m } from '~/paraglide/messages.js'
 import { ReactComponent as DiscordIcon } from '~/icons/discord.svg'
 import { ReactComponent as GithubIcon } from '~/icons/github.svg'
-import { ReactComponent as HeartIcon } from '~/icons/heart.svg'
+import { ReactComponent as CoffeeIcon } from '~/icons/buymeacoffee.svg'
 import { ReactComponent as LinkIcon } from '~/icons/link.svg'
 import * as config from '~/lib/config'
 import { DisplayLanguageInput } from '~/components/display-language-input'
@@ -139,7 +139,7 @@ export function GeneralSection({ vm }: { vm: SettingsViewModel }) {
 					{[
 						{ label: m.projectLink(), icon: LinkIcon, action: () => openUrl(config.aboutURL) },
 						{ label: m.reportIssue(), icon: GithubIcon, action: vm.reportIssue },
-						{ label: m.supportTheProject(), icon: HeartIcon, action: () => openUrl(config.supportVibeURL), support: true },
+						{ label: m.supportTheProject(), icon: CoffeeIcon, action: () => openUrl(config.supportVibeURL), support: true },
 						{ label: m.discordCommunity(), icon: DiscordIcon, action: () => openUrl(config.discordURL) },
 					].map(({ label, icon: Icon, action, support }) => (
 						<button
@@ -147,7 +147,7 @@ export function GeneralSection({ vm }: { vm: SettingsViewModel }) {
 							type="button"
 							onClick={action}
 							className="flex min-h-11 items-center gap-2.5 rounded-lg border border-border/60 bg-card px-3 py-2.5 text-start text-xs font-medium transition-colors hover:bg-accent/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-							<Icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${support ? 'fill-rose-500 text-rose-500' : 'text-muted-foreground'}`} />
+							<Icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${support ? 'text-amber-500' :'text-muted-foreground'}`} />
 							<span>{label}</span>
 						</button>
 					))}

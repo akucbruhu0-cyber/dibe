@@ -9,6 +9,7 @@ import * as config from '~/lib/config'
 import { defaultModel, type AiPlatform, type AiSettings } from '~/lib/ai'
 import { aiModelOptions, fetchGeminiModels } from '~/lib/ai/models'
 import { AiModelPicker } from './ai-model-picker'
+import { GeminiKeyVideo } from './gemini-key-video'
 import NumberField from '~/components/number-field'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -131,6 +132,7 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 						</SelectContent>
 					</Select>
 				</SettingsRow>
+				<GeminiKeyVideo />
 
 				{connection.platform === 'claude' && (
 					<>

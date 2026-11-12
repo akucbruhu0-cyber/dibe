@@ -1,4 +1,5 @@
 import type { TextFormat } from '~/components/format-select'
+import { meetingFrontmatter, type Meeting } from '~/lib/calendar'
 import { markdownToHtml, markdownToText } from '~/lib/markdown-blocks'
 import { DARK_INK, LIGHT_INK, visualToSvg } from '~/lib/visual-svg'
 import { withVisualMarks } from '~/lib/visuals'
@@ -14,6 +15,8 @@ export interface TranscriptExportOptions {
 	/** Names the user gave the speakers; unnamed ones fall back to "<speakerLabel> N". */
 	speakerNames?: SpeakerNames
 	title: string
+	/** Markdown gets it as frontmatter (date, attendees) for Obsidian and other notes apps. */
+	meeting?: Meeting
 	direction: 'rtl' | 'ltr'
 	theme?: 'dark' | 'light'
 }
@@ -77,7 +80,8 @@ function serializeMarkdown(segments: Segment[], summary: string, options: Transc
 		})
 		.join('\n\n')
 	const content = sectioned(transcript, summary, options, (heading) => `## ${heading}`)
-	return options.title.trim() ? `# ${options.title.trim()}\n\n${content}` : content
+	const body = options.title.trim() ? `# ${options.title.trim()}\n\n${content}` : content
+	return options.meeting ? meetingFrontmatter(options.meeting) + body : body
 }
 
 function subtitleText(segment: Segment, options: TranscriptExportOptions) {

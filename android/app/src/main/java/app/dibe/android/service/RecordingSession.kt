@@ -23,11 +23,13 @@ import app.dibe.android.audio.WavWriter
 import app.dibe.android.data.Segment
 import app.dibe.android.data.TranscriptEntry
 import app.dibe.android.data.TranscriptRecord
+import app.dibe.android.data.TranscriptStore
 import app.dibe.android.engine.LiveEvent
 import app.dibe.android.settings.AppSettings
 import java.io.File
 import java.io.IOException
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlin.math.roundToLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -325,6 +327,7 @@ internal class RecordingSession(
         liveComplete: Boolean,
         settings: AppSettings,
     ): TranscriptEntry? {
+        val endedAt = System.currentTimeMillis()
         val captureError = captureError
         val captureProblem = captureError?.let { if (it.isNoSpace()) Problem.NO_SPACE else Problem.CAPTURE_FAILED }
         if (samples == 0L) {
@@ -352,13 +355,18 @@ internal class RecordingSession(
         }
         // Without a full transcript, or of a recording cut short, the audio is kept whatever keepAudio says.
         val keepAudio = settings.keepAudio || problem != null || captureProblem != null
+        // Named after its calendar event here, so it is saved without the app's name and the AI title passes it by.
+        val meeting = if (settings.calendarNames) {
+            withContext(Dispatchers.IO) { context.meetingAt(startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(), endedAt) }
+        } else null
         val record = TranscriptRecord(
-            name = recordingName(startedAt),
+            name = meeting?.let { TranscriptStore.toFileStem(it.title) } ?: recordingName(startedAt),
             sourcePath = file.path,
             createdAt = isoNow(),
             language = settings.language,
             modelPath = model.file.path,
             segments = segments,
+            meeting = meeting,
         )
         val entry = try {
             app.store.save(record, file.takeIf { keepAudio })

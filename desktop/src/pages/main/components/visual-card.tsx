@@ -40,7 +40,7 @@ export function VisualCard({ visual }: { visual: Visual }) {
 				initial="hidden"
 				whileInView="show"
 				viewport={{ once: true, amount: 0.3 }}
-				className="not-prose my-6 rounded-2xl border border-border bg-card p-5 text-card-foreground">
+				className="not-prose my-6 rounded-2xl text-start border border-border bg-card p-5 text-card-foreground">
 				{visual.title.trim() && <figcaption className="mb-4 text-sm font-semibold">{visual.title}</figcaption>}
 				{visual.kind === 'chart' && (visual.pie ? <Donut visual={visual} /> : <Bars visual={visual} />)}
 				{visual.kind === 'flow' && <Flow visual={visual} />}
@@ -242,7 +242,7 @@ function Compare({ visual }: { visual: Of<'compare'> }) {
 /** Shown while the visuals pass runs: the shape of a chart, breathing. */
 export function VisualSkeleton() {
 	return (
-		<div className="not-prose my-6 space-y-3 rounded-2xl border border-border p-5" aria-live="polite">
+		<div className="not-prose my-6 space-y-3 text-start rounded-2xl border border-border p-5" aria-live="polite">
 			<p className="text-sm text-muted-foreground">{m.visualDrawing()}</p>
 			{[90, 60, 75, 40].map((width) => (
 				<div key={width} className="h-2.5 animate-pulse rounded-full bg-muted" style={{ width: `${width}%` }} />

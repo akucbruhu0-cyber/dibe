@@ -1,4 +1,4 @@
-import { Clipboard, Download, Moon, PilcrowLeft, PilcrowRight, Sun } from 'lucide-react'
+import { Clipboard, Download, Moon, PilcrowLeft, PilcrowRight, StickyNote, Sun } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useMemo, useRef, type ReactNode } from 'react'
 import Markdown from 'react-markdown'
@@ -38,6 +38,8 @@ export interface TranscriptExportDialogProps {
 	onThemeChange: (theme: 'dark' | 'light') => void
 	onCopy: () => void | Promise<void>
 	onSave: () => void | Promise<void>
+	/** macOS only: add the transcript to Apple Notes. */
+	onSendToNotes?: () => void | Promise<void>
 }
 
 const formats: Array<{
@@ -239,6 +241,7 @@ export default function TranscriptExportDialog({
 	onThemeChange,
 	onCopy,
 	onSave,
+	onSendToNotes,
 }: TranscriptExportDialogProps) {
 	const timestampsRequired = format === 'srt' || format === 'vtt'
 	const selectedFormat = formats.find((option) => option.value === format)
@@ -408,6 +411,12 @@ export default function TranscriptExportDialog({
 						<Button type="button" variant="outline" onClick={() => void onCopy()}>
 							<Clipboard aria-hidden="true" />
 							{m.exportCopy()}
+						</Button>
+					)}
+					{onSendToNotes && (
+						<Button type="button" variant="outline" onClick={() => void onSendToNotes()}>
+							<StickyNote aria-hidden="true" />
+							{m.sendToAppleNotes()}
 						</Button>
 					)}
 					<Button type="button" onClick={() => void onSave()}>

@@ -1,6 +1,8 @@
 use serde::Serialize;
 pub mod app;
+pub mod apple_notes;
 pub mod audio;
+pub mod calendar;
 pub mod config;
 pub mod download;
 pub mod files;

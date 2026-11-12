@@ -337,6 +337,15 @@ class TranscriptStore(private val root: File) {
                         AiThreadEntry(question, answer)
                     }
                     ?.ifEmpty { null },
+                meeting = (record["meeting"] as? JsonObject)?.let { fields ->
+                    val title = fields.string("title") ?: return@let null
+                    val start = fields.string("start") ?: return@let null
+                    val end = fields.string("end") ?: return@let null
+                    val attendees = (fields["attendees"] as? JsonArray)
+                        ?.mapNotNull { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
+                        ?.ifEmpty { null }
+                    Meeting(title, start, end, fields.string("calendar"), attendees)
+                },
             )
         }
 

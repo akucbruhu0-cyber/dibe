@@ -64,5 +64,20 @@
     -->
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
+
+    <!--
+        Reading the Mac's own calendars (EventKit) to name a recording after the event it
+        was made during. Hardened runtime refuses EventKit without it; paired with
+        NSCalendarsFullAccessUsageDescription. Asked for only when the user turns it on.
+    -->
+    <key>com.apple.security.personal-information.calendars</key>
+    <true/>
+
+    <!--
+        Sending Apple Events to Notes ("Send to Apple Notes"), through osascript. Without
+        it the hardened runtime blocks the event before macOS can ask the user.
+    -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
 </dict>
 </plist>

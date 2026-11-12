@@ -7,6 +7,7 @@ import { MeetingServiceIcons } from '~/components/meeting-service-icons'
 import { Button } from '~/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
+import { openCalendarSettings, requestCalendarPermission } from '~/lib/calendar'
 import { getDefaultRecordingShortcut } from '~/lib/config'
 import type { PermissionStatus } from '~/lib/permissions'
 import { m } from '~/paraglide/messages.js'
@@ -147,6 +148,28 @@ function MeetPermissionRow({ enabled }: { enabled: boolean }) {
 	)
 }
 
+/** Turning it on asks macOS for calendar access; without it the switch stays off. */
+function CalendarNamingRow() {
+	const { calendarNaming, setCalendarNaming } = usePreferenceProvider()
+	const change = useCallback(
+		async (on: boolean) => {
+			if (!on) return setCalendarNaming(false)
+			const status = await requestCalendarPermission().catch(() => 'denied' as const)
+			if (status === 'granted') return setCalendarNaming(true)
+			toast.error(m.calendarPermissionDenied(), {
+				position: 'bottom-center',
+				action: { label: m.openSystemSettings(), onClick: () => void openCalendarSettings() },
+			})
+		},
+		[setCalendarNaming],
+	)
+	return (
+		<SettingsRow label={m.calendarNaming()} description={m.calendarNamingInfo()}>
+			<Switch checked={calendarNaming} onCheckedChange={(on) => void change(on)} aria-label={m.calendarNaming()} />
+		</SettingsRow>
+	)
+}
+
 export function RecordingSection() {
 	const shortcut = useRecordingShortcut()
 	const preference = usePreferenceProvider()
@@ -203,6 +226,12 @@ export function RecordingSection() {
 					</SettingsRow>
 				)}
 			</SettingsGroup>
+
+			{isMacOS && (
+				<SettingsGroup title={m.calendarGroup()}>
+					<CalendarNamingRow />
+				</SettingsGroup>
+			)}
 
 			<SettingsGroup title={m.recordingControls()}>
 				<SettingsRow label={m.autoTranscribeAfterRecording()} description={m.autoTranscribeAfterRecordingInfo()}>

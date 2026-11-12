@@ -432,6 +432,7 @@ fn finished_event(recording: ActiveRecording, out_dir: &Path) -> (&'static str, 
         live,
         failed_devices,
         paused: _,
+        started_at,
     } = recording;
     let closed = close_captures(streams, writers, wav_paths);
     // The writers are done, so the tap has all the audio: the live client sends the rest. Its last
@@ -462,7 +463,12 @@ fn finished_event(recording: ActiveRecording, out_dir: &Path) -> (&'static str, 
     if output.is_none() {
         tracing::error!("Recording stopped without any captured audio");
     }
-    recording_event(&session_id, origin, output.as_deref(), warnings, device_disconnected, live)
+    let (event, mut payload) = recording_event(&session_id, origin, output.as_deref(), warnings, device_disconnected, live);
+    if event == "record_finish" {
+        let started_ms = started_at.duration_since(std::time::UNIX_EPOCH).map(|since| since.as_millis() as u64).unwrap_or(0);
+        payload["startedAt"] = json!(started_ms);
+    }
+    (event, payload)
 }
 
 fn get_output_device_and_config(host: &cpal::Host, audio_device: &AudioDevice) -> Result<(Device, SupportedStreamConfig)> {

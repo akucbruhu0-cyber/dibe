@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="share_to_dibe">תמלול עם DIBE</string>
+    <string name="settings_calendar_names">שם הקלטות לפי אירוע ביומן</string>
+    <string name="settings_calendar_names_body">משתמש ביומנים שבטלפון. שום דבר לא יוצא מהמכשיר.</string>
 </resources>

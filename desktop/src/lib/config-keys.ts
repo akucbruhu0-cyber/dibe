@@ -49,6 +49,8 @@ export const CONFIG_KEYS = {
 	recordingShortcut: 'recording.shortcut',
 	meetingDetectionEnabled: 'recording.meetingDetectionEnabled',
 	autoTranscribeAfterRecording: 'recording.autoTranscribeAfterRecording',
+	/** Name a recording after the calendar event it was made during (the Mac's own calendars). */
+	calendarNaming: 'recording.calendarNaming',
 	liveTranscription: 'recording.liveTranscription',
 	/** The sentence being spoken shows before it ends: costs battery, every 3 s. */
 	livePartials: 'recording.livePartials',

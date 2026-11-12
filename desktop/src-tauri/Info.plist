@@ -8,5 +8,11 @@
     <string>This app requires system audio access to record your device's audio output.</string>
     <key>NSSystemExtensionUsageDescription</key>
     <string>This app requires system extension access to capture audio output.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>DIBE names a recording after the calendar event it was made during. Your calendars stay on this Mac.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>DIBE names a recording after the calendar event it was made during. Your calendars stay on this Mac.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>DIBE adds a transcript to Apple Notes when you send it there.</string>
 </dict>
 </plist>

@@ -50,6 +50,15 @@ class TranscriptStoreTest {
     }
 
     @Test
+    fun meetingRoundTripsAndIsLeftOutWhenAbsent() {
+        val meeting = Meeting("Sync", "2026-11-12T09:00:00.000Z", "2026-11-12T09:30:00.000Z", attendees = listOf("Dana"))
+        val written = TranscriptStore.encodeRecord(record.copy(meeting = meeting))
+        assertTrue(written.endsWith("\t\"meeting\": {\n\t\t\"title\": \"Sync\",\n\t\t\"start\": \"2026-11-12T09:00:00.000Z\",\n\t\t\"end\": \"2026-11-12T09:30:00.000Z\",\n\t\t\"attendees\": [\n\t\t\t\"Dana\"\n\t\t]\n\t}\n}"))
+        assertEquals(meeting, TranscriptStore.decodeRecord(written)!!.meeting)
+        assertFalse("meeting" in TranscriptStore.encodeRecord(record))
+    }
+
+    @Test
     fun namesAndStampsFollowTheDesktop() {
         assertEquals("Meeting- Q3-Q4", TranscriptStore.toFileStem("Meeting: Q3/Q4"))
         assertEquals("recording", TranscriptStore.toFileStem("recording.m4a"))

@@ -3,7 +3,11 @@
 package app.dibe.android.ui.settings
 
 import app.dibe.android.ui.components.bottomFade
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +29,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Memory
@@ -55,10 +61,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -224,6 +232,8 @@ private fun SettingsContent(
                         checked = ai.autoSummarize,
                         onCheckedChange = { on -> onAiChange { it.copy(autoSummarize = on) } },
                     )
+                    RowDivider()
+                    CalendarNamesRow(settings.calendarNames) { on -> onChange { it.copy(calendarNames = on) } }
                 }
 
                 SettingsCard(stringResource(R.string.settings_section_general)) {
@@ -260,6 +270,16 @@ private fun SettingsContent(
                         icon = Icons.Outlined.PrivacyTip,
                     )
                     RowDivider()
+                    val uriHandler = LocalUriHandler.current
+                    SettingRow(
+                        title = stringResource(R.string.settings_support),
+                        subtitle = stringResource(R.string.settings_support_body),
+                        icon = ImageVector.vectorResource(R.drawable.ic_buymeacoffee),
+                        // No browser installed would throw; the row then just does nothing.
+                        onClick = { runCatching { uriHandler.openUri(SUPPORT_URL) } },
+                        trailing = { Chevron() },
+                    )
+                    RowDivider()
                     SettingRow(
                         title = stringResource(R.string.settings_version),
                         subtitle = appVersion(),
@@ -283,6 +303,9 @@ private fun SettingsContent(
         )
     }
 }
+
+/** Buy Me a Coffee; same page as the desktop's `supportVibeURL` (`desktop/src/lib/config.ts`). */
+private const val SUPPORT_URL = "https://buymeacoffee.com/dibe"
 
 @Composable
 private fun Chevron() {
@@ -374,6 +397,26 @@ private fun LanguageSheet(
             }
         }
     }
+}
+
+/** Not an AI step, but it names recordings too, so it sits by the AI title. On only once READ_CALENDAR is granted. */
+@Composable
+private fun CalendarNamesRow(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val context = LocalContext.current
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) onCheckedChange(true) }
+    SwitchRow(
+        title = stringResource(R.string.settings_calendar_names),
+        subtitle = stringResource(R.string.settings_calendar_names_body),
+        checked = checked,
+        onCheckedChange = { on ->
+            when {
+                !on -> onCheckedChange(false)
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED ->
+                    onCheckedChange(true)
+                else -> ask.launch(Manifest.permission.READ_CALENDAR)
+            }
+        },
+    )
 }
 
 @Preview

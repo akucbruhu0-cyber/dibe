@@ -34,7 +34,7 @@ const components: Components = {
  */
 function Streaming({ text, size, drawing = false }: { text: string; size: TranscriptViewOptions['textSize']; drawing?: boolean }) {
 	return (
-		<div className={cn('shimmer-text prose prose-neutral max-w-none dark:prose-invert', textSizeClass[size])}>
+		<div className={cn('shimmer-text prose prose-neutral text-justify max-w-none dark:prose-invert', textSizeClass[size])}>
 			<Markdown components={components}>{text}</Markdown>
 			{drawing ? <VisualSkeleton /> : <span aria-hidden className="ms-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-foreground/60 align-text-bottom" />}
 		</div>
@@ -105,7 +105,7 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 						<Streaming text={draft} size={options.textSize} drawing={Boolean(summaries.visualizing[job.id])} />
 					) : job.summary ? (
 						// The models answer in markdown; render it rather than showing the syntax.
-						<div className={cn('prose prose-neutral max-w-none dark:prose-invert', textSizeClass[options.textSize])}>
+						<div className={cn('prose prose-neutral text-justify max-w-none dark:prose-invert', textSizeClass[options.textSize])}>
 							<Markdown components={components}>{job.summary}</Markdown>
 						</div>
 					) : summarizing ? (
@@ -141,7 +141,7 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 												<X className="h-3.5 w-3.5" />
 											</button>
 										</div>
-										<div className={cn('prose prose-neutral mt-3 max-w-none ps-1 dark:prose-invert', textSizeClass[options.textSize])}>
+										<div className={cn('prose prose-neutral text-justify mt-3 max-w-none ps-1 dark:prose-invert', textSizeClass[options.textSize])}>
 											<Markdown>{entry.answer}</Markdown>
 										</div>
 									</div>

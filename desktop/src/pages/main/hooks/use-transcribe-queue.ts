@@ -15,6 +15,7 @@ import { autoProjectName } from '~/lib/project-name'
 import { gpuOutOfMemoryBefore, rememberGpuOutOfMemory } from '~/lib/gpu-memory'
 import { fatalRunError, isGpuOutOfMemory, isUserError, loadedUnlessBusy } from '~/lib/server-errors'
 import type { Segment, SpeakerNames, Transcript } from '~/lib/transcript'
+import type { Meeting } from '~/lib/calendar'
 import {
 	notifyTranscriptsChanged,
 	renameTranscript,
@@ -67,6 +68,7 @@ export interface Job {
 	speakerNames?: SpeakerNames
 	/** What auto-export did with this transcript, when it ran. */
 	exported?: AutoExportResult
+	meeting?: Meeting
 }
 
 /** A run of two or more files: what batch users watch instead of the transcripts. */
@@ -304,7 +306,7 @@ export function useTranscribeQueue(): TranscribeQueue {
 			const current = preferenceRef.current
 			if (!current.autoExport.enabled || segments.length === 0) return null
 			const result = await exportTranscript(
-				{ name: job.name, path: job.path, segments, summary: job.summary, speakerNames: job.speakerNames },
+				{ name: job.name, path: job.path, segments, summary: job.summary, speakerNames: job.speakerNames, meeting: job.meeting },
 				current.autoExport,
 				{
 					direction: current.textAreaDirection,
@@ -612,6 +614,7 @@ export function useTranscribeQueue(): TranscribeQueue {
 				summary: record.summary,
 				thread: record.thread,
 				speakerNames: record.speakerNames,
+				meeting: record.meeting,
 			}
 			pinnedRef.current = true
 			commit(runningRef.current ? [...jobsRef.current, job] : [job])

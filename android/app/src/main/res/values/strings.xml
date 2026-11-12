@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">DIBE</string>
     <string name="share_to_dibe">Transcribe with DIBE</string>
+    <string name="settings_calendar_names">Name recordings after calendar events</string>
+    <string name="settings_calendar_names_body">Uses the calendars on this phone. Nothing leaves the device.</string>
 </resources>

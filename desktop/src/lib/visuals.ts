@@ -137,8 +137,9 @@ function timeline(title: string, lines: string[]): Visual | null {
 	return events.length ? { kind: 'timeline', title, events: events.slice(0, MAX_ROWS * 2) } : null
 }
 
-const NODE = /^\s*([\w-]+)\s*::\s*(.*)$/
-const CHOICE = /^\s*[-*]\s*(.+?)\s*=>\s*([\w-]+)\s*$/
+// Ids in any script: a Hebrew summary gets Hebrew ids, and an ASCII-only id dropped the whole tree.
+const NODE = /^\s*([\p{L}\p{N}_-]+)\s*::\s*(.*)$/u
+const CHOICE = /^\s*[-*]\s*(.+?)\s*=>\s*([\p{L}\p{N}_-]+)\s*$/u
 
 function tree(title: string, lines: string[]): Visual | null {
 	const nodes: Record<string, TreeNode> = {}
@@ -266,9 +267,18 @@ export const visualsApply = (prompt: string) => !/^[\s\S]{0,200}\bTranslate this
 /** The second pass after a summary; `{summary}` and `{transcript}` are filled by the caller. */
 export const VISUAL_PROMPT = `Output only the requested content. No introductions, explanations, or commentary.
 
-You add visuals to the summary of a recording below. Pick the 1 to 3 visuals that best help a reader grasp it at a glance, and write each as a fenced block in exactly one of these formats. All visible text is in {language}; labels are short (at most 6 words).
+You may add visuals to the summary of a recording below: 0 to 3 of them, each only where it shows something the text alone conveys poorly. When nothing fits, output nothing at all. Write each as a fenced block in exactly one of these formats. All visible text is in {language}; labels are short (at most 6 words).
 
-A chart, for amounts, proportions, counts or scores. type is bar or pie. One row per item: label | number | optional #hex color. When exact numbers were not said, estimate them from what was mentioned and how much weight each item got.
+Choose the kind by what the content holds:
+- numbers said in the recording (amounts, shares, counts, scores): chart
+- a process, or causes and their effects: flow
+- dates, deadlines, phases or an order of events: timeline
+- a choice the listener faces, with its outcomes: tree
+- two or more options, approaches or people side by side: compare
+
+Put each visual under the heading whose section it explains.
+
+A chart, for amounts, proportions, counts or scores. type is bar or pie. One row per item: label | number | optional #hex color. Use only numbers said in the recording; never estimate or invent them.
 \`\`\`dibe:chart
 after: <a heading of the summary, copied exactly>
 type: pie
@@ -293,7 +303,7 @@ title: <title>
 Week 1 | Kickoff | Define the scope
 \`\`\`
 
-A decision tree, for a choice the listener faces. Nodes are \`id::Title\`, an optional line of explanation, then \`- Choice => id\`. The first node is start.
+A decision tree, for a choice the listener faces. Nodes are \`id::Title\` (id is one short word), an optional line of explanation, then \`- Choice => id\`. The first node is start.
 \`\`\`dibe:tree
 after: <heading>
 title: <title>
@@ -317,7 +327,7 @@ First | ... | ...
 Second | ... | ...
 \`\`\`
 
-Prefer the kinds that match the content; do not repeat a kind unless the content clearly calls for it. Only blocks, nothing between them.
+Do not repeat a kind unless the content clearly calls for it. Only blocks, nothing between them.
 
 <summary>
 {summary}
@@ -327,10 +337,11 @@ Prefer the kinds that match the content; do not repeat a kind unless the content
 {transcript}
 </transcript>`
 
-const HEADING = /^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$/
+/** A `#` heading, or a line that is only bold (`**Key points:**`), which models often write instead. */
+const HEADING = /^\s{0,3}(?:#{1,6}\s+(.*?)\s*#*|\*\*([^*]+?)\*\*\s*:?|__([^_]+?)__\s*:?)\s*$/
 const ANSWER_BLOCK = /```[ \t]*dibe[:-]([a-z]+)[ \t]*\n([\s\S]*?)\n[ \t]*```/gi
 const AFTER = /^\s*after\s*:\s*(.*)$/im
-const plain = (text: string) => text.replace(/[*_`#]/g, '').trim().toLowerCase()
+const plain = (text: string) => text.replace(/[*_`#]/g, '').trim().replace(/:$/, '').trim().toLowerCase()
 
 /** The line index just before the heading after the one matching `after`, or null. */
 function sectionEnd(lines: string[], after: string): number | null {
@@ -338,7 +349,7 @@ function sectionEnd(lines: string[], after: string): number | null {
 	const start = lines.findIndex((line) => {
 		const heading = HEADING.exec(line)
 		if (!heading) return false
-		const text = plain(heading[1])
+		const text = plain(heading[1] ?? heading[2] ?? heading[3] ?? '')
 		return text !== '' && (text === after || text.includes(after) || after.includes(text))
 	})
 	if (start < 0) return null

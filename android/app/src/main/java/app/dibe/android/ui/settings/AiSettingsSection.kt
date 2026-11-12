@@ -257,6 +257,7 @@ internal fun AiSettingsFields(
             onSelect = { platform -> onChange { it.copy(platform = platform, model = "") } },
             label = { stringResource(platformLabel(it)) },
         )
+        GeminiKeyVideoButton()
         key(ai.platform) {
             when (ai.platform) {
                 AiPlatform.CLAUDE -> KeyField(ai.claudeApiKey, stringResource(R.string.settings_ai_key_where, "console.anthropic.com")) { key ->

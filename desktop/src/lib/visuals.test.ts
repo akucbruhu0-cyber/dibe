@@ -56,6 +56,14 @@ describe('visuals', () => {
 		expect(mergeVisuals(summary, '```dibe:chart\nafter: תובנות\nא | 1')).toBe(summary)
 	})
 
+	it('places a visual under a bold-only heading, and reads Hebrew tree ids', () => {
+		const summary = '**סקירה:**\n\nטקסט.\n\n**החלטות**\n\n- אחת'
+		const merged = mergeVisuals(summary, '```dibe:flow\nafter: סקירה\nא -> ב\n```')
+		expect(merged.indexOf('```dibe:flow')).toBeLessThan(merged.indexOf('**החלטות**'))
+		const tree = parseVisual('tree', 'התחלה::לבחור?\n- כן => אישור\n\nאישור::ממשיכים')
+		expect(tree?.kind === 'tree' && tree.nodes['התחלה'].choices).toEqual([['כן', 'אישור']])
+	})
+
 	it('writes visuals out for exports, and splits them for drawing', () => {
 		const summary = 'לפני\n```dibe:chart\ntype: pie\ntitle: ח\nא | 1\nב | 3\n```\nאחרי'
 		expect(visualsAsMarkdown(summary)).toBe('לפני\n**ח**\n- א: 1 (25%)\n- ב: 3 (75%)\nאחרי')

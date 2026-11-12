@@ -187,7 +187,7 @@ fun FileJobCard(
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(job.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(job.name, style = MaterialTheme.typography.titleSmall)
                     val status = when (job.phase) {
                         FilePhase.DECODING -> stringResource(R.string.home_file_decoding)
                         FilePhase.DONE -> stringResource(R.string.home_file_done)

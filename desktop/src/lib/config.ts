@@ -8,7 +8,8 @@ export const modelsDocURL = 'https://thewh1teagle.github.io/vibe/docs#models'
 /** Release notes: that release's page with a version, otherwise the whole list. */
 export const changelogURL = (version?: string) => `${repoURL}/releases${version ? `/tag/v${version}` : ''}`
 export const discordURL = 'https://discord.gg/EcxWSstQN8'
-export const supportVibeURL = repoURL
+/** The Buy Me a Coffee page; Android has the same in `SUPPORT_URL` (`SettingsScreen.kt`). */
+export const supportVibeURL = 'https://buymeacoffee.com/dibe'
 export const privacyPolicyURL = `${repoURL}/blob/main/PRIVACY.md`
 export const storeFilename = 'app_config.json'
 
@@ -72,6 +73,8 @@ export const llmLimitsUrl = 'https://console.anthropic.com/settings/limits'
 export const llmCostUrl = 'https://console.anthropic.com/settings/cost'
 export const geminiApiKeyUrl = 'https://aistudio.google.com/apikey'
 export const geminiModelsUrl = 'https://ai.google.dev/gemini-api/docs/models'
+/** Same link as the README's: the newest release's Android build. */
+export const androidApkUrl = 'https://github.com/akucbruhu0-cyber/dibe/releases/latest/download/dibe-android-arm64.apk'
 
 export const ytDlpAssetNames: Record<string, string> = {
 	'windows-x86_64': 'yt-dlp.exe',

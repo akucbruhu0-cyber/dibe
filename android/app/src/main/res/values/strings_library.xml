@@ -156,6 +156,8 @@
     <string name="settings_privacy">Privacy</string>
     <string name="settings_privacy_body">Everything stays on your phone. Only downloads and AI summaries use the internet.</string>
     <string name="settings_version">Version</string>
+    <string name="settings_support">Buy DIBE a coffee</string>
+    <string name="settings_support_body">On Buy Me a Coffee. Helps pay for Apple signing, testing and development.</string>
     <string name="models_title">Models</string>
     <string name="models_intro">Models run on your phone. Heavier = more accurate, but slower and needs more memory.</string>
     <string name="models_ram">%1$d GB RAM</string>

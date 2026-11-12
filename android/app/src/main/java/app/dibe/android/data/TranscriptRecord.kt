@@ -17,6 +17,10 @@ data class Segment(val start: Long, val stop: Long, val text: String, val speake
 @Serializable
 data class AiThreadEntry(val question: String, val answer: String)
 
+/** The calendar event a recording was named after. [start]/[end] in [isoTimestamp] form; [attendees] are display names. */
+@Serializable
+data class Meeting(val title: String, val start: String, val end: String, val calendar: String? = null, val attendees: List<String>? = null)
+
 /**
  * Byte-compatible with the desktop `transcript.vibe.json` (desktop/src/lib/transcripts-store.ts),
  * so a project folder can move between DIBE on the phone and on the computer.
@@ -36,6 +40,7 @@ data class TranscriptRecord(
     val speakerNames: Map<String, String>? = null,
     val summary: String? = null,
     val thread: List<AiThreadEntry>? = null,
+    val meeting: Meeting? = null,
 )
 
 /** A saved project as listed, without reading its record. */

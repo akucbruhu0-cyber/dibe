@@ -1,7 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager'
-import { QrCode as QrCodeIcon, ShieldCheck, Smartphone, Unplug } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { Download, QrCode as QrCodeIcon, ShieldCheck, Smartphone, Unplug } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { m } from '~/paraglide/messages.js'
@@ -10,6 +11,7 @@ import { Spinner } from '~/components/ui/spinner'
 import { Switch } from '~/components/ui/switch'
 import { SettingsGroup, SettingsNote, SettingsRow } from './shared'
 import { Button } from '~/components/ui/button'
+import { androidApkUrl } from '~/lib/config'
 import { PhoneIllustration, PhonePairingPanel } from './phone-pairing'
 
 /* -------------------------------------------------------------------------- */
@@ -239,12 +241,25 @@ export function PhoneSection({ pairingOpen, onPairingChange }: { pairingOpen: bo
 
 	const blurb = m.phoneHandoffInfo()
 
+	// The phone app installs from its own file, so this holds even when handoff is unavailable here.
+	const getApp = (
+		<SettingsGroup>
+			<SettingsRow label={m.phoneGetApp()} description={m.phoneGetAppInfo()} clampDescription={false}>
+				<Button size="sm" variant="outline" className="font-medium" onClick={() => void openUrl(androidApkUrl)}>
+					<Download aria-hidden="true" />
+					{m.phoneDownloadApk()}
+				</Button>
+			</SettingsRow>
+		</SettingsGroup>
+	)
+
 	if (unavailable) {
 		return (
 			<div className="space-y-6">
 				<SettingsGroup description={blurb}>
 					<SettingsNote>{m.phoneHandoffUnavailable()}</SettingsNote>
 				</SettingsGroup>
+				{getApp}
 			</div>
 		)
 	}
@@ -264,6 +279,8 @@ export function PhoneSection({ pairingOpen, onPairingChange }: { pairingOpen: bo
 					<p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">{blurb}</p>
 				</div>
 			</div>
+
+			{getApp}
 
 			<div className="space-y-2">
 				<div className="px-1">

@@ -107,8 +107,9 @@ private fun timeline(title: String, lines: List<String>): Visual? {
     return if (events.isEmpty()) null else Visual.Timeline(title, events)
 }
 
-private val nodeLine = Regex("""^\s*([\w-]+)\s*::\s*(.*)$""")
-private val choiceLine = Regex("""^\s*[-*]\s*(.+?)\s*=>\s*([\w-]+)\s*$""")
+// Ids in any script: a Hebrew summary gets Hebrew ids, and an ASCII-only id dropped the whole tree.
+private val nodeLine = Regex("""^\s*([\p{L}\p{N}_-]+)\s*::\s*(.*)$""")
+private val choiceLine = Regex("""^\s*[-*]\s*(.+?)\s*=>\s*([\p{L}\p{N}_-]+)\s*$""")
 
 private fun tree(title: String, lines: List<String>): Visual? {
     val nodes = linkedMapOf<String, Visual.Tree.Node>()

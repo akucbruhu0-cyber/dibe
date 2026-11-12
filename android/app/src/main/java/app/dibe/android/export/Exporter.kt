@@ -1,10 +1,12 @@
 package app.dibe.android.export
 
 import android.content.Context
+import app.dibe.android.data.Meeting
 import app.dibe.android.data.Segment
 import app.dibe.android.data.TranscriptRecord
 import app.dibe.android.data.jsTrim
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -91,7 +93,25 @@ object Exporter {
         }
         val content = sectioned(transcript, summary, options) { "## $it" }
         val title = record.name.jsTrim()
-        return if (title.isNotEmpty()) "# $title\n\n$content" else content
+        val body = if (title.isNotEmpty()) "# $title\n\n$content" else content
+        return record.meeting?.let { frontmatter(it) + body } ?: body
+    }
+
+    /** YAML for notes apps (Obsidian and the like); a JSON string literal is a valid YAML double-quoted one. */
+    internal fun frontmatter(meeting: Meeting): String {
+        val quoted = { value: String -> Json.encodeToString(String.serializer(), value) }
+        val lines = buildList {
+            add("---")
+            add("date: ${meeting.start}")
+            add("meeting: ${quoted(meeting.title)}")
+            meeting.calendar?.let { add("calendar: ${quoted(it)}") }
+            if (!meeting.attendees.isNullOrEmpty()) {
+                add("attendees:")
+                meeting.attendees.forEach { add("  - ${quoted(it)}") }
+            }
+            add("---")
+        }
+        return lines.joinToString("\n") + "\n\n"
     }
 
     private fun srt(segments: List<Segment>, summary: String, record: TranscriptRecord, options: ExportOptions): String {

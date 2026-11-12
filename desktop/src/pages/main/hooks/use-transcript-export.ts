@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { dirname, downloadDir, join } from '@tauri-apps/api/path'
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager'
 import * as dialog from '@tauri-apps/plugin-dialog'
@@ -12,6 +13,7 @@ import { visualToPng } from '~/lib/visual-png'
 import { projectExportFilename } from '~/lib/project-name'
 import { transcriptToPdf } from '~/lib/pdf/transcript-pdf'
 import { serializeTranscriptExport, type TranscriptExportContent, type TranscriptExportOptions } from '~/lib/transcript-export'
+import type { Meeting } from '~/lib/calendar'
 import type { Segment, SpeakerNames } from '~/lib/transcript'
 import type { NamedPath } from '~/lib/types'
 import { usePreferenceProvider } from '~/providers/preference'
@@ -28,6 +30,7 @@ interface UseTranscriptExportOptions {
 	showTimestamps: boolean
 	showSpeakers: boolean
 	speakerNames?: SpeakerNames
+	meeting?: Meeting
 }
 
 export function useTranscriptExport({
@@ -41,6 +44,7 @@ export function useTranscriptExport({
 	showTimestamps,
 	showSpeakers,
 	speakerNames,
+	meeting,
 }: UseTranscriptExportOptions) {
 	const preference = usePreferenceProvider()
 	const speakerLabel = m.speakerPrefix()
@@ -52,6 +56,7 @@ export function useTranscriptExport({
 			speakerLabel,
 			speakerNames,
 			title: file?.name ?? '',
+			meeting,
 			direction: direction ?? preference.textAreaDirection,
 			theme: preference.exportOptions.theme,
 		}),
@@ -59,6 +64,7 @@ export function useTranscriptExport({
 			content,
 			direction,
 			file?.name,
+			meeting,
 			preference.exportOptions.theme,
 			preference.textAreaDirection,
 			showSpeakers,
@@ -147,5 +153,18 @@ export function useTranscriptExport({
 		summary,
 	])
 
-	return { preview, renderedPreview, copy, save }
+	/** The transcript as a note in Apple Notes on this Mac, in the dialog's content and toggles. */
+	const sendToNotes = useCallback(async () => {
+		if (!file || (segments.length === 0 && !summary)) return
+		try {
+			const html = serializeTranscriptExport('html', segments, summary, { ...serializerOptions, theme: 'light' })
+			await invoke('send_to_apple_notes', { title: file.name, html })
+			toast.success(m.sentToAppleNotes(), { position: 'bottom-center' })
+		} catch (error) {
+			console.error('send to Apple Notes failed:', error)
+			toast.error(m.appleNotesFailed(), { description: String(error), position: 'bottom-center' })
+		}
+	}, [file, segments, serializerOptions, summary])
+
+	return { preview, renderedPreview, copy, save, sendToNotes }
 }

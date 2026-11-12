@@ -22,6 +22,8 @@ data class AppSettings(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     /** Read on Android 10–12 only: Android 13+ stores the app's language itself. */
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
+    /** A new recording takes the title of the calendar event it overlaps; needs READ_CALENDAR. */
+    val calendarNames: Boolean = false,
     val ai: AiSettings = AiSettings(),
 )
 

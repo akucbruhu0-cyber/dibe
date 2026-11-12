@@ -10,6 +10,7 @@
     <string name="settings_ai_model_free">חינמי</string>
     <string name="settings_ai_model_local">מקומי</string>
     <string name="settings_ai_model_low_cost">הכי זול</string>
+    <string name="settings_ai_key_video">איך משיגים מפתח חינמי?</string>
     <string name="visual_drawing">מכין תרשימים…</string>
     <string name="visual_back">חזרה</string>
     <string name="visual_start_over">מההתחלה</string>

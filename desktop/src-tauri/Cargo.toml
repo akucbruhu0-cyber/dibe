@@ -103,7 +103,8 @@ libc-stdhandle = "=0.1.0"
 objc2 = "0.6.4"
 objc2-app-kit = { version = "0.3.2", features = ["NSApplication", "NSWindow", "NSOpenPanel", "NSSavePanel", "NSPanel"] }
 objc2-av-foundation = { version = "0.3.2", default-features = false, features = ["std", "AVCaptureDevice", "AVMediaFormat", "block2"] }
-objc2-foundation = { version = "0.3.2", features = ["NSArray", "NSString", "NSURL"] }
+objc2-foundation = { version = "0.3.2", features = ["NSArray", "NSDate", "NSError", "NSString", "NSURL"] }
+objc2-event-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "EKCalendar", "EKCalendarItem", "EKEvent", "EKEventStore", "EKObject", "EKParticipant", "EKTypes"] }
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel.git", rev = "c9ec2130422200f0863b23dfdad02b133a529b07" }
 block2 = "0.6.2"
 window-vibrancy = "0.6"

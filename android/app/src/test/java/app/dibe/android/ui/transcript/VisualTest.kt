@@ -66,6 +66,14 @@ class VisualTest {
     }
 
     @Test
+    fun merge_readsBoldOnlyHeadings_andTreeReadsHebrewIds() {
+        val merged = VisualPass.merge("**סקירה:**\n\nטקסט.\n\n**החלטות**\n\n- אחת", "```dibe:flow\nafter: סקירה\nא -> ב\n```")
+        assertTrue(merged.indexOf("```dibe:flow") < merged.indexOf("**החלטות**"))
+        val tree = parseVisual("tree", "התחלה::לבחור?\n- כן => אישור\n\nאישור::ממשיכים") as Visual.Tree
+        assertEquals(listOf("כן" to "אישור"), tree.nodes.getValue("התחלה").choices)
+    }
+
+    @Test
     fun extractVisuals_leavesAMarkerParagraphTheExportsDrawIn() {
         val (marked, visuals) = extractVisuals("## א\nטקסט\n```dibe:chart\nX | 1\n```\n```dibe:chart\nbroken\n```\n## ב")
         assertEquals(1, visuals.size)

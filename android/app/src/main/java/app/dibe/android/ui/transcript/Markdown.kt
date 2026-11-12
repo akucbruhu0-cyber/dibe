@@ -34,6 +34,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -188,7 +189,7 @@ fun MarkdownText(markdown: String, modifier: Modifier = Modifier) {
     val type = MaterialTheme.typography
     val codeStyle = SpanStyle(fontFamily = FontFamily.Monospace, background = colors.surfaceContainer)
     val blocks = remember(markdown, codeStyle) { parseMarkdown(markdown, codeStyle) }
-    val body = type.bodyLarge.copy(textDirection = TextDirection.Content)
+    val body = type.bodyLarge.copy(textDirection = TextDirection.Content, textAlign = TextAlign.Justify)
     Column(modifier) {
         blocks.forEachIndexed { index, block ->
             val previous = blocks.getOrNull(index - 1)
