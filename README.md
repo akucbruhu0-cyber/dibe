@@ -16,9 +16,13 @@ https://github.com/user-attachments/assets/a26c9f13-8cdb-47a3-a84a-6a5b2fb17d82
 
 **DIBE turns speech into text on your own computer.** Record and watch the transcript appear live, or transcribe audio and video files — it works offline and nothing leaves your device. To install it, open the [latest release](https://github.com/akucbruhu0-cyber/dibe/releases/latest) and download `macos-arm64.zip` for Apple Silicon Macs, `macos-intel.zip` for Intel Macs, or `windows-x64-setup.exe` for Windows. Install it (on a Mac, drag `DIBE.app` into Applications), open it, pick a model to download, and press record or choose a file. You need a powerful computer, because the transcription runs on the computer itself. Your computer warns you the first time because DIBE is unsigned; the [Download](#download) section shows how to allow it.
 
+📱 **DIBE is also an Android app.** Download [`dibe-android-arm64.apk`](https://github.com/akucbruhu0-cyber/dibe/releases/latest/download/dibe-android-arm64.apk) on your phone, open it and allow installing from this source. It records and transcribes on the phone itself, offline, and can name and summarize recordings with AI. It needs a 64-bit phone from about 2019 on (Snapdragon 855 or similar, or newer).
+
 <div dir="rtl">
 
 **DIBE הופכת דיבור לטקסט על המחשב שלכם.** מקליטים ורואים את התמלול מופיע בזמן אמת, או מתמללים קובצי אודיו ווידאו. הכול עובד בלי אינטרנט ושום דבר לא יוצא מהמכשיר. להתקנה, פותחים את [הגרסה האחרונה](https://github.com/akucbruhu0-cyber/dibe/releases/latest) ומורידים `macos-arm64.zip` למק עם Apple Silicon,‏ `macos-intel.zip` למק עם Intel, או `windows-x64-setup.exe` ל-Windows. מתקינים (במק גוררים את `DIBE.app` אל Applications), פותחים, בוחרים מודל להורדה ולוחצים על הקלטה או בוחרים קובץ. נדרש מחשב חזק, כי התמלול רץ על המחשב עצמו. בפתיחה הראשונה המחשב יציג אזהרה כי DIBE לא חתומה. ההוראות לאישור נמצאות בסעיף [Download](#download).
+
+📱 **DIBE היא גם אפליקציה לאנדרואיד.** מורידים בטלפון את [`dibe-android-arm64.apk`](https://github.com/akucbruhu0-cyber/dibe/releases/latest/download/dibe-android-arm64.apk), פותחים ומאשרים התקנה מהמקור הזה. ההקלטה והתמלול רצים על הטלפון עצמו, בלי אינטרנט, וה-AI יכול לתת שם להקלטות ולסכם אותן. נדרש טלפון 64-ביט מ-2019 בערך ואילך (Snapdragon 855 ומעלה או מקביל).
 
 </div>
 
