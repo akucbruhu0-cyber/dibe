@@ -56,7 +56,7 @@ function ViewOptions({ options }: { options: TranscriptViewOptions }) {
 									className={cn(
 										'flex-1 cursor-pointer rounded-full py-1 text-[12px] font-medium transition-colors duration-150',
 										options.textSize === size.value
-											? 'bg-background text-foreground shadow-sm'
+											? 'bg-card text-foreground shadow-hairline'
 											: 'text-muted-foreground hover:text-foreground',
 									)}>
 									{size.label()}
@@ -77,7 +77,7 @@ function ViewOptions({ options }: { options: TranscriptViewOptions }) {
 									className={cn(
 										'flex h-6 w-8 cursor-pointer items-center justify-center rounded-full transition-colors duration-150',
 										preference.textAreaDirection === value
-											? 'bg-background text-foreground shadow-sm'
+											? 'bg-card text-foreground shadow-hairline'
 											: 'text-muted-foreground hover:text-foreground',
 									)}>
 									{value === 'ltr' ? <PilcrowRight className="h-3.5 w-3.5" /> : <PilcrowLeft className="h-3.5 w-3.5" />}
@@ -119,7 +119,7 @@ function ViewTabs({ job, tab, setTab }: { job: Job | null; tab: TranscriptTab; s
 					onClick={() => setTab(value)}
 					className={cn(
 						'cursor-pointer rounded-full px-3 py-1 text-[12.5px] font-medium transition-colors duration-150',
-						tab === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+						tab === value ? 'bg-card text-foreground shadow-hairline' : 'text-muted-foreground hover:text-foreground',
 					)}>
 					{value === 'transcript' ? m.segmentsTab() : m.summaryTab()}
 				</button>
@@ -282,7 +282,7 @@ export default function TranscriptToolbar({
 
 	return (
 		<>
-			<div className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-1 border-b border-border bg-background/85 px-4 backdrop-blur-md">
+			<div className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-1 border-b border-border/70 bg-card/75 px-4 backdrop-blur-[20px] backdrop-saturate-[1.6]">
 				<AnimatePresence initial={false} mode="wait">
 					{searching ? (
 						<motion.div

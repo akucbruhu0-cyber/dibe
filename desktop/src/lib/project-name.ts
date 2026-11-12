@@ -20,6 +20,11 @@ export function autoProjectName(name: string, source: ProjectSource = 'file'): s
 	return `${sourcePrefixes[source]}${withoutMediaExtension(name)}`
 }
 
+/** Still a name `autoProjectName` gave it (of any source), i.e. the user has not named it. */
+export function isAutoProjectName(name: string): boolean {
+	return Object.values(sourcePrefixes).some((prefix) => name.startsWith(prefix))
+}
+
 /** Turn the visible project title into a safe, recognizable export filename. */
 export function projectExportFilename(name: string, extension: string): string {
 	const cleaned = withoutMediaExtension(name)

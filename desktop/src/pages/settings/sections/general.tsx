@@ -1,6 +1,6 @@
 import { disable, enable, isEnabled } from '@tauri-apps/plugin-autostart'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { Moon, Sun } from 'lucide-react'
+import { Moon, PlayCircle, Sun } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { m } from '~/paraglide/messages.js'
@@ -11,7 +11,9 @@ import { ReactComponent as LinkIcon } from '~/icons/link.svg'
 import * as config from '~/lib/config'
 import { DisplayLanguageInput } from '~/components/display-language-input'
 import { Switch } from '~/components/ui/switch'
-import { SettingsGroup, SettingsRow, type SettingsViewModel } from './shared'
+import { Dialog, DialogContent, DialogTitle } from '~/components/ui/dialog'
+import { Intro } from '~/pages/setup/intro'
+import { ActionRow, SettingsGroup, SettingsRow, type SettingsViewModel } from './shared'
 
 /**
  * The OS owns this setting, not our config: the user can remove the login item from
@@ -61,6 +63,27 @@ function LaunchAtStartupSwitch() {
 	return <Switch checked={enabled} disabled={busy} onCheckedChange={onCheckedChange} />
 }
 
+function ReplayIntroRow() {
+	const [open, setOpen] = useState(false)
+	return (
+		<>
+			<ActionRow
+				label={m.onbReplay()}
+				description={m.onbReplayInfo()}
+				icon={<PlayCircle className="h-4 w-4" />}
+				onClick={() => setOpen(true)}
+				activateOnClick
+			/>
+			<Dialog open={open} onOpenChange={setOpen}>
+				<DialogContent aria-describedby={undefined} className="flex max-w-md justify-center rounded-2xl py-8">
+					<DialogTitle className="sr-only">{m.onbReplay()}</DialogTitle>
+					<Intro onDone={() => setOpen(false)} doneLabel={m.onbDone()} />
+				</DialogContent>
+			</Dialog>
+		</>
+	)
+}
+
 export function GeneralSection({ vm }: { vm: SettingsViewModel }) {
 	const themeLabels = { light: m.light, dark: m.dark } as const
 	const themeIcons = { light: Sun, dark: Moon } as const
@@ -86,7 +109,7 @@ export function GeneralSection({ vm }: { vm: SettingsViewModel }) {
 									title={themeLabels[theme as keyof typeof themeLabels]()}
 									onClick={() => vm.preference.setTheme(theme as 'light' | 'dark')}
 									className={`flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 text-xs transition-colors ${
-										selected ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+										selected ? 'bg-card text-foreground shadow-hairline' : 'text-muted-foreground hover:text-foreground'
 									}`}>
 									{Icon && <Icon className="h-3.5 w-3.5" />}
 									{themeLabels[theme as keyof typeof themeLabels]()}
@@ -107,6 +130,7 @@ export function GeneralSection({ vm }: { vm: SettingsViewModel }) {
 				<SettingsRow label={m.preventSleep()} description={m.generalAwakeInfo()}>
 					<Switch checked={vm.preference.preventSleep} onCheckedChange={vm.preference.setPreventSleep} />
 				</SettingsRow>
+				<ReplayIntroRow />
 			</SettingsGroup>
 
 			<section className="space-y-2">

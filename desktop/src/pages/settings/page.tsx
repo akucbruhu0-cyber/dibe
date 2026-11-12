@@ -139,11 +139,11 @@ export default function SettingsPage({ setVisible, scrollTo }: SettingsPageProps
 		<div className="flex min-h-screen items-center justify-center p-6">
 			<div
 				onMouseDown={(event) => event.stopPropagation()}
-				className="flex h-[640px] max-h-[calc(100dvh-3rem)] w-full max-w-3xl overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
-				<div className="flex w-56 shrink-0 flex-col border-r border-border/55 bg-muted/40 p-3">
+				className="flex h-[640px] max-h-[calc(100dvh-3rem)] w-full max-w-3xl overflow-hidden glass-strong rounded-2xl border">
+				<div className="flex w-56 shrink-0 flex-col border-e border-border/55 bg-sidebar/60 p-3">
 					<div className="mb-2 flex items-center justify-between px-1 pb-1">
 						<span className="text-sm font-semibold">{m.settings()}</span>
-						<Button onMouseDown={() => setVisible(false)} variant="ghost" size="iconSm" className="h-7 w-7 rounded-lg">
+						<Button onMouseDown={() => setVisible(false)} variant="ghost" size="iconSm" className="h-7 w-7 rounded-full">
 							<X className="h-4 w-4" />
 						</Button>
 					</div>
@@ -156,12 +156,12 @@ export default function SettingsPage({ setVisible, scrollTo }: SettingsPageProps
 										type="button"
 										aria-current={activeSection === section.id ? 'page' : undefined}
 										onClick={() => goTo(section.id)}
-										className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium ${
+										className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-start text-sm font-medium ${
 											activeSection === section.id
-												? 'bg-primary/10 text-primary'
-												: 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+												? 'bg-primary text-primary-foreground'
+												: 'text-muted-foreground hover:bg-hover-fill hover:text-foreground'
 										}`}>
-										<span className={activeSection === section.id ? 'text-primary' : 'text-muted-foreground'}>{section.icon}</span>
+										<span className={activeSection === section.id ? 'text-primary-foreground' : 'text-muted-foreground'}>{section.icon}</span>
 										<span className="truncate">{section.label}</span>
 									</button>
 								))}

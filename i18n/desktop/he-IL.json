@@ -284,6 +284,8 @@
 	"summarizeLoading": "מסכם",
 	"autoSummarizeOnFinish": "סיכום אוטומטי של תמלולים חדשים",
 	"autoSummarizeOnFinishInfo": "רק תמלולים חדשים, לא פרויקטים קיימים.",
+	"aiTitleTask": "שם להקלטה בעזרת AI",
+	"aiTitleTaskInfo": "אחרי תמלול או סיכום, ה-AI נותן להקלטה או לקובץ כותרת קצרה. שם שהקלדת לא יוחלף.",
 	"summarizeTranscript": "סיכום",
 	"regenerateSummary": "שיפור הסיכום",
 	"customizeSummary": "כוונון הסיכום…",
@@ -809,6 +811,9 @@
 	"modelAccuracyGood": "דיוק טוב",
 	"modelAccuracyBest": "דיוק גבוה",
 	"modelNeedsRam": "לפחות {gb} GB זיכרון",
+	"onbReplay": "להציג שוב את מסך הפתיחה",
+	"onbReplayInfo": "מסכי הפתיחה המונפשים מההפעלה הראשונה",
+	"onbDone": "סיום",
 	"visualBack": "חזרה",
 	"visualDrawing": "מכין תרשימים…",
 	"visualStartOver": "מההתחלה"

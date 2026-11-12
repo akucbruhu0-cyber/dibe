@@ -158,12 +158,12 @@ export default function AudioPlayer({ audio, label, onLabelClick }: AudioInputPr
 			<div className="rounded-xl border border-border/70 bg-card p-4 text-card-foreground shadow-sm">
 				<div className="flex items-center gap-2.5">
 					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/12">
-						<Music2 className="h-4 w-4 text-primary" />
+						<Music2 className="h-4 w-4 text-primary-strong" />
 					</div>
 					<div className="min-w-0">
 						<p className="text-[10px] uppercase tracking-[0.09em] text-muted-foreground">{m.nowPlaying()}</p>
 						<div
-							className="cursor-pointer truncate text-sm font-semibold transition-colors hover:text-primary"
+							className="cursor-pointer truncate text-sm font-semibold transition-colors hover:text-primary-strong"
 							onClick={onLabelClick}
 							title={label}>
 							{label}
@@ -177,9 +177,9 @@ export default function AudioPlayer({ audio, label, onLabelClick }: AudioInputPr
 						onPointerDown={onSeekPointerDown}
 						onPointerMove={onSeekPointerMove}
 						onPointerUp={onSeekPointerUp}>
-						<div className="absolute top-0 left-0 h-full bg-primary" style={{ width: `${progress}%` }} />
+						<div className="absolute top-0 left-0 h-full bg-primary-strong" style={{ width: `${progress}%` }} />
 						<div
-							className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-card bg-primary shadow-sm"
+							className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-card bg-primary-strong shadow-sm"
 							style={{ left: `calc(${progress}% - 6px)` }}
 						/>
 					</div>

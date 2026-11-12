@@ -164,7 +164,7 @@ export default function ShortcutRecorder({ value, onChange, defaultValue, onCapt
 							labels.map((key, index) => (
 								<kbd
 									key={`${key}-${index}`}
-									className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-border/80 bg-background px-1.5 font-mono text-[11px] font-medium text-foreground">
+									className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-border/80 bg-card px-1.5 font-mono text-[11px] font-medium text-foreground">
 									{key}
 								</kbd>
 							))
@@ -207,7 +207,7 @@ export default function ShortcutRecorder({ value, onChange, defaultValue, onCapt
 							onClick={() => pick(suggestion)}
 							className={cn(
 								'flex cursor-pointer items-center gap-1 rounded-full border px-2 py-1 transition-colors duration-150',
-								suggestion === value ? 'border-primary/60 bg-primary/10' : 'border-border/70 hover:bg-muted/60',
+								suggestion === value ? 'border-primary-strong/60 bg-primary/10' : 'border-border/70 hover:bg-muted/60',
 							)}>
 							{shortcutKeyLabels(suggestion).map((key, index) => (
 								<kbd key={`${key}-${index}`} className="font-mono text-[11px] font-medium text-foreground">

@@ -28,6 +28,7 @@ import { UpdaterContext } from '~/providers/updater'
 import { Spinner } from '~/components/ui/spinner'
 import { useSession } from '../session'
 import RetranscribeDialog from './retranscribe-dialog'
+import { EdgeFade } from '~/components/edge-fade'
 import type { Job } from '../hooks/use-transcribe-queue'
 
 /** Resize bounds: never narrower than the rows need, never much wider than the default. */
@@ -255,7 +256,7 @@ function RecentRow({
 
 	if (renaming) {
 		return (
-			<div className="flex items-center rounded-xl bg-muted px-2 py-1.5">
+			<div className="flex items-center rounded-lg bg-card/85 px-2 py-1.5 shadow-xs">
 				<input
 					autoFocus
 					value={draftName}
@@ -266,14 +267,14 @@ function RecentRow({
 					}}
 					onBlur={() => void commitRename()}
 					aria-label={m.transcriptName()}
-					className="h-7 w-full min-w-0 rounded-lg border border-ring/40 bg-background px-2 text-[13px] text-foreground outline-none"
+					className="h-7 w-full min-w-0 rounded-lg border border-ring/40 bg-card px-2 text-[13px] text-foreground outline-none"
 				/>
 			</div>
 		)
 	}
 
 	return (
-		<div className={cn('group relative flex items-center rounded-xl transition-colors duration-150', active ? 'bg-muted' : 'hover:bg-muted/60')}>
+		<div className={cn('group relative flex items-center rounded-lg transition-colors duration-150', active ? 'bg-card/85 shadow-xs' : 'hover:bg-hover-fill')}>
 			<RetranscribeDialog open={retranscribing} onOpenChange={setRetranscribing} name={entry.name} onConfirm={retranscribe} />
 			<button
 				type="button"
@@ -344,7 +345,7 @@ function SessionRow({ job, active, onOpen }: { job: Job; active: boolean; onOpen
 						: ''
 
 	return (
-		<div className={cn('group relative flex items-center rounded-xl transition-colors duration-150', active ? 'bg-muted' : 'hover:bg-muted/60')}>
+		<div className={cn('group relative flex items-center rounded-lg transition-colors duration-150', active ? 'bg-card/85 shadow-xs' : 'hover:bg-hover-fill')}>
 			<button type="button" onClick={onOpen} title={job.name} className="min-w-0 flex-1 cursor-pointer px-3 py-2 text-start">
 				<p className="truncate text-[13px] font-medium text-foreground">{job.name}</p>
 				{status && (
@@ -389,7 +390,8 @@ function RecentsList({
 	})
 
 	return (
-		<div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+		<div className="relative flex min-h-0 flex-1 flex-col">
+		<div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-2 pb-12">
 			<div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
 				{virtualizer.getVirtualItems().map((item) => {
 					const entry = entries[item.index]
@@ -414,6 +416,8 @@ function RecentsList({
 					)
 				})}
 			</div>
+		</div>
+		<EdgeFade tint={false} />
 		</div>
 	)
 }
@@ -459,7 +463,7 @@ export default function RecentsSidebar() {
 	}
 
 	return (
-		<aside className="relative flex h-full shrink-0 flex-col border-r border-border" style={{ width, direction: getTextDirection() }}>
+		<aside className="relative flex h-full shrink-0 flex-col" style={{ width, direction: getTextDirection() }}>
 			{/* Titlebar strip: hosts the toggle beside the macOS traffic lights (ChatGPT style). */}
 			<div data-tauri-drag-region className="h-14 shrink-0" />
 			{/* Codex-style: the wordmark gets its own row under the titlebar strip. */}
@@ -470,7 +474,7 @@ export default function RecentsSidebar() {
 				<button
 					type="button"
 					onClick={startNew}
-					className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-[13px] font-medium text-foreground transition-colors duration-150 hover:bg-muted/60">
+					className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-foreground transition-colors duration-150 hover:bg-hover-fill">
 					<Plus className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
 					{m.newTranscription()}
 				</button>
@@ -487,7 +491,7 @@ export default function RecentsSidebar() {
 						value={query}
 						onChange={(event) => setQuery(event.target.value)}
 						placeholder={m.searchRecents()}
-						className="h-8 w-full rounded-full border border-border bg-transparent ps-7 pe-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus:border-ring/40"
+						className="h-8 w-full rounded-full border border-transparent bg-card/60 ps-7 pe-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-card"
 					/>
 				</div>
 			)}
@@ -522,12 +526,12 @@ export default function RecentsSidebar() {
 			)}
 
 			{/* Footer, ChatGPT-style: Settings row with a small update badge when one is waiting. */}
-			<div className="mt-auto border-t border-border/60 p-2">
+			<div className="mt-auto border-t border-sidebar-border/70 p-2">
 				<div className="flex items-center gap-1">
 					<button
 						type="button"
 						onClick={() => openSettingsSection('')}
-						className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-foreground transition-colors duration-150 hover:bg-muted/60">
+						className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-foreground transition-colors duration-150 hover:bg-hover-fill">
 						<Settings className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
 						{m.settings()}
 					</button>
@@ -537,7 +541,7 @@ export default function RecentsSidebar() {
 								type="button"
 								aria-label={m.phone()}
 								onClick={() => openSettingsSection('phone')}
-								className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-xl transition-colors duration-150 hover:bg-muted/60">
+								className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors duration-150 hover:bg-hover-fill">
 								<Smartphone className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
 							</button>
 						</TooltipTrigger>
@@ -568,7 +572,7 @@ export default function RecentsSidebar() {
 				{...handleProps}
 				className={cn(
 					'absolute inset-y-0 right-0 z-20 w-1.5 translate-x-1/2 cursor-col-resize touch-none',
-					'after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-primary/60 after:opacity-0 after:transition-opacity after:duration-150 hover:after:opacity-100',
+					'after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2 after:bg-primary-strong/60 after:opacity-0 after:transition-opacity after:duration-150 hover:after:opacity-100',
 					dragging && 'after:opacity-100',
 				)}
 			/>

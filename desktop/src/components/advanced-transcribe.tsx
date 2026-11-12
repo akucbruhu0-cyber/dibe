@@ -46,7 +46,7 @@ export default function AdvancedTranscribe() {
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						{m.transcribeFolder()}
-						<span className="rounded-full border border-border/65 bg-muted/35 px-2 py-0.5 text-xs font-medium text-primary">(beta)</span>
+						<span className="rounded-full border border-border/65 bg-muted/35 px-2 py-0.5 text-xs font-medium text-primary-strong">(beta)</span>
 					</DialogTitle>
 				</DialogHeader>
 

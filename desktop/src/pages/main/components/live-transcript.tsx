@@ -136,7 +136,7 @@ function Scroller({ scrollRef, follow, children }: { scrollRef: RefObject<HTMLDi
 				<button
 					type="button"
 					onClick={follow.jump}
-					className="absolute inset-x-0 bottom-2 mx-auto flex w-fit cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[12px] font-medium text-foreground shadow-sm backdrop-blur hover:bg-muted">
+					className="absolute inset-x-0 bottom-2 mx-auto flex w-fit cursor-pointer items-center gap-1.5 glass rounded-full border px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-card">
 					<ArrowDownToLine aria-hidden className="h-3.5 w-3.5 text-muted-foreground" />
 					{m.jumpToLive()}
 				</button>

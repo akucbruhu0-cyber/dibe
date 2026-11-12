@@ -26,7 +26,7 @@ export default function ModelDownloadPrompt() {
 	}
 
 	return (
-		<aside className="fixed bottom-4 left-4 right-4 z-40 rounded-xl border border-border/70 bg-card/95 p-4 shadow-xl backdrop-blur-md sm:left-auto sm:w-[340px]">
+		<aside className="fixed bottom-4 left-4 right-4 z-40 glass rounded-xl border p-4 sm:left-auto sm:w-[340px]">
 			<Button
 				variant="ghost"
 				size="icon"

@@ -93,7 +93,7 @@ function Segment({ active, label, onClick, children }: { active?: boolean; label
 					onClick={onClick}
 					className={cn(
 						'inline-flex h-10 w-14 cursor-pointer items-center justify-center rounded-full transition-colors duration-150',
-						active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+						active ? 'bg-card text-foreground shadow-hairline' : 'text-muted-foreground hover:text-foreground',
 					)}>
 					{children}
 				</button>
@@ -124,14 +124,17 @@ function RecordPanel() {
 						variant="outline"
 						onClick={() => void toggleRecordPause()}
 						disabled={recording.isFinishing}
-						className="h-10 flex-1 rounded-xl disabled:opacity-60">
+						className="h-10 flex-1 disabled:opacity-60">
 						{recordPaused ? <Play className="h-3.5 w-3.5 fill-current" /> : <Pause className="h-3.5 w-3.5 fill-current" />}
 						{recordPaused ? m.resumeRecording() : m.pauseRecording()}
 					</Button>
-					<Button onClick={() => recording.stopRecord()} disabled={recording.isFinishing} className="h-10 flex-1 rounded-xl disabled:opacity-60">
-						{recording.isFinishing ? <Spinner className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5 fill-current" />}
-						{recording.isFinishing ? m.finishingRecording() : m.stopRecording()}
-					</Button>
+					{/* The one live control on screen carries the glow. */}
+					<div className="glow flex flex-1 rounded-full">
+						<Button variant="dark" onClick={() => recording.stopRecord()} disabled={recording.isFinishing} className="h-10 flex-1 disabled:opacity-60">
+							{recording.isFinishing ? <Spinner className="h-3.5 w-3.5" /> : <Square className="h-3.5 w-3.5 fill-current" />}
+							{recording.isFinishing ? m.finishingRecording() : m.stopRecording()}
+						</Button>
+					</div>
 				</div>
 			</div>
 		)
@@ -145,17 +148,20 @@ function RecordPanel() {
 				'flex w-full flex-col gap-5 py-2.5',
 				'[&_label]:text-[11px] [&_label]:font-medium [&_label]:tracking-[0.08em] [&_label]:text-muted-foreground [&_label]:uppercase',
 			)}>
-			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>div]:space-y-1.5 [&_button]:h-10 [&_button]:rounded-xl">
+			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>div]:space-y-1.5 [&_button]:h-10 [&_button]:rounded-full">
 				<AudioDeviceInput type="input" devices={recording.devices} device={recording.inputDevice} setDevice={recording.setInputDevice} />
 				<AudioDeviceInput type="output" devices={recording.devices} device={recording.outputDevice} setDevice={recording.setOutputDevice} />
 			</div>
-			<Button
-				onClick={() => recording.startRecord()}
-				disabled={!preference.modelPath || (!recording.inputDevice && !recording.outputDevice)}
-				className="h-10 w-full rounded-xl disabled:opacity-40">
-				<Mic className="h-4 w-4" />
-				{m.startRecord()}
-			</Button>
+			<div className="glow rounded-full">
+				<Button
+					variant="dark"
+					onClick={() => recording.startRecord()}
+					disabled={!preference.modelPath || (!recording.inputDevice && !recording.outputDevice)}
+					className="h-10 w-full disabled:opacity-40">
+					<Mic className="h-4 w-4" />
+					{m.startRecord()}
+				</Button>
+			</div>
 		</div>
 	)
 }
@@ -179,7 +185,7 @@ function LinkPanel() {
 		const started = percent > 0
 		return (
 			<div className="flex w-full flex-col items-center gap-4 py-2.5">
-				<span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-background/70 text-foreground shadow-sm">
+				<span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-card/70 text-foreground shadow-sm">
 					<span aria-hidden className="absolute inset-0 animate-ping rounded-full bg-foreground/5" />
 					<Link2 className="h-5 w-5" />
 				</span>
@@ -240,7 +246,7 @@ function LinkPanel() {
 						}}
 						// Short enough to stay fully readable when the window is narrow.
 						placeholder={link.queuedLinks.length ? m.pasteAnotherLink() : m.pasteMediaLink()}
-						className={cn('h-10 min-w-0 rounded-xl px-3.5 text-sm', link.audioUrl && 'pe-10')}
+						className={cn('h-10 min-w-0 rounded-full px-4 text-sm', link.audioUrl && 'pe-10')}
 					/>
 					{/* The way to build a list by hand: park this link and type the next one. */}
 					{link.audioUrl && (
@@ -250,7 +256,7 @@ function LinkPanel() {
 									type="button"
 									aria-label={m.addLink()}
 									onClick={() => link.queueLinks()}
-									className="absolute end-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80">
+									className="absolute end-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors duration-150 hover:bg-hover-fill hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80">
 									<Plus className="h-4 w-4" />
 								</button>
 							</TooltipTrigger>
@@ -262,7 +268,7 @@ function LinkPanel() {
 					onClick={() => link.downloadAudio()}
 					disabled={!preference.modelPath || link.pendingLinks.length === 0}
 					// Wide enough for the count, so the box beside it never changes size.
-					className="h-10 w-32 shrink-0 rounded-xl px-4 disabled:opacity-40">
+					className="h-10 w-32 shrink-0 px-4 disabled:opacity-40">
 					{m.transcribe()}
 					{link.pendingLinks.length > 1 && (
 						<span className="rounded-full bg-primary-foreground/20 px-1.5 text-[11px] font-semibold tabular-nums">{link.pendingLinks.length}</span>
@@ -388,7 +394,7 @@ export default function IdleHero() {
 							/>
 
 							<div className="relative flex flex-col items-center gap-3.5 px-8 py-12 text-center">
-								<span className="flex h-12 w-12 items-center justify-center rounded-full bg-background/70 text-foreground shadow-sm">
+								<span className="flex h-12 w-12 items-center justify-center rounded-full bg-card/70 text-foreground shadow-sm">
 									{collectingFolder ? <Spinner className="h-5 w-5" /> : <Upload className="h-5 w-5" />}
 								</span>
 								<div className="space-y-1">

@@ -82,7 +82,7 @@ export function AutoExportSection({ vm }: { vm: SettingsViewModel }) {
 								className={cn(
 									'cursor-pointer rounded-full border px-3 py-1 text-[12px] transition-colors',
 									selected
-										? 'border-primary bg-primary text-primary-foreground'
+										? 'border-primary-strong bg-primary text-primary-foreground'
 										: 'border-border bg-muted text-muted-foreground hover:text-foreground',
 								)}>
 								{choice.label}
@@ -99,7 +99,7 @@ export function AutoExportSection({ vm }: { vm: SettingsViewModel }) {
 							<input
 								type="radio"
 								name="auto-export-destination"
-								className="mt-1 accent-primary"
+								className="mt-1 accent-primary-strong"
 								checked={settings.destination === choice.value}
 								onChange={() => update({ destination: choice.value })}
 							/>
@@ -110,7 +110,7 @@ export function AutoExportSection({ vm }: { vm: SettingsViewModel }) {
 										<button
 											type="button"
 											onClick={() => void chooseFolder()}
-											className="cursor-pointer text-[12px] text-primary underline-offset-4 hover:underline">
+											className="cursor-pointer text-[12px] text-primary-strong underline-offset-4 hover:underline">
 											{m.autoExportChooseFolder()}
 										</button>
 									)}

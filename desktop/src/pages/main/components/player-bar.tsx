@@ -236,7 +236,7 @@ export default function PlayerBar({ job }: { job: Job }) {
 			initial={{ opacity: 0, y: 12 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.2, ease: 'easeOut' }}
-			className="sticky bottom-0 z-10 flex h-16 shrink-0 items-center gap-4 border-t border-border bg-background/85 px-4 backdrop-blur-md">
+			className="sticky bottom-0 z-10 flex h-16 shrink-0 items-center gap-4 border-t border-border/70 bg-card/80 px-4 backdrop-blur-[20px] backdrop-saturate-[1.6]">
 			<div className="hidden min-w-0 basis-[150px] flex-col justify-center sm:flex">
 				<div className="truncate text-[13px] font-medium text-foreground">{job.name}</div>
 				<Tooltip>
@@ -307,7 +307,7 @@ export default function PlayerBar({ job }: { job: Job }) {
 					</div>
 					<div
 						aria-hidden
-						className="pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+						className="pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-strong opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
 						style={{ left: `${progress * 100}%` }}
 					/>
 				</div>

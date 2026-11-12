@@ -27,7 +27,7 @@ export function MeetingServiceIcons({ className, label }: IconProps & { label?: 
 			].map(({ name, Icon }) => (
 				<span
 					key={name}
-					className="flex items-center gap-1.5 rounded-lg border border-border/55 bg-background/55 px-2 py-1.5 text-xs text-muted-foreground">
+					className="flex items-center gap-1.5 rounded-lg border border-border/55 bg-card/55 px-2 py-1.5 text-xs text-muted-foreground">
 					<Icon className="h-5 w-5 shrink-0" />
 					<span>{name}</span>
 				</span>

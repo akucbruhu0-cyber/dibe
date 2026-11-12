@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_AI, defaultModel, migrateLegacy, modernizePrompt, presetPrompt } from './config'
+import { cleanTitle, DEFAULT_AI, defaultModel, migrateLegacy, modernizePrompt, presetPrompt } from './config'
 import { chunkLines, createClient, fillPrompt, inputBudgetBytes, testConnection } from './client'
 import { inlineTextFiles, type Attachment } from './attachments'
 
@@ -160,5 +160,18 @@ describe('createClient', () => {
 		fetchMock.mockResolvedValue({ ok: true, json: async () => ({ content: [{ text: 'OK' }] }) })
 		const result = await testConnection(DEFAULT_AI.connection)
 		expect(result).toMatchObject({ ok: true, reply: 'OK' })
+	})
+})
+
+describe('cleanTitle', () => {
+	it('keeps the first line, drops markdown, wrapping quotes and trailing punctuation', () => {
+		expect(cleanTitle('\n## "Weekly sync: launch plan."\nMore text')).toBe('Weekly sync: launch plan')
+		expect(cleanTitle('Title: Budget review!')).toBe('Budget review')
+		expect(cleanTitle("«שיחה על צ'יפס ובירה»")).toBe("שיחה על צ'יפס ובירה")
+	})
+
+	it('caps the length and returns empty for an empty reply', () => {
+		expect(cleanTitle('x'.repeat(200))).toHaveLength(80)
+		expect(cleanTitle('  \n ')).toBe('')
 	})
 })

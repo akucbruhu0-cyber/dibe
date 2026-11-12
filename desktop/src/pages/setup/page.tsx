@@ -18,7 +18,7 @@ function App() {
 	if (!vm.downloading && !vm.direct) {
 		return (
 			// The window may be shorter than the model list: centred when it fits, scrolls when it does not.
-			<div className="flex h-screen flex-col overflow-y-auto px-5 py-10">
+			<div className="app-shell-bg flex h-screen flex-col overflow-y-auto px-5 py-10">
 				<div className="m-auto flex w-full justify-center">
 					{onboardingDone ? (
 						<ChooseModel system={vm.system} recommended={vm.recommended} onDownload={vm.downloadIfOnline} onSkip={vm.cancelSetup} />
@@ -32,7 +32,7 @@ function App() {
 	}
 
 	return (
-		<div className="flex min-h-screen items-center justify-center px-5 py-10">
+		<div className="app-shell-bg flex min-h-screen items-center justify-center px-5 py-10">
 			<motion.div
 				initial={{ opacity: 0, y: 8 }}
 				animate={{ opacity: 1, y: 0 }}

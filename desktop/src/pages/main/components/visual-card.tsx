@@ -163,7 +163,7 @@ function Timeline({ visual }: { visual: Of<'timeline'> }) {
 							{!last && <span className="w-0.5 flex-1 bg-border" />}
 						</div>
 						<div className={cn('space-y-0.5', !last && 'pb-5')}>
-							<p className="text-xs font-medium text-primary">{event.time}</p>
+							<p className="text-xs font-medium text-primary-strong">{event.time}</p>
 							<p className="text-sm font-semibold">{event.title}</p>
 							{event.detail.trim() && <p className="text-sm text-muted-foreground">{event.detail}</p>}
 						</div>
@@ -197,11 +197,11 @@ function Tree({ visual }: { visual: Of<'tree'> }) {
 					))}
 					{path.length > 1 && (
 						<div className="flex gap-1 pt-1">
-							<button type="button" onClick={() => setPath(path.slice(0, -1))} className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-primary hover:bg-muted">
+							<button type="button" onClick={() => setPath(path.slice(0, -1))} className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-primary-strong hover:bg-muted">
 								<Undo2 className="h-3.5 w-3.5" />
 								{m.visualBack()}
 							</button>
-							<button type="button" onClick={() => setPath([visual.start])} className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-primary hover:bg-muted">
+							<button type="button" onClick={() => setPath([visual.start])} className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-primary-strong hover:bg-muted">
 								<RotateCcw className="h-3.5 w-3.5" />
 								{m.visualStartOver()}
 							</button>

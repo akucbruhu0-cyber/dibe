@@ -16,7 +16,8 @@ import { Switch } from '~/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { ActionRow, IconAction, SettingsGroup, SettingsNote, SettingsRow, rowControlClass, type SettingsViewModel } from './shared'
 
-export type AiTaskId = keyof AiSettings['tasks']
+/** Tasks with a prompt page; the title task is a switch only. */
+export type AiTaskId = 'summary' | 'dictation'
 
 const inlineLinkClass = 'h-6 w-6 rounded-md [&_svg]:size-3.5'
 
@@ -92,6 +93,9 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 						<Switch checked={tasks.summary.autoOnFinish} onCheckedChange={(autoOnFinish) => setTask('summary', { autoOnFinish })} />
 					</SettingsRow>
 				)}
+				<SettingsRow label={m.aiTitleTask()} description={m.aiTitleTaskInfo()}>
+					<Switch checked={tasks.title?.enabled ?? false} onCheckedChange={(enabled) => setAi({ ...ai, tasks: { ...tasks, title: { enabled } } })} />
+				</SettingsRow>
 				<SettingsRow label={m.aiDictationTask()} description={presetLabel(tasks.dictation.preset)}>
 					<Button variant="outline" size="sm" className="rounded-lg" onClick={() => onOpenPrompt('dictation')}>
 						{m.aiEditPrompt()}

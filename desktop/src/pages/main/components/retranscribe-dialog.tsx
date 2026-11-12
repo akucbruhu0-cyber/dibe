@@ -42,7 +42,7 @@ export default function RetranscribeDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-md rounded-2xl border-border/60 bg-card/95 p-6 shadow-xl">
+			<DialogContent className="max-w-md rounded-2xl p-6">
 				<DialogHeader>
 					<DialogTitle className="text-lg font-semibold">{m.reTranscribe()}</DialogTitle>
 				</DialogHeader>

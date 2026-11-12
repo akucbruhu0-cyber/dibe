@@ -284,6 +284,8 @@
 	"summarizeLoading": "Summarizing",
 	"autoSummarizeOnFinish": "Summarize new transcripts automatically",
 	"autoSummarizeOnFinishInfo": "Only new transcriptions, never existing projects.",
+	"aiTitleTask": "Name recordings with AI",
+	"aiTitleTaskInfo": "After a recording or file is transcribed or summarized, the AI gives it a short title. A name you typed is never replaced.",
 	"summarizeTranscript": "Summarize",
 	"regenerateSummary": "Improve summary",
 	"customizeSummary": "Fine-tune summary…",
@@ -809,6 +811,9 @@
 	"modelAccuracyGood": "Good accuracy",
 	"modelAccuracyBest": "High accuracy",
 	"modelNeedsRam": "{gb} GB RAM min.",
+	"onbReplay": "Show the intro again",
+	"onbReplayInfo": "The animated welcome screens from the first launch",
+	"onbDone": "Done",
 	"visualBack": "Back",
 	"visualDrawing": "Drawing charts…",
 	"visualStartOver": "Start over"

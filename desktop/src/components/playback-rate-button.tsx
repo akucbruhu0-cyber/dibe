@@ -21,7 +21,7 @@ export function PlaybackRateButton({ playbackRate, onCycle }: { playbackRate: Pl
 						'h-7 w-11 shrink-0 rounded-full px-0 font-mono text-[11px] font-semibold tabular-nums',
 						playbackRate === 1
 							? 'text-muted-foreground hover:text-foreground'
-							: 'bg-primary/12 text-primary hover:bg-primary/20 hover:text-primary',
+							: 'bg-primary/12 text-primary-strong hover:bg-primary/20 hover:text-primary-strong',
 					)}>
 					{displayRate}
 				</Button>

@@ -59,7 +59,7 @@ function SourceChoice({
 			<span
 				className={cn(
 					'flex h-3.5 w-3.5 items-center justify-center rounded-[4px] border',
-					checked ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/55',
+					checked ? 'border-primary-strong bg-primary text-primary-foreground' : 'border-muted-foreground/55',
 				)}>
 				{checked && <Check className="h-2.5 w-2.5 stroke-[3]" />}
 			</span>

@@ -86,7 +86,7 @@ export function AiPromptSection({ vm, task }: { vm: SettingsViewModel; task: AiT
 								className={cn(
 									'cursor-pointer rounded-full border px-3 py-1 text-[12px] transition-colors',
 									selected
-										? 'border-primary bg-primary text-primary-foreground'
+										? 'border-primary-strong bg-primary text-primary-foreground'
 										: 'border-border bg-muted text-muted-foreground hover:text-foreground',
 								)}>
 								{presetLabel(preset.id)}
@@ -94,7 +94,7 @@ export function AiPromptSection({ vm, task }: { vm: SettingsViewModel; task: AiT
 						)
 					})}
 					{settings.preset === 'custom' && (
-						<span className="rounded-full border border-primary bg-primary px-3 py-1 text-[12px] text-primary-foreground">{m.presetCustom()}</span>
+						<span className="rounded-full border border-primary-strong bg-primary px-3 py-1 text-[12px] text-primary-foreground">{m.presetCustom()}</span>
 					)}
 				</div>
 			</SettingsGroup>

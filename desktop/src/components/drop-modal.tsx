@@ -15,7 +15,7 @@ interface Position {
 function Document({ position, path }: { position: Position; path: string }) {
 	return (
 		<div
-			className="absolute z-[100000] flex -translate-x-[50%] -translate-y-[50%] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-lg"
+			className="absolute z-[100000] flex -translate-x-[50%] -translate-y-[50%] flex-col items-center justify-center gap-3 glass-strong rounded-2xl border p-4 text-card-foreground"
 			style={{ left: position.x, top: position.y, cursor: 'grabbing' }}>
 			<DocumentIcon />
 			<p className="font-mono text-[13px] text-muted-foreground">{path.length > 10 ? path.substring(0, 10) + '...' : path}</p>
@@ -77,7 +77,7 @@ export default function DropModal() {
 	return (
 		<div>
 			{open && platform === 'windows' && <Document path={path} position={position} />}
-			<div className={cn('fixed inset-0 z-50 bg-background/70 backdrop-blur-sm', open ? 'block' : 'hidden')}></div>
+			<div className={cn('fixed inset-0 z-50 bg-scrim backdrop-blur-[8px]', open ? 'block' : 'hidden')}></div>
 		</div>
 	)
 }

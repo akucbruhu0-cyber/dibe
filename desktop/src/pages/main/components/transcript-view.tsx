@@ -16,6 +16,7 @@ import { ProjectNameEditor } from './project-name-editor'
 import QuietRow from './quiet-row'
 import { SpeakerLabel } from './speaker-label'
 import SummaryView from './summary-view'
+import { EdgeFade } from '~/components/edge-fade'
 
 /** Segment timestamps are centiseconds (see `formatTimestamp` / `asJson` in lib/transcript). */
 const CENTISECONDS_PER_SECOND = 100
@@ -41,7 +42,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
 		<>
 			{parts.map((part, index) =>
 				part.toLowerCase() === query.toLowerCase() ? (
-					<mark key={index} className="rounded bg-primary/20 text-foreground">
+					<mark key={index} className="rounded bg-primary text-foreground">
 						{part}
 					</mark>
 				) : (
@@ -307,7 +308,7 @@ const SegmentBlock = memo(function SegmentBlock({
 				className={cn(
 					'group/play relative z-10 mt-[3px] flex h-5 shrink-0 cursor-pointer items-center justify-end rounded-sm font-mono text-[11px] tracking-tight tabular-nums transition-colors duration-150 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80',
 					options.showTimestamps ? 'w-[52px]' : 'w-4',
-					active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+					active ? 'text-primary-strong' : 'text-muted-foreground hover:text-foreground',
 				)}>
 				{options.showTimestamps && <span className="transition-opacity duration-150 group-hover/play:opacity-0">{timestamp}</span>}
 				<Play
@@ -619,7 +620,7 @@ export default function TranscriptView({
 	return (
 		<div className="relative h-full min-h-0">
 			<div ref={scrollRef} onScroll={onScroll} className="transcript-editor h-full min-h-0 overflow-x-hidden overflow-y-auto">
-				<div dir={preference.textAreaDirection} className="mx-auto w-full max-w-[86ch] px-8 py-10 xl:max-w-[96ch]">
+				<div dir={preference.textAreaDirection} className="mx-auto w-full max-w-[86ch] px-8 pt-10 pb-24 xl:max-w-[96ch]">
 					<ProjectNameEditor
 						name={job.name}
 						disabled={job.status === 'queued' || job.status === 'running'}
@@ -694,6 +695,7 @@ export default function TranscriptView({
 			{/* Scrolling away stops the follow; this brings it back instead of hunting for the line. */}
 			{/* AnimatePresence keeps the pill mounted long enough to fade back out. */}
 			<AnimatePresence>
+			<EdgeFade />
 				{showJump && (
 					<motion.button
 						type="button"
@@ -702,7 +704,7 @@ export default function TranscriptView({
 						exit={{ opacity: 0, y: 6 }}
 						transition={{ duration: 0.2, ease: 'easeOut' }}
 						onClick={jumpToPlaying}
-						className="absolute bottom-4 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[12px] font-medium text-foreground shadow-sm backdrop-blur transition-colors duration-150 hover:bg-muted">
+						className="absolute bottom-4 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 glass rounded-full border px-3 py-1.5 text-[12px] font-medium text-foreground transition-colors duration-150 hover:bg-card">
 						<ArrowDownToLine className="h-3.5 w-3.5 text-muted-foreground" />
 						{m.jumpToPlaying()}
 					</motion.button>

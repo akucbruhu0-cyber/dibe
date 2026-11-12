@@ -72,7 +72,7 @@ export function ChooseModel({
 				<p className="mt-2 text-[14px] text-muted-foreground">{m.onbDeviceBody()}</p>
 			</div>
 
-			<div className="mt-6 flex divide-x divide-border/70 overflow-hidden rounded-2xl border border-border/70 bg-card rtl:divide-x-reverse">
+			<div className="mt-6 flex divide-x divide-border/70 overflow-hidden rounded-2xl bg-card shadow-hairline rtl:divide-x-reverse">
 				<Fact icon={<Cpu className="h-4 w-4" />} label={m.onbProcessor()} value={system.cpu_name || m.onbUnknown()} />
 				<Fact
 					icon={<MemoryStick className="h-4 w-4" />}
@@ -95,14 +95,14 @@ export function ChooseModel({
 							onClick={() => setSelectedId(model.id)}
 							className={cn(
 								'flex w-full cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3.5 text-start transition-colors duration-150',
-								isSelected ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border/70 hover:bg-muted/50',
+								isSelected ? 'border-primary-strong bg-card ring-1 ring-primary-strong' : 'border-transparent bg-card/70 shadow-hairline hover:bg-card',
 							)}>
 							<span
 								className={cn(
 									'mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
-									isSelected ? 'border-primary' : 'border-muted-foreground/50',
+									isSelected ? 'border-primary-strong' : 'border-muted-foreground/50',
 								)}>
-								{isSelected && <span className="h-2 w-2 rounded-full bg-primary" />}
+								{isSelected && <span className="h-2 w-2 rounded-full bg-primary-strong" />}
 							</span>
 							<span className="min-w-0 flex-1">
 								<span className="flex flex-wrap items-center gap-2">
@@ -136,7 +136,7 @@ export function ChooseModel({
 			</div>
 
 			<div className="mt-6 flex flex-col items-center gap-2">
-				<Button className="h-11 w-full max-w-xs rounded-full" onClick={() => onDownload(selected)}>
+				<Button variant="dark" className="h-11 w-full max-w-xs" onClick={() => onDownload(selected)}>
 					{m.onbDownload({ size: isolate(formatBytes(selected.sizeBytes)) })}
 				</Button>
 				<Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={onSkip}>

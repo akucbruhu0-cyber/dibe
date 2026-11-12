@@ -37,14 +37,14 @@ export default function DictationPromo() {
 		<button
 			type="button"
 			onClick={() => openSettingsSection('dictation')}
-			className="flex w-full items-center gap-2 rounded-lg border border-primary/30 bg-primary/[0.03] px-4 py-2.5 text-left text-sm transition-colors hover:bg-primary/[0.06]">
+			className="flex w-full items-center gap-2 rounded-lg border border-primary-strong/30 bg-primary/[0.03] px-4 py-2.5 text-left text-sm transition-colors hover:bg-primary/[0.06]">
 			<Mic className="h-4 w-4 shrink-0" />
 			<span className="font-medium">{m.globalDictation()}</span>
 			<div className="ml-auto flex items-center gap-1.5">
 				{shortcutKeys.map((key, i) => (
 					<kbd
 						key={i}
-						className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-border/80 bg-background/70 px-1.5 font-mono text-[11px] font-medium text-foreground/80 shadow-[0_1px_0_1px_rgba(0,0,0,0.04)]">
+						className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-border/80 bg-card/70 px-1.5 font-mono text-[11px] font-medium text-foreground/80 shadow-[0_1px_0_1px_rgba(0,0,0,0.04)]">
 						{key}
 					</kbd>
 				))}

@@ -33,9 +33,17 @@ html.dictation-indicator-window #root {
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--color-primary-strong: var(--primary-strong);
+	--color-hover-fill: var(--hover-fill);
+	--color-pill-dark: var(--pill-dark);
+	--color-pill-dark-foreground: var(--pill-dark-foreground);
+	--color-scrim: var(--scrim);
+	--shadow-hairline: var(--hairline-shadow);
+	--shadow-float: var(--float-shadow);
+	--ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);
 	--font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
 	--font-serif: 'Inter Variable', 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-	--radius: 1rem;
+	--radius: 0.75rem;
 	--tracking-tighter: calc(var(--tracking-normal) - 0.05em);
 	--tracking-tight: calc(var(--tracking-normal) - 0.025em);
 	--tracking-wide: calc(var(--tracking-normal) + 0.025em);
@@ -74,102 +82,139 @@ html.dictation-indicator-window #root {
 }
 
 :root {
-	--radius: 1rem;
+	--radius: 0.75rem;
+	--ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);
 
-	/* ChatGPT-style neutrals — light (default) */
-	--background: #ffffff;
-	--foreground: #1a1c1f;
+	/* Pocket-style glass in pastel green — light (default). Contract: plans/pocket-glass/DESIGN.md */
+	--shell-from: #e9f6ed;
+	--shell-to: #f4f9ec;
+	--shell: linear-gradient(180deg, var(--shell-from), var(--shell-to));
+	--background: #eef7f0;
+	--foreground: #16201a;
 	--card: #ffffff;
-	--card-foreground: #1a1c1f;
+	--card-foreground: #16201a;
 	--popover: #ffffff;
-	--popover-foreground: #1a1c1f;
-	--primary: #2563eb;
-	--primary-foreground: #ffffff;
-	--secondary: #f4f4f4;
-	--secondary-foreground: #1a1c1f;
-	--muted: #f4f4f4;
-	--muted-foreground: #6e6e6e;
-	--accent: #f4f4f4;
-	--accent-foreground: #1a1c1f;
+	--popover-foreground: #16201a;
+	--primary: #bfe9cb;
+	--primary-foreground: #123d22;
+	--primary-strong: #26794a; /* 5.3:1 on white, ≥4.5:1 on the shell */
+	--secondary: #f0f6f1;
+	--secondary-foreground: #16201a;
+	--muted: #f0f6f1;
+	--muted-foreground: #627067;
+	--accent: #e8f3ea;
+	--accent-foreground: #16201a;
 	--destructive: #b4453c;
 	--destructive-foreground: #fdf6f5;
-	--success: #3f7d5f;
+	--success: #2e8a55;
 	--success-foreground: #f3faf6;
-	--border: #e6e6e6;
-	--input: #e6e6e6;
-	--ring: rgb(37 99 235 / 0.35);
+	--border: #dce8df;
+	--input: #dce8df;
+	--ring: rgb(46 138 85 / 0.45);
 
-	/* Aurora hues — the only chroma in the system */
-	--aurora-1: #5b8def;
-	--aurora-2: #b98de3;
-	--aurora-3: #e8a87c;
-	--aurora-4: #7cc5a0;
+	--glass: rgb(255 255 255 / 0.72);
+	--glass-strong: rgb(255 255 255 / 0.9);
+	--glass-border: rgb(255 255 255 / 0.65);
+	--glass-highlight: inset 0 1px 0 rgb(255 255 255 / 0.75);
+	--hairline-shadow: 0 0 0 1px rgb(22 60 36 / 0.07), 0 4px 8px rgb(22 60 36 / 0.05), 0 8px 16px rgb(22 60 36 / 0.05);
+	--float-shadow: 0 0 0 1px rgb(22 60 36 / 0.06), 0 12px 32px rgb(22 60 36 / 0.12);
+	--hover-fill: rgb(18 61 34 / 0.045);
+	--scrim: rgb(170 190 176 / 0.45);
+	--pill-dark: #1c2721;
+	--pill-dark-foreground: #ffffff;
+	/* Pocket's own glow stops: blue, violet, magenta, coral, amber, twice so the slide loops seamlessly */
+	--glow: linear-gradient(91deg, #528cf3 4%, #8676e5 14.5%, #c45abe 24%, #eb4b57 33%, #e49655 44%, #528cf3 54%, #8676e5 64.5%, #c45abe 74%, #eb4b57 83%, #e49655 94%, #528cf3);
+	/* Pocket's .30 sits under a white dock; under a dark pill the glow must reach past the edge */
+	--glow-opacity: 0.55;
+	--shimmer-text: linear-gradient(90deg, #2e8a55, #5db57e, #8cc66a, #3fa58f, #2e8a55);
 
-	--chart-1: var(--aurora-1);
-	--chart-2: var(--aurora-2);
-	--chart-3: var(--aurora-3);
-	--chart-4: var(--aurora-4);
-	--chart-5: #6f6f6a;
+	/* Glow hues — the only chroma in the system (kept under the old aurora names) */
+	--aurora-1: #9fe3b5;
+	--aurora-2: #c3f1d2;
+	--aurora-3: #dcf6ae;
+	--aurora-4: #a6e7d8;
 
-	--sidebar: #f9f9f9;
-	--sidebar-foreground: #1a1c1f;
-	--sidebar-primary: #2563eb;
+	/* Charts need separable hues, so they stay apart from the pastel glow */
+	--chart-1: #2e8a55;
+	--chart-2: #3fa58f;
+	--chart-3: #8cc66a;
+	--chart-4: #d9a24e;
+	--chart-5: #7a8a80;
+
+	--sidebar: #e3f0e5;
+	--sidebar-foreground: #16201a;
+	--sidebar-primary: #2e8a55;
 	--sidebar-primary-foreground: #ffffff;
-	--sidebar-accent: #f1f1ee;
-	--sidebar-accent-foreground: #111110;
-	--sidebar-border: #e7e7e2;
-	--sidebar-ring: rgb(17 17 16 / 0.2);
+	--sidebar-accent: var(--hover-fill);
+	--sidebar-accent-foreground: #16201a;
+	--sidebar-border: #d3e3d6;
+	--sidebar-ring: rgb(46 138 85 / 0.35);
 
-	--shadow-2xs: 0 1px 1px rgb(17 17 16 / 0.04);
-	--shadow-xs: 0 1px 2px rgb(17 17 16 / 0.05);
-	--shadow-sm: 0 2px 8px rgb(17 17 16 / 0.04);
-	--shadow: 0 6px 18px rgb(17 17 16 / 0.05);
-	--shadow-md: 0 10px 26px rgb(17 17 16 / 0.06);
-	--shadow-lg: 0 16px 36px rgb(17 17 16 / 0.08);
-	--shadow-xl: 0 24px 56px rgb(17 17 16 / 0.1);
-	--shadow-2xl: 0 32px 72px rgb(17 17 16 / 0.12);
+	--shadow-2xs: 0 1px 1px rgb(22 60 36 / 0.04);
+	--shadow-xs: 0 1px 2px rgb(22 60 36 / 0.05);
+	--shadow-sm: 0 2px 8px rgb(22 60 36 / 0.05);
+	--shadow: 0 6px 18px rgb(22 60 36 / 0.06);
+	--shadow-md: 0 10px 26px rgb(22 60 36 / 0.07);
+	--shadow-lg: 0 16px 36px rgb(22 60 36 / 0.09);
+	--shadow-xl: 0 24px 56px rgb(22 60 36 / 0.11);
+	--shadow-2xl: 0 32px 72px rgb(22 60 36 / 0.13);
 
 	--tracking-normal: -0.01em;
 }
 
 .dark {
-	--background: #181818;
-	--foreground: #ececec;
-	--card: #212121;
-	--card-foreground: #ececec;
-	--popover: #2a2a2a;
-	--popover-foreground: #ececec;
-	--primary: #2563eb;
-	--primary-foreground: #ffffff;
-	--secondary: #242424;
-	--secondary-foreground: #ececec;
-	--muted: #242424;
-	--muted-foreground: #9a9a9a;
-	--accent: #2a2a2a;
-	--accent-foreground: #ececec;
+	--shell-from: #0e1711;
+	--shell-to: #121a10;
+	--background: #0f1712;
+	--foreground: #e6f0e8;
+	--card: #18221b;
+	--card-foreground: #e6f0e8;
+	--popover: #1c271f;
+	--popover-foreground: #e6f0e8;
+	--primary: #a9ddb8;
+	--primary-foreground: #0e2a18;
+	--primary-strong: #8fd3a6;
+	--secondary: #1b261e;
+	--secondary-foreground: #e6f0e8;
+	--muted: #1b261e;
+	--muted-foreground: #93a397;
+	--accent: #223026;
+	--accent-foreground: #e6f0e8;
 	--destructive: #c4655c;
 	--destructive-foreground: #1a0f0e;
-	--success: #6aab8b;
+	--success: #8fd3a6;
 	--success-foreground: #0d1512;
-	--border: #303030;
-	--input: #303030;
-	--ring: rgb(51 156 255 / 0.4);
+	--border: #26332a;
+	--input: #26332a;
+	--ring: rgb(143 211 166 / 0.45);
 
-	--aurora-1: #5b8def;
-	--aurora-2: #b98de3;
-	--aurora-3: #e8a87c;
-	--aurora-4: #7cc5a0;
+	--glass: rgb(26 38 30 / 0.7);
+	--glass-strong: rgb(24 34 27 / 0.9);
+	--glass-border: rgb(255 255 255 / 0.08);
+	--glass-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
+	--hairline-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 8px rgb(0 0 0 / 0.28), 0 8px 16px rgb(0 0 0 / 0.28);
+	--float-shadow: 0 0 0 1px rgb(255 255 255 / 0.06), 0 14px 36px rgb(0 0 0 / 0.5);
+	--hover-fill: rgb(230 240 232 / 0.06);
+	--scrim: rgb(0 0 0 / 0.5);
+	--pill-dark: #e6f0e8;
+	--pill-dark-foreground: #0e1711;
+	--glow-opacity: 0.45;
+	--shimmer-text: linear-gradient(90deg, #8fd3a6, #b5e8c4, #d6f3a0, #8ee0cf, #8fd3a6);
 
-	--chart-5: #9a9a94;
+	--chart-1: #8fd3a6;
+	--chart-2: #6fcbb6;
+	--chart-3: #b7de8c;
+	--chart-4: #e3b86e;
+	--chart-5: #93a397;
 
-	--sidebar: #212121;
-	--sidebar-foreground: #ececec;
-	--sidebar-primary: #2563eb;
-	--sidebar-primary-foreground: #ffffff;
-	--sidebar-accent: #2a2a2a;
-	--sidebar-accent-foreground: #ececec;
-	--sidebar-border: #303030;
-	--sidebar-ring: rgb(51 156 255 / 0.4);
+	--sidebar: #121b15;
+	--sidebar-foreground: #e6f0e8;
+	--sidebar-primary: #8fd3a6;
+	--sidebar-primary-foreground: #0e2a18;
+	--sidebar-accent: var(--hover-fill);
+	--sidebar-accent-foreground: #e6f0e8;
+	--sidebar-border: #26332a;
+	--sidebar-ring: rgb(143 211 166 / 0.4);
 
 	--shadow-2xs: 0 1px 1px rgb(0 0 0 / 0.3);
 	--shadow-xs: 0 1px 2px rgb(0 0 0 / 0.35);
@@ -189,15 +234,7 @@ html.dictation-indicator-window #root {
 	}
 
 	html {
-		font-family:
-			'Inter Variable',
-			'Inter',
-			-apple-system,
-			BlinkMacSystemFont,
-			'SF Pro Text',
-			'Helvetica Neue',
-			Arial,
-			sans-serif;
+		font-family: var(--font-sans);
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}
@@ -211,7 +248,6 @@ html.dictation-indicator-window #root {
 			'rlig' 1,
 			'calt' 1,
 			'cv05' 1;
-		background-image: none;
 		overflow-x: hidden;
 	}
 
@@ -232,20 +268,16 @@ html.dictation-indicator-window #root {
 		height: 0;
 	}
 
-	.dark body {
-		background-image: none;
-	}
-
 	* {
 		border-color: var(--border);
 	}
 
 	::selection {
-		background: rgb(17 17 16 / 0.14);
+		background: rgb(46 138 85 / 0.18);
 	}
 
 	.dark ::selection {
-		background: rgb(244 244 241 / 0.2);
+		background: rgb(143 211 166 / 0.24);
 	}
 
 	::-webkit-scrollbar {
@@ -326,64 +358,25 @@ html.dictation-indicator-window #root {
 }
 
 @layer components {
-	.app-shell {
-		@apply mx-auto w-full max-w-5xl px-5 pb-10 pt-3 md:px-8 md:pt-4;
-	}
-
-	.app-hero {
-		@apply relative mb-5 rounded-xl border border-border bg-card px-6 py-5;
-	}
-
-	.app-panel {
-		@apply rounded-xl border border-border bg-card p-5 md:p-6;
-	}
-
-	.app-subtle {
-		@apply rounded-lg border border-border bg-muted/60 p-3;
-	}
-
-	.dark .app-hero,
-	.dark .app-panel {
-		@apply bg-card text-card-foreground;
-		background-image: none;
-	}
-
-	.dark .app-subtle {
-		@apply bg-muted text-card-foreground;
-	}
-
-	.app-title {
-		@apply text-[28px] font-semibold leading-[1.1] tracking-[-0.03em] md:text-[40px];
-	}
-
 	/* Eyebrow label — 11px, uppercase, +0.08em */
-	.app-kicker,
 	.eyebrow {
 		@apply text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground;
 	}
 
-	.app-main-card {
-		@apply rounded-2xl border border-border bg-card p-6 shadow-sm md:p-9;
-	}
-
-	.dark .app-main-card {
-		@apply bg-card shadow-md;
-		background-image: none;
-	}
-
 	/*
-	 * Aurora — the single expressive surface. Soft multi-hue gradient plus a
-	 * grain overlay. Always behind a card or as a thin fill, never behind body text.
+	 * Aurora — drag feedback surface, now in the glow hues. Soft multi-hue gradient plus a grain
+	 * overlay. Always behind a card or as a thin fill, never behind body text.
 	 */
 	.aurora {
 		position: relative;
 		isolation: isolate;
 		background-color: var(--muted);
 		background-image:
-			radial-gradient(58% 72% at 14% 16%, #5b8def8c 0%, transparent 68%), radial-gradient(54% 68% at 84% 10%, #b98de37a 0%, transparent 70%),
-			radial-gradient(58% 66% at 80% 88%, #e8a87c73 0%, transparent 70%), radial-gradient(62% 70% at 18% 92%, #7cc5a073 0%, transparent 70%);
+			radial-gradient(58% 72% at 14% 16%, color-mix(in srgb, var(--aurora-1) 75%, transparent) 0%, transparent 68%),
+			radial-gradient(54% 68% at 84% 10%, color-mix(in srgb, var(--aurora-3) 70%, transparent) 0%, transparent 70%),
+			radial-gradient(58% 66% at 80% 88%, color-mix(in srgb, var(--aurora-4) 70%, transparent) 0%, transparent 70%),
+			radial-gradient(62% 70% at 18% 92%, color-mix(in srgb, var(--aurora-2) 75%, transparent) 0%, transparent 70%);
 		background-repeat: no-repeat;
-		filter: saturate(0.85);
 	}
 
 	.aurora::after {
@@ -398,20 +391,60 @@ html.dictation-indicator-window #root {
 	}
 
 	.dark .aurora {
-		filter: saturate(0.7) brightness(0.8);
+		filter: brightness(0.45) saturate(0.9);
 	}
 
-	/* Thin aurora fill for progress bars */
+	/* Thin fill for progress bars: the deeper greens, so a pastel bar never vanishes on its track */
 	.aurora-bar {
-		background-image: linear-gradient(90deg, var(--aurora-1) 0%, var(--aurora-2) 34%, var(--aurora-3) 67%, var(--aurora-4) 100%);
-		filter: saturate(0.85);
+		background-image: var(--shimmer-text);
 	}
 
-	/* Radix <Progress> whose indicator is filled with the aurora gradient */
+	/* Radix <Progress> whose indicator is filled with the same gradient */
 	.progress-aurora > * {
 		background-color: transparent;
-		background-image: linear-gradient(90deg, var(--aurora-1) 0%, var(--aurora-2) 34%, var(--aurora-3) 67%, var(--aurora-4) 100%);
-		filter: saturate(0.85);
+		background-image: var(--shimmer-text);
+	}
+
+	/* The window behind everything: the only full-bleed colour. */
+	.app-shell-bg {
+		background: var(--shell);
+	}
+
+	/* Floating surfaces (popovers, menus, toasts, docks). Never under long body text. */
+	.glass,
+	.glass-strong {
+		background-color: var(--glass);
+		border-color: var(--glass-border);
+		box-shadow: var(--glass-highlight), var(--float-shadow);
+		-webkit-backdrop-filter: blur(20px) saturate(1.6);
+		backdrop-filter: blur(20px) saturate(1.6);
+	}
+
+	.glass-strong {
+		background-color: var(--glass-strong);
+	}
+
+	/*
+	 * Glow: put it on a wrapper with no background around the one live control. A blurred copy of
+	 * the glow gradient slides behind it. One per screen.
+	 */
+	.glow {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.glow::before {
+		content: '';
+		position: absolute;
+		inset: -2px 4px -9px;
+		z-index: -1;
+		pointer-events: none;
+		border-radius: 30px;
+		background-image: var(--glow);
+		background-size: 200% 100%;
+		filter: blur(11px);
+		opacity: var(--glow-opacity);
+		animation: glow-slide 5s linear infinite;
 	}
 
 	.stagger-in {
@@ -513,6 +546,54 @@ html.dictation-indicator-window #root {
 	.live-pulse {
 		animation: live-pulse 1.5s ease-in-out infinite;
 	}
+
+	/* Dark CTA pill (light pill in dark mode). One per screen, for the main action. */
+	.pill-dark {
+		border-radius: 999px;
+		background-color: var(--pill-dark);
+		color: var(--pill-dark-foreground);
+	}
+
+	.pill-dark:hover {
+		background-color: color-mix(in srgb, var(--pill-dark) 88%, var(--card));
+	}
+
+	/*
+	 * AI text while it is being written: painted with the green gradient, sliding. Each text block
+	 * clips its own copy so markdown children (strong, a, code) stay inside the paint. Charts and
+	 * other non-text children are left alone. Goes on the container of rendered markdown.
+	 */
+	.shimmer-text > :is(p, ul, ol, h1, h2, h3, h4, h5, h6, blockquote, table) {
+		background-image: var(--shimmer-text);
+		background-size: 200% auto;
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+		animation: shimmer-slide 2.4s linear infinite;
+	}
+
+	.shimmer-text > :is(p, ul, ol, h1, h2, h3, h4, h5, h6, blockquote, table) :is(li, p, strong, em, b, i, a, code, span, td, th) {
+		color: transparent;
+	}
+}
+
+@keyframes glow-slide {
+	to {
+		background-position: -200% 0;
+	}
+}
+
+@keyframes shimmer-slide {
+	to {
+		background-position: -200% 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.glow::before,
+	.shimmer-text > * {
+		animation: none !important;
+	}
 }
 
 @keyframes live-settle {
@@ -575,11 +656,15 @@ html.dictation-indicator-window #root {
 	}
 }
 
-/* macOS vibrancy: the window itself is transparent; only the content column paints a solid
-   background, so the sidebar area shows the blurred desktop through its translucent tint. */
+/* macOS vibrancy: the window itself is transparent; the shell paints a translucent green tint
+   over the blurred desktop so the gradient still reads, and the content card stays solid. */
 html.mac-vibrancy,
 html.mac-vibrancy body {
 	background: transparent;
+}
+
+html.mac-vibrancy .app-shell-bg {
+	background: linear-gradient(180deg, color-mix(in srgb, var(--shell-from) 72%, transparent), color-mix(in srgb, var(--shell-to) 72%, transparent));
 }
 
 /* Desktop app: no page-level rubber banding — the window itself must never bounce or nudge

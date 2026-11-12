@@ -12,7 +12,7 @@ export default function ProgressPanel({ isAborting, onAbort, progress }: Progres
 	return (
 		<div className="flex w-full flex-col items-center">
 			<div className="flex w-full flex-wrap items-center justify-center gap-3 rounded-md border border-border/60 bg-card/45 px-3 py-2.5 text-center">
-				<Spinner className="text-primary" />
+				<Spinner className="text-primary-strong" />
 				{isAborting ? (
 					<p>{m.aborting()}...</p>
 				) : (

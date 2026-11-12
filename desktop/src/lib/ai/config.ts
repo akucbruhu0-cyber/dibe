@@ -46,6 +46,8 @@ export interface AiSettings {
 	tasks: {
 		summary: AiTask & { autoOnFinish: boolean }
 		dictation: AiTask
+		/** Name new recordings from their transcript. Absent in settings saved before it existed. */
+		title?: { enabled: boolean }
 	}
 }
 
@@ -126,7 +128,27 @@ export const DEFAULT_AI: AiSettings = {
 	tasks: {
 		summary: { enabled: false, autoOnFinish: false, preset: 'summary', prompt: presetPrompt('summary') },
 		dictation: { enabled: false, preset: 'punctuation', prompt: presetPrompt('punctuation') },
+		title: { enabled: false },
 	},
+}
+
+/** Same words on Android (android/.../ai/). A title needs the gist, not the whole recording. */
+export const TITLE_PROMPT = `${RULE}\n\nWrite a short, specific title (3 to 7 words) for this recording, in the same language as the transcript. No quotes, no trailing punctuation, no emoji, no date.\n\n"""\n{transcript}\n"""`
+export const TITLE_TRANSCRIPT_CHARS = 6000
+
+/** The model's reply as a project name: first line, no markdown or quotes, at most 80 characters. Empty when nothing usable came back. */
+export function cleanTitle(reply: string): string {
+	const line = reply.split('\n').find((candidate) => candidate.trim()) ?? ''
+	return line
+		.replace(/[#*]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.replace(/^title:\s*/i, '')
+		// Only wrapping quotes: an apostrophe inside a word is spelling (צ'יפס, don't).
+		.replace(/^["'“”«»„]+|["'“”«»„]+$/g, '')
+		.replace(/[.:;,!]+$/, '')
+		.slice(0, 80)
+		.trim()
 }
 
 /** The default model for a platform, so switching platforms never leaves a Claude model on Ollama. */

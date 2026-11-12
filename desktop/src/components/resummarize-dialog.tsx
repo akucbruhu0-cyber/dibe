@@ -95,7 +95,7 @@ export default function ResummarizeDialog({ onSubmit, loading, open: openProp, o
 					</Button>
 				</DialogTrigger>
 			)}
-			<DialogContent className="max-w-lg rounded-2xl border-border/60 bg-card/95 p-6 shadow-xl">
+			<DialogContent className="max-w-lg rounded-2xl p-6">
 				<DialogHeader>
 					<DialogTitle className="text-lg font-semibold">{m.customizeSummary()}</DialogTitle>
 				</DialogHeader>
@@ -111,8 +111,8 @@ export default function ResummarizeDialog({ onSubmit, loading, open: openProp, o
 								}}
 								className={`cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
 									selected === preset.id
-										? 'border-primary bg-primary/10 text-primary'
-										: 'border-border/65 bg-background/50 text-muted-foreground hover:bg-accent/40'
+										? 'border-primary-strong bg-primary/10 text-primary-strong'
+										: 'border-border/65 bg-card/50 text-muted-foreground hover:bg-accent/40'
 								}`}>
 								{presetLabel(preset.id)}
 							</button>
@@ -136,7 +136,7 @@ export default function ResummarizeDialog({ onSubmit, loading, open: openProp, o
 						{files.map((file, index) => (
 							<span
 								key={index}
-								className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/65 bg-background/50 py-1 ps-2.5 pe-1 text-xs text-foreground">
+								className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/65 bg-card/50 py-1 ps-2.5 pe-1 text-xs text-foreground">
 								{file.kind === 'image' ? (
 									<ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 								) : (

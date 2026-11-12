@@ -21,7 +21,8 @@ const PAGES = [
 ]
 
 /** First run: a welcome and three things worth knowing about on-device AI, before the model list. */
-export function Intro({ onDone }: { onDone: () => void }) {
+/** `doneLabel` names the last button when the intro is replayed from Settings. */
+export function Intro({ onDone, doneLabel }: { onDone: () => void; doneLabel?: string }) {
 	const [page, setPage] = useState(0)
 	const reduceMotion = useReducedMotion()
 	const current = PAGES[page]
@@ -70,13 +71,13 @@ export function Intro({ onDone }: { onDone: () => void }) {
 
 			<div className="mt-8 flex gap-1.5" role="img" aria-label={m.onbPageOf({ current: String(page + 1), total: String(PAGES.length) })}>
 				{PAGES.map((_, index) => (
-					<span key={index} className={cn('h-1.5 rounded-full transition-all duration-200', index === page ? 'w-5 bg-primary' : 'w-1.5 bg-border')} />
+					<span key={index} className={cn('h-1.5 rounded-full transition-all duration-200', index === page ? 'w-5 bg-primary-strong' : 'w-1.5 bg-border')} />
 				))}
 			</div>
 
 			<div className="mt-6 flex w-full max-w-xs flex-col gap-2">
 				<Button className="h-11 rounded-full" onClick={() => (last ? onDone() : setPage(page + 1))}>
-					{page === 0 ? m.onbLetsStart() : last ? m.onbChooseModel() : m.onbNext()}
+					{page === 0 ? m.onbLetsStart() : last ? (doneLabel ?? m.onbChooseModel()) : m.onbNext()}
 				</Button>
 				<div className="flex justify-center gap-1">
 					{page > 0 && (

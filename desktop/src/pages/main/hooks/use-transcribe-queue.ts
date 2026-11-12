@@ -114,7 +114,8 @@ export interface TranscribeQueue {
 	/** Replace all of a job's segments, for edits that join or remove lines. Persists like the inline edit. */
 	setSegments: (jobId: string, segments: Segment[]) => void
 	/** Rename the visible project and its persisted record, when one exists. */
-	renameJob: (jobId: string, name: string) => Promise<boolean>
+	/** With `ifName`, renames only while the job still has that name (an AI title never overrides the user's). */
+	renameJob: (jobId: string, name: string, ifName?: string) => Promise<boolean>
 	/** Update the visible title while the inline rename editor is open. */
 	previewJobName: (jobId: string, name: string) => void
 	/** Attach an AI summary to a job. Persists to the job's saved file when it has one. */
@@ -659,12 +660,12 @@ export function useTranscribeQueue(): TranscribeQueue {
 	)
 
 	const renameJob = useCallback(
-		async (jobId: string, name: string) => {
+		async (jobId: string, name: string, ifName?: string) => {
 			const next = name.trim()
 			if (!next) return false
 			return serializeProjectOperation(jobId, async () => {
 				const job = jobsRef.current.find((candidate) => candidate.id === jobId)
-				if (!job) return false
+				if (!job || (ifName !== undefined && job.name !== ifName)) return false
 				if (!job.savedPath) {
 					patch(jobId, { name: next })
 					return true

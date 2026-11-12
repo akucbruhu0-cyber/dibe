@@ -24,7 +24,7 @@ export default function BatchBanner() {
 				<span className="font-medium text-foreground">{m.batchLabel()}</span>
 				<div className="h-1 flex-1 overflow-hidden rounded-full bg-muted-foreground/15">
 					<div
-						className="h-full rounded-full bg-primary/70 transition-[width] duration-300"
+						className="h-full rounded-full bg-primary-strong/70 transition-[width] duration-300"
 						style={{ width: `${Math.max(2, (batch.done / batch.total) * 100)}%` }}
 					/>
 				</div>
@@ -66,7 +66,7 @@ export default function BatchBanner() {
 								<button
 									type="button"
 									onClick={() => setDetails((value) => !value)}
-									className="cursor-pointer text-primary underline-offset-4 hover:underline">
+									className="cursor-pointer text-primary-strong underline-offset-4 hover:underline">
 									{details ? m.batchHideDetails() : m.batchShowDetails()}
 								</button>
 							</>

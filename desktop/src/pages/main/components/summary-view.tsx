@@ -5,6 +5,7 @@ import { m } from '~/paraglide/messages.js'
 import { Button } from '~/components/ui/button'
 import { Spinner } from '~/components/ui/spinner'
 import { cn } from '~/lib/style'
+import { EdgeFade } from '~/components/edge-fade'
 import { usePreferenceProvider } from '~/providers/preference'
 import { useSession } from '../session'
 import type { Job } from '../hooks/use-transcribe-queue'
@@ -27,10 +28,13 @@ const components: Components = {
 	},
 }
 
-/** Markdown with a blinking caret at the end while text is still arriving, or a chart skeleton while charts are. */
+/**
+ * Markdown with a blinking caret at the end while text is still arriving, or a chart skeleton while charts are.
+ * Only rendered while the model writes, so the shimmer stops the moment the text is saved.
+ */
 function Streaming({ text, size, drawing = false }: { text: string; size: TranscriptViewOptions['textSize']; drawing?: boolean }) {
 	return (
-		<div className={cn('prose prose-neutral max-w-none dark:prose-invert', textSizeClass[size])}>
+		<div className={cn('shimmer-text prose prose-neutral max-w-none dark:prose-invert', textSizeClass[size])}>
 			<Markdown components={components}>{text}</Markdown>
 			{drawing ? <VisualSkeleton /> : <span aria-hidden className="ms-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-foreground/60 align-text-bottom" />}
 		</div>
@@ -79,7 +83,7 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 	return (
 		<div className="relative flex h-full min-h-0 flex-col">
 			<div ref={scrollRef} className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-				<div dir={preference.textAreaDirection} className={cn('mx-auto w-full max-w-[86ch] px-8 py-10 xl:max-w-[96ch]', canAsk && 'pb-28')}>
+				<div dir={preference.textAreaDirection} className={cn('mx-auto w-full max-w-[86ch] px-8 pt-10 pb-24 xl:max-w-[96ch]', canAsk && 'pb-28')}>
 					<p className="mb-8 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{m.summaryTab()}</p>
 
 					{summarizing && progress && progress.done < progress.total && (
@@ -90,7 +94,7 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 							</p>
 							<div className="h-1 w-48 overflow-hidden rounded-full bg-muted-foreground/15">
 								<div
-									className="h-full rounded-full bg-primary/70 transition-[width] duration-300"
+									className="h-full rounded-full bg-primary-strong/70 transition-[width] duration-300"
 									style={{ width: `${(progress.done / progress.total) * 100}%` }}
 								/>
 							</div>
@@ -160,18 +164,19 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 					)}
 				</div>
 			</div>
+			<EdgeFade />
 
 			{canAsk && (
 				// Floats over the end of the page like a chat box, so the question is always one keystroke away.
 				<div
 					dir={preference.textAreaDirection}
-					className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/90 to-transparent pt-8 pb-5">
+					className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pt-8 pb-5">
 					<form
 						onSubmit={(event) => {
 							event.preventDefault()
 							send()
 						}}
-						className="pointer-events-auto mx-auto flex w-[calc(100%-4rem)] max-w-[calc(86ch-4rem)] items-end gap-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-lg xl:max-w-[calc(96ch-4rem)]">
+						className="pointer-events-auto mx-auto flex w-[calc(100%-4rem)] max-w-[calc(86ch-4rem)] items-end gap-2 rounded-2xl border border-primary-strong/25 bg-card px-3 py-2 shadow-[0_2px_8px_rgb(0_0_0/0.05)] xl:max-w-[calc(96ch-4rem)]">
 						<textarea
 							ref={inputRef}
 							value={question}

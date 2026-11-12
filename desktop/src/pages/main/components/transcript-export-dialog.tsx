@@ -142,7 +142,7 @@ function IconToggle<T extends string>({
 							onClick={() => onChange(option.value)}
 							className={cn(
 								'flex h-7 w-9 cursor-pointer items-center justify-center rounded-full transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80',
-								value === option.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+								value === option.value ? 'bg-card text-foreground shadow-hairline' : 'text-muted-foreground hover:text-foreground',
 							)}>
 							{option.icon}
 						</button>
@@ -180,7 +180,7 @@ function Segmented<T extends string>({
 					onClick={() => onChange(option.value)}
 					className={cn(
 						'cursor-pointer rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80 disabled:cursor-not-allowed disabled:opacity-40',
-						value === option.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+						value === option.value ? 'bg-card text-foreground shadow-hairline' : 'text-muted-foreground hover:text-foreground',
 					)}>
 					{option.label}
 				</button>
@@ -211,7 +211,7 @@ function RenderedDocumentPreview({ html, direction, theme }: { html: string; dir
 			rows={rows}
 			direction={direction}
 			className={cn(
-				'px-5 py-2 font-sans text-sm leading-relaxed [&_.metadata]:mb-1 [&_.metadata]:text-xs [&_.metadata]:font-semibold [&_.metadata]:text-muted-foreground [&_.segment]:py-3 [&_h1]:py-5 [&_h1]:text-center [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-primary [&_h2]:border-b [&_h2]:border-border [&_h2]:py-3 [&_h2]:text-xl [&_h2]:font-semibold [&_p]:whitespace-pre-wrap',
+				'px-5 py-2 font-sans text-sm leading-relaxed [&_.metadata]:mb-1 [&_.metadata]:text-xs [&_.metadata]:font-semibold [&_.metadata]:text-muted-foreground [&_.segment]:py-3 [&_h1]:py-5 [&_h1]:text-center [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-primary-strong [&_h2]:border-b [&_h2]:border-border [&_h2]:py-3 [&_h2]:text-xl [&_h2]:font-semibold [&_p]:whitespace-pre-wrap',
 				theme === 'dark' ? 'bg-[#181818] text-[#ececec]' : 'bg-white text-[#1a1c1f]',
 			)}
 			renderRow={(row) => <div dangerouslySetInnerHTML={{ __html: row }} />}
@@ -249,7 +249,7 @@ export default function TranscriptExportDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="flex max-h-[90vh] w-[calc(100%_-_1.5rem)] max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border-border/60 bg-card/98 p-0 shadow-2xl">
+			<DialogContent className="flex max-h-[90vh] w-[calc(100%_-_1.5rem)] max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl p-0">
 				<DialogHeader className="shrink-0 border-b border-border/60 px-5 py-4 pe-14 sm:px-6 sm:py-5 sm:pe-14">
 					<DialogTitle className="text-xl">{m.exportDialogTitle()}</DialogTitle>
 					<DialogDescription>{m.exportDialogDescription()}</DialogDescription>
@@ -275,13 +275,13 @@ export default function TranscriptExportDialog({
 											className={cn(
 												'flex items-center gap-2 rounded-lg border px-2 py-1.5 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/80',
 												selected
-													? 'border-primary/60 bg-primary/10 text-foreground'
+													? 'border-primary-strong/60 bg-primary/10 text-foreground'
 													: 'border-transparent bg-muted/35 text-muted-foreground hover:bg-muted/60 hover:text-foreground',
 											)}>
 											<span
 												className={cn(
 													'flex h-6 min-w-9 shrink-0 items-center justify-center rounded-md font-mono text-[9px] font-semibold tracking-tight',
-													selected ? 'bg-primary/20 text-primary' : 'bg-background/60 text-muted-foreground',
+													selected ? 'bg-primary/20 text-primary-strong' : 'bg-card/60 text-muted-foreground',
 												)}>
 												{option.extension}
 											</span>
@@ -296,7 +296,7 @@ export default function TranscriptExportDialog({
 						{/* Every option is a row in one card: the same rhythm the Settings page uses. */}
 						<section className="space-y-2" aria-label={m.exportOptions()}>
 							<SectionLabel>{m.exportOptions()}</SectionLabel>
-							<div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-background/30">
+							<div className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card/30">
 								<OptionRow label={m.exportContent()}>
 									<Segmented
 										className="w-52"
@@ -396,7 +396,7 @@ export default function TranscriptExportDialog({
 							<VirtualPreviewRows
 								rows={preview.split('\n')}
 								direction={direction}
-								className="bg-background/75 px-4 py-2 font-mono text-xs leading-relaxed text-foreground selection:bg-primary/20"
+								className="bg-card/75 px-4 py-2 font-mono text-xs leading-relaxed text-foreground selection:bg-primary/20"
 								renderRow={(line) => <div className="min-h-[1.7em] whitespace-pre-wrap break-words">{line || '\u00a0'}</div>}
 							/>
 						)}

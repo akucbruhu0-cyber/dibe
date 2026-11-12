@@ -53,7 +53,7 @@ function BackToLive() {
 			type="button"
 			onClick={showLive}
 			disabled={recording.isFinishing}
-			className="absolute inset-x-0 top-16 z-20 mx-auto flex w-fit cursor-pointer items-center gap-2 rounded-full border border-border bg-card/95 px-3.5 py-1.5 text-[13px] font-medium text-foreground shadow-md backdrop-blur hover:bg-muted">
+			className="absolute inset-x-0 top-16 z-20 mx-auto flex w-fit cursor-pointer items-center gap-2 glass rounded-full border px-3.5 py-1.5 text-[13px] font-medium text-foreground hover:bg-card">
 			<span aria-hidden className="h-2 w-2 rounded-full bg-red-500" />
 			<Mic aria-hidden className="h-3.5 w-3.5 text-muted-foreground" />
 			{m.backToLive()}
@@ -99,7 +99,7 @@ function MainContent() {
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 						transition={{ duration: 0.15, ease: 'easeOut' }}
-						className="pointer-events-none absolute inset-3 rounded-[1.25rem] border-2 border-dashed border-ring/40 bg-background/60 backdrop-blur-[2px]">
+						className="pointer-events-none absolute inset-3 rounded-[1.25rem] border-2 border-dashed border-primary-strong/40 bg-card/60 backdrop-blur-[2px]">
 						<div className="flex h-full items-center justify-center">
 							<p className="text-sm font-medium text-muted-foreground">{m.dropToAddToQueue()}</p>
 						</div>
@@ -156,7 +156,7 @@ function Shell() {
 							animate={{ opacity: 1, width: 'auto' }}
 							exit={{ opacity: 0, width: 0 }}
 							transition={{ duration: 0.2, ease: 'easeOut' }}
-							className="flex min-h-0 overflow-hidden bg-background/90 dark:bg-background/55">
+							className="flex min-h-0 overflow-hidden bg-sidebar/60">
 							<RecentsSidebar />
 						</motion.div>
 					)}

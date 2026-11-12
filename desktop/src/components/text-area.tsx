@@ -161,7 +161,7 @@ export default function TextArea({
 						<Button
 							variant="ghost"
 							size="icon"
-							className={cn(preference.textAreaDirection === 'rtl' ? 'bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary' : '')}
+							className={cn(preference.textAreaDirection === 'rtl' ? 'bg-primary/15 text-primary-strong hover:bg-primary/20 hover:text-primary-strong' : '')}
 							onMouseDown={() => preference.setTextAreaDirection(preference.textAreaDirection === 'rtl' ? 'ltr' : 'rtl')}>
 							<AlignRight className="h-5 w-5" strokeWidth={2.1} />
 						</Button>

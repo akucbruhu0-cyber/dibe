@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { m } from '~/paraglide/messages.js'
-import { appLanguageName, chunkLines, createClient, fillPrompt, inlineTextFiles, inputBudgetBytes, utf8Bytes, type AiClient, type Attachment } from '~/lib/ai'
+import {
+	appLanguageName,
+	chunkLines,
+	cleanTitle,
+	createClient,
+	fillPrompt,
+	inlineTextFiles,
+	inputBudgetBytes,
+	TITLE_PROMPT,
+	TITLE_TRANSCRIPT_CHARS,
+	utf8Bytes,
+	type AiClient,
+	type Attachment,
+} from '~/lib/ai'
+import { isAutoProjectName } from '~/lib/project-name'
 import { asText } from '~/lib/transcript'
 import { mergeVisuals, VISUAL_PROMPT, visualsApply } from '~/lib/visuals'
 import { usePreferenceProvider } from '~/providers/preference'
@@ -42,6 +56,18 @@ export interface Summaries {
 
 export function shouldAutoSummarize(job: Pick<Job, 'status' | 'hydrated' | 'summary' | 'segments'>, previousStatus?: Job['status']) {
 	return previousStatus !== undefined && previousStatus !== 'done' && job.status === 'done' && !job.hydrated && !job.summary && job.segments.length > 0
+}
+
+/**
+ * A project that still has its automatic name (Record-, File-, Url-) gets an AI title once it has a transcript in this
+ * session: a transcription finished (first run or a re-transcription), or a recording arrived with
+ * its live transcript, which enters the queue already done and hydrated. Opening an older project
+ * from Recents (hydrated, no source) never triggers it.
+ */
+export function shouldAutoTitle(job: Pick<Job, 'status' | 'hydrated' | 'source' | 'name' | 'segments'>, previousStatus?: Job['status']) {
+	if (job.status !== 'done' || !job.segments.length || !isAutoProjectName(job.name)) return false
+	if (previousStatus === undefined) return job.hydrated === true && job.source === 'record'
+	return previousStatus !== 'done'
 }
 
 /** Summarize the partial summaries; the model sees them as the transcript so the user's prompt still applies. */
@@ -85,15 +111,36 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 	// same job before `pending` renders.
 	const inFlight = useRef<Set<string>>(new Set())
 	const autoAttempted = useRef<Set<string>>(new Set())
+	const titling = useRef<Set<string>>(new Set())
 	const previousStatuses = useRef<Map<string, Job['status']>>(new Map())
 
 	const { connection, tasks } = preference.ai
 	const task = tasks.summary
 	const enabled = task.enabled
+	const titleEnabled = tasks.title?.enabled ?? false
 	const client = useMemo<AiClient>(() => createClient(connection), [connection])
 
 	const transcriptOf = useCallback((job: Job) => asText(job.segments, m.speakerPrefix(), job.speakerNames), [])
 	const speakersOf = useCallback((job: Job) => Object.values(job.speakerNames ?? {}).join(', '), [])
+
+	/** Give a new recording a title from its opening minutes. Extra, like visuals: a failure only logs. */
+	const nameRecording = useCallback(
+		async (job: Job) => {
+			// A finished transcription and the summary it starts can both ask; one request is enough.
+			if (titling.current.has(job.id)) return
+			titling.current.add(job.id)
+			try {
+				const transcript = transcriptOf(job).slice(0, TITLE_TRANSCRIPT_CHARS)
+				const title = cleanTitle(await client.ask(fillPrompt(TITLE_PROMPT, { transcript })))
+				if (title && title !== job.name) await queue.renameJob(job.id, title, job.name)
+			} catch (error) {
+				console.warn('title failed:', error)
+			} finally {
+				titling.current.delete(job.id)
+			}
+		},
+		[client, queue, transcriptOf],
+	)
 
 	const summarize = useCallback(
 		async (job: Job, prompt?: string, files: Attachment[] = []) => {
@@ -130,6 +177,8 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 				text = text.trim()
 				if (!text) throw new Error(m.summaryFailed())
 				queue.setJobSummary(job.id, text)
+				// A (re)summary also names a project that still has the app's name.
+				if (titleEnabled && isAutoProjectName(job.name)) void nameRecording(job)
 				if (visualsApply(template)) {
 					// Visuals are extra: the summary is saved already, so a failure here costs nothing.
 					setVisualizing(job.id, true)
@@ -165,6 +214,8 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 			}
 		},
 		[
+			titleEnabled,
+			nameRecording,
 			task.prompt,
 			connection.contextTokens,
 			client,
@@ -244,16 +295,21 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 	// not sweep over already-finished work, and hydrated projects are always manual-only.
 	useEffect(() => {
 		const completed: Job[] = []
+		const toTitle: Job[] = []
 		const liveIds = new Set<string>()
 		for (const job of queue.jobs) {
 			liveIds.add(job.id)
 			const previous = previousStatuses.current.get(job.id)
 			if (shouldAutoSummarize(job, previous)) completed.push(job)
+			if (shouldAutoTitle(job, previous)) toTitle.push(job)
 			previousStatuses.current.set(job.id, job.status)
 		}
 		for (const id of previousStatuses.current.keys()) {
 			if (!liveIds.has(id)) previousStatuses.current.delete(id)
 		}
+
+		// Each entry is a one-off status transition, so a re-transcription of the same job titles again.
+		if (titleEnabled) for (const job of toTitle) void nameRecording(job)
 
 		if (!enabled || !task.autoOnFinish) return
 		for (const job of completed) {
@@ -261,7 +317,7 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 			autoAttempted.current.add(job.id)
 			void summarize(job)
 		}
-	}, [enabled, task.autoOnFinish, queue.jobs, summarize])
+	}, [enabled, task.autoOnFinish, titleEnabled, queue.jobs, summarize, nameRecording])
 
 	const clearShowSummary = useCallback(() => setShowSummary(null), [])
 
