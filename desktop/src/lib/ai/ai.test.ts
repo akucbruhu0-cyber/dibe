@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanTitle, DEFAULT_AI, defaultModel, migrateLegacy, modernizePrompt, presetPrompt } from './config'
 import { chunkLines, createClient, fillPrompt, inputBudgetBytes, testConnection } from './client'
 import { inlineTextFiles, type Attachment } from './attachments'
+import { aiModelOptions, parseGeminiModels } from './models'
 
 const fetchMock = vi.fn()
 vi.mock('@tauri-apps/plugin-http', () => ({ fetch: (...args: unknown[]) => fetchMock(...args) }))
@@ -173,5 +174,30 @@ describe('cleanTitle', () => {
 	it('caps the length and returns empty for an empty reply', () => {
 		expect(cleanTitle('x'.repeat(200))).toHaveLength(80)
 		expect(cleanTitle('  \n ')).toBe('')
+	})
+})
+
+describe('Gemini model list', () => {
+	const body = {
+		models: [
+			{ name: 'models/gemini-3-pro-preview', displayName: 'Gemini 3 Pro Preview', supportedGenerationMethods: ['generateContent'] },
+			{ name: 'models/gemini-3-flash-image-preview', displayName: 'Image', supportedGenerationMethods: ['generateContent'] },
+			{ name: 'models/text-embedding-9', supportedGenerationMethods: ['embedContent'] },
+			{ name: 'models/gemini-3.8-flash', displayName: 'Gemini 3.8 Flash', supportedGenerationMethods: ['generateContent'] },
+		],
+	}
+
+	it('keeps text models, previews included, like the phone', () => {
+		expect(parseGeminiModels(body)).toEqual([
+			['gemini-3-pro-preview', 'Gemini 3 Pro Preview'],
+			['gemini-3.8-flash', 'Gemini 3.8 Flash'],
+		])
+		expect(parseGeminiModels({ error: 'bad key' })).toEqual([])
+	})
+
+	it('adds the live models after the curated ones without duplicates', () => {
+		const ids = aiModelOptions('gemini', '', parseGeminiModels(body)).map((model) => model.id)
+		expect(ids).toContain('gemini-3-pro-preview')
+		expect(ids.filter((id) => id === 'gemini-3.8-flash')).toHaveLength(1)
 	})
 })

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { Check, ChevronRight, Copy, ExternalLink } from 'lucide-react'
 import { siClaude, siGooglegemini, siOllama } from 'simple-icons'
@@ -6,7 +7,7 @@ import { m } from '~/paraglide/messages.js'
 import { ReactComponent as LinkIcon } from '~/icons/link.svg'
 import * as config from '~/lib/config'
 import { defaultModel, type AiPlatform, type AiSettings } from '~/lib/ai'
-import { aiModelOptions } from '~/lib/ai/models'
+import { aiModelOptions, fetchGeminiModels } from '~/lib/ai/models'
 import { AiModelPicker } from './ai-model-picker'
 import NumberField from '~/components/number-field'
 import { Button } from '~/components/ui/button'
@@ -78,6 +79,17 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 	const setTask = <T extends AiTaskId>(task: T, patch: Partial<AiSettings['tasks'][T]>) =>
 		setAi({ ...ai, tasks: { ...tasks, [task]: { ...tasks[task], ...patch } } })
 	const test = vm.aiTest
+	// Like the phone: the key's own model list (previews included) joins the curated one.
+	const geminiKey = connection.platform === 'gemini' ? (connection.geminiApiKey ?? '') : ''
+	const [geminiModels, setGeminiModels] = useState<[string, string][]>([])
+	useEffect(() => {
+		let current = true
+		const timer = setTimeout(() => void fetchGeminiModels(geminiKey).then((models) => current && setGeminiModels(models)), 400)
+		return () => {
+			current = false
+			clearTimeout(timer)
+		}
+	}, [geminiKey])
 
 	return (
 		<div className="space-y-6">
@@ -168,7 +180,7 @@ export function AiSection({ vm, onOpenPrompt }: { vm: SettingsViewModel; onOpenP
 							<AiModelPicker
 								value={connection.model}
 								onChange={(model) => setConnection({ model })}
-								options={aiModelOptions('gemini', connection.openaiBaseUrl)}
+								options={aiModelOptions('gemini', connection.openaiBaseUrl, geminiModels)}
 								placeholder={defaultModel('gemini')}
 							/>
 						</SettingsRow>
