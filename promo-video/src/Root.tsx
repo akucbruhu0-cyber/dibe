@@ -16,6 +16,7 @@ import { OnboardingHardware } from "./onboarding/OnboardingHardware";
 import { OnboardingFit } from "./onboarding/OnboardingFit";
 import { OnboardingWelcome, WELCOME_DUR } from "./onboarding/OnboardingWelcome";
 import { REEL_DUR, REEL_FPS, REEL_H, REEL_W, StudentReel } from "./reel/StudentReel";
+import { AIR_DUR, AIR_FPS, AIR_H, AIR_W, AirplaneReel } from "./airplane/AirplaneReel";
 
 type Props = { lang: Lang; guides: boolean; voiceover: boolean; captions: boolean };
 
@@ -44,7 +45,8 @@ export const RemotionRoot: React.FC = () => (
     <Composition id="DibePromoHe" component={Main} durationInFrames={TOTAL} fps={FPS} width={W} height={H} defaultProps={{ lang: "he" as Lang, guides: false, voiceover: true, captions: true }} />
     <Composition id="DibePromoEn" component={Main} durationInFrames={TOTAL} fps={FPS} width={W} height={H} defaultProps={{ lang: "en" as Lang, guides: false, voiceover: true, captions: true }} />
     <Composition id="StudentReel" component={StudentReel} durationInFrames={REEL_DUR} fps={REEL_FPS} width={REEL_W} height={REEL_H} defaultProps={{ withVideo: true }} />
-    <Composition id="OnboardingWelcome" component={OnboardingWelcome} durationInFrames={WELCOME_DUR} fps={30} width={720} height={720} />
+    <Composition id="AirplaneReel" component={AirplaneReel} durationInFrames={AIR_DUR} fps={AIR_FPS} width={AIR_W} height={AIR_H} />
+    <Composition id="OnboardingWelcome"component={OnboardingWelcome} durationInFrames={WELCOME_DUR} fps={30} width={720} height={720} />
     <Composition id="OnboardingPower" component={OnboardingPower} durationInFrames={120} fps={30} width={720} height={720} />
     <Composition id="OnboardingPowerLaptop" component={OnboardingPower} durationInFrames={120} fps={30} width={720} height={720} defaultProps={{ device: "laptop" as const }} />
     <Composition id="OnboardingHardware" component={OnboardingHardware} durationInFrames={120} fps={30} width={720} height={720} />
