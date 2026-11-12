@@ -74,6 +74,16 @@ class VisualTest {
     }
 
     @Test
+    fun tablesBecomeComparisons_butNotInsideCode() {
+        val (_, visuals) = extractVisuals("סיכום:\n\n| קטגוריה | הגדרה |\n| :--- | :--- |\n| **זמן** | משער |\n| איכות | רשלני |\n\nסוף")
+        val compare = visuals.single() as Visual.Compare
+        assertEquals(listOf("קטגוריה", "הגדרה"), compare.header)
+        assertEquals(listOf(listOf("זמן", "משער"), listOf("איכות", "רשלני")), compare.rows)
+        val code = "```\n| a | b |\n|---|---|\n```"
+        assertEquals(code, tablesAsVisuals(code))
+    }
+
+    @Test
     fun extractVisuals_leavesAMarkerParagraphTheExportsDrawIn() {
         val (marked, visuals) = extractVisuals("## א\nטקסט\n```dibe:chart\nX | 1\n```\n```dibe:chart\nbroken\n```\n## ב")
         assertEquals(1, visuals.size)

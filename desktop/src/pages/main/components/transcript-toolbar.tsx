@@ -251,6 +251,8 @@ export default function TranscriptToolbar({
 		showSpeakers: exportOptions.showSpeakers,
 		speakerNames: job?.speakerNames,
 		meeting: job?.meeting,
+		thread: job?.thread,
+		includeThread: exportOptions.includeThread,
 	})
 
 	useEffect(() => {
@@ -421,6 +423,9 @@ export default function TranscriptToolbar({
 				onShowTimestampsChange={(showTimestamps) => updateExport({ showTimestamps })}
 				showSpeakers={exportOptions.showSpeakers}
 				onShowSpeakersChange={(showSpeakers) => updateExport({ showSpeakers })}
+				hasThread={Boolean(job?.thread?.length)}
+				includeThread={exportOptions.includeThread}
+				onIncludeThreadChange={(includeThread) => updateExport({ includeThread })}
 				preview={exporter.preview}
 				renderedPreview={exporter.renderedPreview}
 				direction={exportDirection}

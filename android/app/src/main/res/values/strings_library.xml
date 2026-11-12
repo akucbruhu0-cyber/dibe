@@ -83,6 +83,8 @@
     <string name="export_content_transcript">Transcript</string>
     <string name="export_content_summary">Summary</string>
     <string name="export_content_both">Both</string>
+    <string name="export_followups">Follow-up questions</string>
+    <string name="export_include_followups">Include follow-up questions</string>
     <string name="export_format_txt">Plain text without formatting.</string>
     <string name="export_format_srt">Subtitles with numbered timestamps.</string>
     <string name="export_format_vtt">Web subtitles with timestamps.</string>

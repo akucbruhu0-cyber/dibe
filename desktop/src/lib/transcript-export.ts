@@ -4,6 +4,7 @@ import { markdownToHtml, markdownToText } from '~/lib/markdown-blocks'
 import { DARK_INK, LIGHT_INK, visualToSvg } from '~/lib/visual-svg'
 import { withVisualMarks } from '~/lib/visuals'
 import { formatTimestamp, speakerName, type Segment, type SpeakerNames } from '~/lib/transcript'
+import type { AiThreadEntry } from '~/lib/transcripts-store'
 
 export type TranscriptExportContent = 'transcript' | 'summary' | 'both'
 
@@ -19,6 +20,10 @@ export interface TranscriptExportOptions {
 	meeting?: Meeting
 	direction: 'rtl' | 'ltr'
 	theme?: 'dark' | 'light'
+	/** Follow-up questions and their answers, after the summary; only exported with the summary. */
+	thread?: AiThreadEntry[]
+	/** Their heading, in the app's language. */
+	threadLabel?: string
 }
 
 export function includesTranscript(content: TranscriptExportContent) {
@@ -27,6 +32,18 @@ export function includesTranscript(content: TranscriptExportContent) {
 
 export function includesSummary(content: TranscriptExportContent) {
 	return content !== 'transcript'
+}
+
+/** The follow-up questions this export carries: none unless the summary goes too. */
+export function exportedThread(options: TranscriptExportOptions): AiThreadEntry[] {
+	return includesSummary(options.content) ? (options.thread ?? []) : []
+}
+
+/** Follow-up questions as Markdown after the summary, for every format that carries text rather than drawing it. */
+function threadMarkdown(options: TranscriptExportOptions) {
+	const thread = exportedThread(options)
+	if (!thread.length) return ''
+	return [`## ${options.threadLabel ?? 'Follow-up questions'}`, ...thread.map((entry) => `> **${entry.question.trim()}**\n\n${entry.answer.trim()}`)].join('\n\n')
 }
 
 function timestamp(start: number, stop: number, decimalMarker = '.', alwaysIncludeHours = false) {
@@ -113,11 +130,21 @@ function htmlText(value: string) {
 	return escapeHtml(value).replace(/\r?\n/g, '<br>')
 }
 
+/** Markdown as HTML, each visual drawn where its marker paragraph lands, as an inline SVG. */
+function markdownSectionHtml(markdown: string, level: number, dark: boolean) {
+	const { text, visuals } = withVisualMarks(markdown)
+	return markdownToHtml(text, level).replace(
+		/<p>@@dibe-visual-(\d+)@@<\/p>/g,
+		(_, index: string) => `<figure class="visual">${visualToSvg(visuals[Number(index)], dark ? DARK_INK : LIGHT_INK).svg}</figure>`,
+	)
+}
+
 function serializeHtml(segments: Segment[], summary: string, options: TranscriptExportOptions) {
 	const dark = options.theme === 'dark'
+	// `bubble` is the app's light green, behind each follow-up question as in a chat.
 	const palette = dark
-		? { background: '#181818', foreground: '#ececec', muted: '#a3a3a3', primary: '#60a5fa', border: '#303030' }
-		: { background: '#ffffff', foreground: '#1a1c1f', muted: '#6e6e6e', primary: '#2563eb', border: '#e6e6e6' }
+		? { background: '#181818', foreground: '#ececec', muted: '#a3a3a3', primary: '#8fd3a6', border: '#303030', bubble: '#a9ddb8' }
+		: { background: '#ffffff', foreground: '#1a1c1f', muted: '#6e6e6e', primary: '#26794a', border: '#e6e6e6', bubble: '#bfe9cb' }
 	const transcript = segments
 		.map((segment) => {
 			const metadata = segmentMetadata(segment, options)
@@ -131,13 +158,15 @@ function serializeHtml(segments: Segment[], summary: string, options: Transcript
 	if (includesSummary(options.content)) {
 		// Under the page's own "Summary" heading when there is one, so the levels stay in order.
 		const both = options.content === 'both'
-		// Each visual is drawn where its marker paragraph lands, as an inline SVG.
-		const { text, visuals } = withVisualMarks(summary)
-		const body = markdownToHtml(text, both ? 3 : 2).replace(
-			/<p>@@dibe-visual-(\d+)@@<\/p>/g,
-			(_, index: string) => `<figure class="visual">${visualToSvg(visuals[Number(index)], dark ? DARK_INK : LIGHT_INK).svg}</figure>`,
-		)
+		const body = markdownSectionHtml(summary, both ? 3 : 2, dark)
 		sections.push(`<section class="summary">${both ? '<h2>Summary</h2>' : ''}${body}</section>`)
+	}
+	const thread = exportedThread(options)
+	if (thread.length) {
+		const entries = thread.map(
+			(entry) => `<div class="question">${htmlText(entry.question.trim())}</div><div class="answer summary">${markdownSectionHtml(entry.answer, 3, dark)}</div>`,
+		)
+		sections.push(`<section class="thread"><h2>${escapeHtml(options.threadLabel ?? 'Follow-up questions')}</h2>${entries.join('\n')}</section>`)
 	}
 	const title = options.title.trim()
 	return [
@@ -147,7 +176,7 @@ function serializeHtml(segments: Segment[], summary: string, options: Transcript
 		'<meta charset="utf-8">',
 		`<meta name="color-scheme" content="${dark ? 'dark' : 'light'}">`,
 		`<title>${escapeHtml(title)}</title>`,
-		`<style>:root{color-scheme:${dark ? 'dark' : 'light'}}html,body{min-height:100%;margin:0;background:${palette.background};color:${palette.foreground}}.html{box-sizing:border-box;min-height:100vh;font-family:Roboto,Arial,sans-serif;max-width:1000px;margin:auto;padding:22px;line-height:1.5;background:${palette.background};color:${palette.foreground}}.html h1{text-align:center;color:${palette.primary}}.html h2{border-bottom:1px solid ${palette.border};padding-bottom:.35rem}.html .segment{margin-top:18px}.html .metadata{font-size:.8rem;font-weight:600;color:${palette.muted}}.html .segment p,.html .summary p{white-space:normal}.html .summary hr{border:0;border-top:1px solid ${palette.border};margin:1.25rem 0}.html .summary blockquote{margin:0;padding-inline-start:1rem;border-inline-start:3px solid ${palette.border};color:${palette.muted}}.html .summary ul,.html .summary ol{padding-inline-start:1.5rem}.html .visual{margin:1.25rem 0}.html .visual svg{display:block;max-width:100%;height:auto}</style>`,
+		`<style>:root{color-scheme:${dark ? 'dark' : 'light'}}html,body{min-height:100%;margin:0;background:${palette.background};color:${palette.foreground}}.html{box-sizing:border-box;min-height:100vh;font-family:Roboto,Arial,sans-serif;max-width:1000px;margin:auto;padding:22px;line-height:1.5;background:${palette.background};color:${palette.foreground}}.html h1{text-align:center;color:${palette.primary}}.html h2{border-bottom:1px solid ${palette.border};padding-bottom:.35rem}.html .segment{margin-top:18px}.html .metadata{font-size:.8rem;font-weight:600;color:${palette.muted}}.html .segment p,.html .summary p{white-space:normal}.html .summary hr{border:0;border-top:1px solid ${palette.border};margin:1.25rem 0}.html .summary blockquote{margin:0;padding-inline-start:1rem;border-inline-start:3px solid ${palette.border};color:${palette.muted}}.html .summary ul,.html .summary ol{padding-inline-start:1.5rem}.html .visual{margin:1.25rem 0}.html .thread .question{width:fit-content;max-width:85%;margin:1.75rem 0 .5rem;padding:.6rem 1rem;border-radius:18px;border-start-start-radius:4px;background:${palette.bubble};color:#1a1c1f}.html .visual svg{display:block;max-width:100%;height:auto}</style>`,
 		'</head>',
 		'<body>',
 		`<main class="html printable" dir="${options.direction}">`,
@@ -214,7 +243,8 @@ function serializeDocumentPreview(segments: Segment[], summary: string, options:
 }
 
 export function serializeTranscriptExport(format: TextFormat, segments: Segment[], summary: string | undefined, options: TranscriptExportOptions): string {
-	const normalizedSummary = summary?.trim() ?? ''
+	// HTML draws the questions in bubbles; every other format carries them as text after the summary.
+	const normalizedSummary = [summary?.trim() ?? '', format === 'html' ? '' : threadMarkdown(options)].filter(Boolean).join('\n\n')
 	switch (format) {
 		case 'md':
 			return serializeMarkdown(segments, normalizedSummary, options)

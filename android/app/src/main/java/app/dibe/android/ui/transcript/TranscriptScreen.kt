@@ -376,6 +376,7 @@ fun TranscriptScreen(id: String, onBack: () -> Unit, onDeleted: () -> Unit) {
             ExportSheet(
                 hasSummary = record.summary != null,
                 hasSpeakers = state.hasSpeakers,
+                hasThread = !record.thread.isNullOrEmpty(),
                 rtl = state.rtl,
                 onShare = vm::share,
                 onSave = { options ->

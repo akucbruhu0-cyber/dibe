@@ -83,6 +83,8 @@
     <string name="export_content_transcript">תמלול</string>
     <string name="export_content_summary">סיכום</string>
     <string name="export_content_both">שניהם</string>
+    <string name="export_followups">שאלות המשך</string>
+    <string name="export_include_followups">כולל שאלות המשך</string>
     <string name="export_format_txt">טקסט פשוט ללא עיצוב.</string>
     <string name="export_format_srt">כתוביות עם חותמות זמן ממוספרות.</string>
     <string name="export_format_vtt">כתוביות אינטרנט עם חותמות זמן.</string>

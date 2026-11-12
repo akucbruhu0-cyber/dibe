@@ -97,6 +97,8 @@
 	"exportPrint": "Print",
 	"exportSave": "Save",
 	"exportSummary": "Summary",
+	"exportFollowUps": "Follow-up questions",
+	"exportIncludeFollowUps": "Include follow-up questions",
 	"exportTranscript": "Transcript",
 	"ffmpegOptions": "FFMPEG options",
 	"files": "Files",

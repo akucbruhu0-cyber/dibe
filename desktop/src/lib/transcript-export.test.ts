@@ -57,6 +57,16 @@ describe('serializeTranscriptExport', () => {
 		expect(both).toContain('\n\nSummary\n\nA short summary.')
 	})
 
+	it('carries the follow-up questions after the summary, never without it', () => {
+		const thread = { thread: [{ question: 'Why?', answer: 'Because **so**.' }], threadLabel: 'Follow-ups' }
+		const markdown = serialize('md', { content: 'summary', ...thread })
+		expect(markdown).toContain('A short summary.\n\n## Follow-ups\n\n> **Why?**\n\nBecause **so**.')
+		expect(serialize('md', { content: 'transcript', ...thread })).not.toContain('Why?')
+		const html = serialize('html', { content: 'both', ...thread })
+		expect(html).toContain('<div class="question">Why?</div>')
+		expect(html).not.toContain('&gt; **Why?**')
+	})
+
 	it('serializes Markdown with document and section headings', () => {
 		const markdown = serialize('md', { content: 'both' })
 		expect(markdown).toContain('# Interview & notes')

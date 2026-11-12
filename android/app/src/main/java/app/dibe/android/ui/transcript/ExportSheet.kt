@@ -97,6 +97,8 @@ private fun contentLabel(content: ExportContent): Int = when (content) {
 internal fun ExportSheet(
     hasSummary: Boolean,
     hasSpeakers: Boolean,
+    /** The transcript has follow-up questions; their switch shows only then, and only with the summary. */
+    hasThread: Boolean,
     rtl: Boolean,
     onShare: (ExportOptions) -> Unit,
     onSave: (ExportOptions) -> Unit,
@@ -106,14 +108,22 @@ internal fun ExportSheet(
     var content by rememberSaveable { mutableStateOf(ExportContent.TRANSCRIPT) }
     var timestamps by rememberSaveable { mutableStateOf(true) }
     var speakers by rememberSaveable { mutableStateOf(true) }
+    var thread by rememberSaveable { mutableStateOf(false) }
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val speakerLabel = stringResource(R.string.transcript_speaker)
+    // The two parts' headings in a file that holds both, in the app's language.
+    val transcriptLabel = stringResource(R.string.export_content_transcript)
+    val summaryLabel = stringResource(R.string.export_content_summary)
+    val threadLabel = stringResource(R.string.export_followups)
     val chosen = if (hasSummary) content else ExportContent.TRANSCRIPT
     val subtitles = format == ExportFormat.SRT || format == ExportFormat.VTT
 
     fun finish(action: (ExportOptions) -> Unit) {
-        val options = ExportOptions(format, chosen, timestamps || subtitles, speakers, speakerLabel, rtl)
+        val options = ExportOptions(
+            format, chosen, timestamps || subtitles, speakers, speakerLabel, rtl, transcriptLabel, summaryLabel,
+            includeThread = hasThread && thread, threadLabel = threadLabel,
+        )
         scope.launch { sheet.hide() }.invokeOnCompletion {
             onDismiss()
             action(options)
@@ -160,6 +170,7 @@ internal fun ExportSheet(
                 val transcriptShown = chosen != ExportContent.SUMMARY
                 ToggleRow(stringResource(R.string.export_timestamps), timestamps || subtitles, transcriptShown && !subtitles) { timestamps = it }
                 if (hasSpeakers) ToggleRow(stringResource(R.string.export_speakers), speakers, transcriptShown) { speakers = it }
+                if (hasThread && chosen != ExportContent.TRANSCRIPT) ToggleRow(stringResource(R.string.export_include_followups), thread, true) { thread = it }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

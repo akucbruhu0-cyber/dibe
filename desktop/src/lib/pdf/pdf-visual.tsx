@@ -13,6 +13,11 @@ const colorOf = (index: number, own?: string | null) => own ?? PALETTE[index % P
 export interface PdfInk {
 	ink: string
 	muted: string
+	accent: string
+	/** Hairlines: table rules, bar tracks. */
+	line: string
+	/** The card behind a visual, a shade off the page. */
+	tint: string
 }
 
 type Of<K extends Visual['kind']> = Extract<Visual, { kind: K }>
@@ -37,20 +42,25 @@ export function PdfVisual({ visual, ink, fallback }: { visual: Visual; ink: PdfI
 	return (
 		<View
 			wrap={kind === 'compare' || kind === 'timeline'}
-			style={{ marginTop: 14, padding: 12, borderWidth: 1, borderColor: ink.muted, borderRadius: 10, borderStyle: 'solid' }}>
-			{visual.title.trim() !== '' && <Text style={{ ...bold, fontSize: 11, marginBottom: 8 }}>{visual.title}</Text>}
-			{kind === 'chart' && (visual.pie ? <Donut visual={visual} row={row} text={text} bold={bold} /> : <Bars visual={visual} row={row} text={text} bold={bold} dir={dir} />)}
+			style={{ marginTop: 16, paddingVertical: 14, paddingHorizontal: 16, backgroundColor: ink.tint, borderRadius: 10 }}>
+			{visual.title.trim() !== '' && <Text style={{ ...bold, fontSize: 11.5, color: ink.accent, marginBottom: 10 }}>{visual.title}</Text>}
+			{kind === 'chart' && (visual.pie ? <Donut visual={visual} row={row} text={text} bold={bold} /> : <Bars visual={visual} row={row} text={text} bold={bold} dir={dir} ink={ink} />)}
 			{kind === 'flow' && <Flow visual={visual} text={text} ink={ink} />}
 			{kind === 'timeline' && <Timeline visual={visual} row={row} text={text} small={small} bold={bold} />}
 			{kind === 'tree' && <Tree visual={visual} text={text} small={small} bold={bold} dir={dir} />}
-			{kind === 'compare' && <Compare visual={visual} text={text} small={small} bold={bold} dir={dir} />}
+			{kind === 'compare' &&
+				(visual.header.length <= 4 ? (
+					<Table visual={visual} text={text} bold={bold} row={row} ink={ink} />
+				) : (
+					<Compare visual={visual} text={text} small={small} bold={bold} dir={dir} />
+				))}
 		</View>
 	)
 }
 
 type TextStyle = { fontSize: number; color: string; textAlign: 'right' | 'left'; direction: Dir; fontWeight?: number }
 
-function Bars({ visual, row, text, bold, dir }: { visual: Of<'chart'>; row: 'row' | 'row-reverse'; text: TextStyle; bold: TextStyle; dir: Dir }) {
+function Bars({ visual, row, text, bold, dir, ink }: { visual: Of<'chart'>; row: 'row' | 'row-reverse'; text: TextStyle; bold: TextStyle; dir: Dir; ink: PdfInk }) {
 	const max = Math.max(...visual.rows.map((item) => item.value))
 	return visual.rows.map((item, i) => (
 		<View key={i} style={{ marginTop: i ? 7 : 0 }}>
@@ -58,8 +68,9 @@ function Bars({ visual, row, text, bold, dir }: { visual: Of<'chart'>; row: 'row
 				<Text style={{ ...text, flex: 1 }}>{item.label}</Text>
 				<Text style={{ ...bold, direction: 'ltr' }}>{String(item.value)}</Text>
 			</View>
-			<View style={{ marginTop: 3, height: 6, flexDirection: dir === 'rtl' ? 'row-reverse' : 'row' }}>
-				<View style={{ width: `${(item.value / max) * 100}%`, height: 6, borderRadius: 3, backgroundColor: colorOf(i, item.color) }} />
+			{/* The track shows how far each bar is from the largest. */}
+			<View style={{ marginTop: 4, height: 8, borderRadius: 4, backgroundColor: ink.line, flexDirection: dir === 'rtl' ? 'row-reverse' : 'row' }}>
+				<View style={{ width: `${(item.value / max) * 100}%`, height: 8, borderRadius: 4, backgroundColor: colorOf(i, item.color) }} />
 			</View>
 		</View>
 	))
@@ -149,6 +160,28 @@ function Tree({ visual, text, small, bold, dir }: { visual: Of<'tree'>; text: Te
 			))}
 		</View>
 	))
+}
+
+/** A comparison of a few columns, and every Markdown table, as a table: a header over hairline-ruled rows. */
+function Table({ visual, text, bold, row, ink }: { visual: Of<'compare'>; text: TextStyle; bold: TextStyle; row: 'row' | 'row-reverse'; ink: PdfInk }) {
+	// The first column names the item; the others carry the longer text.
+	const flex = (c: number) => (c === 0 ? 1 : 1.6)
+	const cells = (values: string[], style: (column: number) => TextStyle) =>
+		values.map((value, c) => (
+			<Text key={c} style={{ ...style(c), flex: flex(c), paddingHorizontal: 5, lineHeight: 1.45 }}>
+				{value}
+			</Text>
+		))
+	return (
+		<View>
+			<View style={{ flexDirection: row, paddingBottom: 6, borderBottomWidth: 1.5, borderBottomColor: ink.accent }}>{cells(visual.header, () => ({ ...bold, color: ink.accent }))}</View>
+			{visual.rows.map((values, i) => (
+				<View key={i} wrap={false} style={{ flexDirection: row, paddingVertical: 6, borderBottomWidth: i < visual.rows.length - 1 ? 0.75 : 0, borderBottomColor: ink.line }}>
+					{cells(values, (c) => (c === 0 ? bold : text))}
+				</View>
+			))}
+		</View>
+	)
 }
 
 function Compare({ visual, text, small, bold, dir }: { visual: Of<'compare'>; text: TextStyle; small: TextStyle; bold: TextStyle; dir: Dir }) {

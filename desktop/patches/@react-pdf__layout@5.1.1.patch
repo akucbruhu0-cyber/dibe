@@ -1,0 +1,13 @@
+diff --git a/lib/index.js b/lib/index.js
+index 18c2618f4630b3c1296c8c3cac317b8d7666bbe8..8f448a9f0978ab00214c1ccac8e5a26c410769d3 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1926,6 +1926,8 @@ const getFragments = (fontStore, instance, parentLink = null, level = 0) => {
+         // @ts-expect-error allow this props access
+         link: parentLink || instance.props?.src || instance.props?.href,
+         align: textAlign || (direction === 'rtl' ? 'right' : 'left'),
++        // DIBE patch: a justified paragraph ends on its start side; textkit's default is always left, wrong for right-to-left text.
++        alignLastLine: textAlign === 'justify' ? (direction === 'rtl' ? 'right' : 'left') : undefined,
+         features: fontFeatureSettings,
+     };
+     for (let i = 0; i < instance.children.length; i += 1) {

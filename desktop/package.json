@@ -97,6 +97,9 @@
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"esbuild"
-		]
+		],
+		"patchedDependencies": {
+			"@react-pdf/layout@5.1.1": "patches/@react-pdf__layout@5.1.1.patch"
+		}
 	}
 }

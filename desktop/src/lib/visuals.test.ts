@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { markedVisual, mergeVisuals, parseVisual, withVisualMarks, visualDirection, visualKind, visualsApply, visualsAsMarkdown, type Visual } from './visuals'
+import { markedVisual, mergeVisuals, parseVisual, tablesAsVisuals, withVisualMarks, visualDirection, visualKind, visualsApply, visualsAsMarkdown, type Visual } from './visuals'
 import { parseMarkdown } from './markdown-blocks'
 
 /** The same cases as android/.../VisualTest.kt, so both apps read a summary the same way. */
@@ -62,6 +62,13 @@ describe('visuals', () => {
 		expect(merged.indexOf('```dibe:flow')).toBeLessThan(merged.indexOf('**החלטות**'))
 		const tree = parseVisual('tree', 'התחלה::לבחור?\n- כן => אישור\n\nאישור::ממשיכים')
 		expect(tree?.kind === 'tree' && tree.nodes['התחלה'].choices).toEqual([['כן', 'אישור']])
+	})
+
+	it('turns Markdown tables into comparisons, but not inside code', () => {
+		const { visuals } = withVisualMarks('סיכום:\n\n| קטגוריה | הגדרה |\n| :--- | :--- |\n| **זמן** | משער |\n| איכות | רשלני |\n\nסוף')
+		expect(visuals).toEqual([{ kind: 'compare', title: '', header: ['קטגוריה', 'הגדרה'], rows: [['זמן', 'משער'], ['איכות', 'רשלני']] }])
+		const code = '```\n| a | b |\n|---|---|\n```'
+		expect(tablesAsVisuals(code)).toBe(code)
 	})
 
 	it('writes visuals out for exports, and splits them for drawing', () => {

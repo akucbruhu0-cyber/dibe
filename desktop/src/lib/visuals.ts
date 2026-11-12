@@ -33,6 +33,8 @@ export type Visual =
 	| { kind: 'compare'; title: string; header: string[]; rows: string[][] }
 
 const MAX_ROWS = 8
+/** A comparison is also every Markdown table (see `tablesAsVisuals`), which runs longer than a chart. */
+const MAX_TABLE_ROWS = 30
 const META = /^\s*(title|type|after)\s*:\s*(.*)$/i
 const NUMBER = /-?\d+(?:[.,]\d+)?/
 const HEX = /^#?([0-9a-fA-F]{6})$/
@@ -172,7 +174,7 @@ function compare(title: string, lines: string[]): Visual | null {
 	const rows = lines.filter((line) => !/^[\s|:-]+$/.test(line)).map(cells).filter((row) => row[0])
 	if (rows.length < 2 || rows[0].length < 2) return null
 	const header = rows[0]
-	return { kind: 'compare', title, header, rows: rows.slice(1, MAX_ROWS + 1).map((row) => header.map((_, i) => row[i] ?? '')) }
+	return { kind: 'compare', title, header, rows: rows.slice(1, MAX_TABLE_ROWS + 1).map((row) => header.map((_, i) => row[i] ?? '')) }
 }
 
 /** Every ```` ```dibe:… ```` block, closed. */
@@ -211,9 +213,34 @@ function asMarkdown(visual: Visual): string {
 	return lines.join('\n')
 }
 
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-{2,}:?\s*(?:\|\s*:?-{2,}:?\s*)*\|?\s*$/
+
+/**
+ * Every Markdown table as a comparison visual. No renderer here draws tables (the screen, PDF, Word
+ * and HTML all showed the pipes), and a table is exactly a comparison: a header row, then one row per item.
+ */
+export function tablesAsVisuals(markdown: string): string {
+	const lines = markdown.split('\n')
+	const out: string[] = []
+	let fenced = false
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i]
+		if (/^\s*`{3,}/.test(line)) fenced = !fenced
+		const separator = lines[i + 1] ?? ''
+		if (!fenced && line.includes('|') && separator.includes('|') && TABLE_SEPARATOR.test(separator)) {
+			let end = i + 2
+			while (end < lines.length && lines[end].includes('|') && lines[end].trim()) end++
+			const rows = [line, ...lines.slice(i + 2, end)].map((row) => row.replace(/\*\*|__/g, ''))
+			out.push('```dibe:compare', ...rows, '```')
+			i = end - 1
+		} else out.push(line)
+	}
+	return out.join('\n')
+}
+
 /** [markdown] with every visual written out as plain Markdown, for files that can't draw it. */
 export function visualsAsMarkdown(markdown: string): string {
-	return markdown.replace(FENCED, (_, kind: string, body: string) => {
+	return tablesAsVisuals(markdown).replace(FENCED, (_, kind: string, body: string) => {
 		const visual = parseVisual(kind.toLowerCase(), body)
 		return visual ? asMarkdown(visual) : ''
 	})
@@ -226,7 +253,7 @@ export function visualsAsMarkdown(markdown: string): string {
  */
 export function withVisualMarks(markdown: string): { text: string; visuals: Visual[] } {
 	const visuals: Visual[] = []
-	const text = markdown.replace(FENCED, (_, kind: string, body: string) => {
+	const text = tablesAsVisuals(markdown).replace(FENCED, (_, kind: string, body: string) => {
 		const visual = parseVisual(kind.toLowerCase(), body)
 		if (!visual) return ''
 		visuals.push(visual)
@@ -338,6 +365,13 @@ Do not repeat a kind unless the content clearly calls for it. Only blocks, nothi
 </transcript>`
 
 /** A `#` heading, or a line that is only bold (`**Key points:**`), which models often write instead. */
+/** For a question's answer: the same formats, without `after:`, since an answer has no sections. */
+export const ASK_VISUALS = `When a visual would make the answer clearer (numbers said in the recording, a process, an order of events, a choice, options side by side), add it as a fenced block in one of these formats, with its text in {language}. Use a comparison block instead of a Markdown table.
+
+${VISUAL_PROMPT.slice(VISUAL_PROMPT.indexOf('A chart,'), VISUAL_PROMPT.indexOf('Do not repeat'))
+	.replace(/^after: .*\n/gm, '')
+	.trim()}`
+
 const HEADING = /^\s{0,3}(?:#{1,6}\s+(.*?)\s*#*|\*\*([^*]+?)\*\*\s*:?|__([^_]+?)__\s*:?)\s*$/
 const ANSWER_BLOCK = /```[ \t]*dibe[:-]([a-z]+)[ \t]*\n([\s\S]*?)\n[ \t]*```/gi
 const AFTER = /^\s*after\s*:\s*(.*)$/im

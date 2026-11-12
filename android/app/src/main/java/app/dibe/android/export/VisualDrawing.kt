@@ -34,20 +34,20 @@ internal class VisualDrawing(
 
     init {
         var y = PAD
-        if (visual.title.isNotBlank()) y += text(visual.title, 11f, INK, bold, 0f, y, inner).height + 8f
+        if (visual.title.isNotBlank()) y += text(visual.title, 11.5f, ACCENT, bold, 0f, y, inner).height + 10f
         y = when (visual) {
             is Visual.Chart -> if (visual.pie) donut(visual, y) else bars(visual, y)
             is Visual.Flow -> flow(visual, y)
             is Visual.Timeline -> timeline(visual, y)
             is Visual.Tree -> tree(visual, y)
-            is Visual.Compare -> compare(visual, y)
+            is Visual.Compare -> if (visual.header.size <= 4) table(visual, y) else compare(visual, y)
         }
         height = y + PAD
     }
 
     fun draw(canvas: Canvas) {
-        val border = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 1f; color = LINE }
-        canvas.drawRoundRect(RectF(0.5f, 0.5f, width - 0.5f, height - 0.5f), 10f, 10f, border)
+        // A card a shade off the page, as on the desktop PDF.
+        canvas.drawRoundRect(RectF(0f, 0f, width, height), 10f, 10f, fill(TINT))
         ops.forEach { it(canvas) }
     }
 
@@ -94,12 +94,16 @@ internal class VisualDrawing(
             val label = text(row.label, 10f, INK, regular, 0f, y, inner - valueWidth - 8f)
             text(number(row.value), 10f, INK, bold, inner - valueWidth, y, valueWidth)
             y += maxOf(label.height, value.height) + 3f
-            val barTop = y
+            val barTop = y + 1f
             val w = (row.value / max).toFloat() * inner
             val left = x(0f, w)
             val color = colorOf(i, row.color)
-            ops += { it.drawRoundRect(RectF(left, barTop, left + w, barTop + 6f), 3f, 3f, fill(color)) }
-            y += 6f + if (i < chart.rows.lastIndex) 8f else 0f
+            // The track shows how far each bar is from the largest.
+            ops += {
+                it.drawRoundRect(RectF(PAD, barTop, PAD + inner, barTop + 8f), 4f, 4f, fill(LINE))
+                it.drawRoundRect(RectF(left, barTop, left + w, barTop + 8f), 4f, 4f, fill(color))
+            }
+            y += 9f + if (i < chart.rows.lastIndex) 8f else 0f
         }
         return y
     }
@@ -228,6 +232,29 @@ internal class VisualDrawing(
         return y
     }
 
+    /** A comparison of a few columns, and every Markdown table, as a table: a header over hairline-ruled rows. */
+    private fun table(compare: Visual.Compare, top: Float): Float {
+        // The first column names the item; the others carry the longer text.
+        val weights = List(compare.header.size) { if (it == 0) 1f else 1.6f }
+        val unit = inner / weights.sum()
+        val starts = weights.runningFold(0f) { acc, w -> acc + w * unit }
+        fun row(cells: List<String>, y: Float, face: (Int) -> Typeface, color: Int): Float =
+            cells.indices.maxOf { c -> text(cells[c], 10f, color, face(c), starts[c] + 5f, y, weights[c] * unit - 10f).height.toFloat() }
+        var y = top + row(compare.header, top, { bold }, ACCENT) + 6f
+        val headerRule = y
+        ops += { it.drawRect(PAD, headerRule, PAD + inner, headerRule + 1.5f, fill(ACCENT)) }
+        y += 1.5f
+        compare.rows.forEachIndexed { i, cells ->
+            y += 6f + row(cells, y + 6f, { if (it == 0) bold else regular }, INK) + 6f
+            if (i < compare.rows.lastIndex) {
+                val rule = y
+                ops += { it.drawRect(PAD, rule, PAD + inner, rule + 0.75f, fill(LINE)) }
+                y += 0.75f
+            }
+        }
+        return y
+    }
+
     private fun compare(compare: Visual.Compare, top: Float): Float {
         var y = top
         compare.rows.forEachIndexed { i, row ->
@@ -248,11 +275,12 @@ internal class VisualDrawing(
     }
 
     private companion object {
-        const val PAD = 12f
+        const val PAD = 15f
         const val INK = 0xFF1A1C1F.toInt()
         const val MUTED = 0xFF6E6E6E.toInt()
-        const val LINE = 0xFFDDDDDD.toInt()
-        const val ACCENT = 0xFF007AFF.toInt()
+        const val LINE = 0xFFE3E6E3.toInt()
+        const val ACCENT = 0xFF26794A.toInt() // the app's green, as in the PDF around it
+        const val TINT = 0xFFF1F7F2.toInt()
 
         /** The screen's palette (ui/transcript/VisualViews.kt), so the file matches the app. */
         val Palette = intArrayOf(0xFF007AFF.toInt(), 0xFFFF3B30.toInt(), 0xFF34C759.toInt(), 0xFFFF9500.toInt(), 0xFFAF52DE.toInt(), 0xFF5AC8FA.toInt(), 0xFFFF2D55.toInt(), 0xFFFFCC00.toInt())

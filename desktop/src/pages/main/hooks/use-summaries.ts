@@ -17,7 +17,7 @@ import {
 } from '~/lib/ai'
 import { isAutoProjectName } from '~/lib/project-name'
 import { asText } from '~/lib/transcript'
-import { mergeVisuals, VISUAL_PROMPT, visualsApply } from '~/lib/visuals'
+import { ASK_VISUALS, mergeVisuals, VISUAL_PROMPT, visualsApply } from '~/lib/visuals'
 import { usePreferenceProvider } from '~/providers/preference'
 import type { Job, TranscribeQueue } from './use-transcribe-queue'
 
@@ -246,11 +246,12 @@ export function useSummaries(queue: TranscribeQueue): Summaries {
 				// The whole transcript when it fits, otherwise the summary, which the model can still
 				// answer most questions from.
 				const transcript = transcriptOf(job)
-				const fits = utf8Bytes(transcript) < inputBudgetBytes(connection.contextTokens) - 2_000
-				const context = fits ? transcript : (job.summary ?? transcript.slice(0, inputBudgetBytes(connection.contextTokens) - 2_000))
+				const fits = utf8Bytes(transcript) < inputBudgetBytes(connection.contextTokens) - 4_000
+				const context = fits ? transcript : (job.summary ?? transcript.slice(0, inputBudgetBytes(connection.contextTokens) - 4_000))
 				const history = (job.thread ?? []).map((entry) => `Q: ${entry.question}\nA: ${entry.answer}`).join('\n\n')
 				const prompt = [
 					`Answer the question about this transcript in ${appLanguageName()}, using markdown. Be direct and specific; quote the transcript where it helps. If the transcript does not say, say so.`,
+					ASK_VISUALS.replace('{language}', appLanguageName()),
 					`Transcript${fits ? '' : ' (summary)'}:\n"""\n${context}\n"""`,
 					history ? `Earlier questions:\n${history}` : '',
 					`Question: ${trimmed}`,

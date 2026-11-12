@@ -112,6 +112,18 @@ internal object DocxWriter {
             if (both) heading(options.summaryLabel)
             summary(body, summary, rtl, align, images)
         }
+        val thread = exportedThread(record, options)
+        if (thread.isNotEmpty()) {
+            heading(options.threadLabel)
+            for (entry in thread) {
+                // Each question on the app's light green, as in the chat it was asked in, then its answer.
+                body.paragraph(
+                    align = align, bidi = rtl, keepNext = true, before = 320, after = 120, line = LINE, shade = "BFE9CB",
+                    runs = listOf(Text(entry.question.jsTrim(), rtl = rtl)),
+                )
+                summary(body, entry.answer, rtl, align, images)
+            }
+        }
         // The drawing namespaces only when there is a drawing, so a plain export stays byte for byte the desktop's.
         val namespaces = if (images.isEmpty()) "" else " xmlns:r=\"$R\" xmlns:wp=\"$WP\" xmlns:a=\"$A\" xmlns:pic=\"$PIC\""
         return "$XML_HEADER<w:document xmlns:w=\"$W\"$namespaces><w:body>$body" +
@@ -189,11 +201,13 @@ internal object DocxWriter {
         indent: Int? = null,
         hanging: Int? = null,
         rule: Boolean = false,
+        shade: String? = null,
     ) {
         append("<w:p><w:pPr>")
         if (style != null) append("<w:pStyle w:val=\"$style\"/>")
         if (keepNext) append("<w:keepNext/>")
         if (rule) append("<w:pBdr><w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"C8C8C8\"/></w:pBdr>")
+        if (shade != null) append("<w:shd w:val=\"clear\" w:color=\"auto\" w:fill=\"$shade\"/>")
         if (bidi) append("<w:bidi/>")
         if (before != null || after != null || line != null) {
             append("<w:spacing")

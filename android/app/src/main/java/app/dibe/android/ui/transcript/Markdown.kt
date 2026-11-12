@@ -74,7 +74,7 @@ fun parseMarkdown(source: String, code: SpanStyle = PlainCode): List<MdBlock> {
         blocks += MdBlock.Paragraph(inlineMarkdown(paragraph.joinToString(" "), code))
         paragraph.clear()
     }
-    val lines = source.replace("\r\n", "\n").lines()
+    val lines = tablesAsVisuals(source.replace("\r\n", "\n")).lines()
     var i = 0
     while (i < lines.size) {
         val line = lines[i++]

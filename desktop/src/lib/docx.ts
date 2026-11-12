@@ -1,8 +1,9 @@
-import { AlignmentType, BorderStyle, Document, HeadingLevel, ImageRun, Packer, Paragraph, TextRun } from 'docx'
+import { AlignmentType, BorderStyle, Document, HeadingLevel, ImageRun, Packer, Paragraph, ShadingType, TextRun } from 'docx'
 import { formatDuration } from '~/components/html-view'
 import { parseMarkdown, type Run } from './markdown-blocks'
 import { markedVisual, withVisualMarks, type Visual } from './visuals'
 import { speakerName, type Segment, type SpeakerNames } from './transcript'
+import type { AiThreadEntry } from './transcripts-store'
 
 export interface DocxExportOptions {
 	content?: 'transcript' | 'summary' | 'both'
@@ -12,6 +13,9 @@ export interface DocxExportOptions {
 	summary?: string
 	transcriptLabel?: string
 	summaryLabel?: string
+	/** Follow-up questions and their answers, after the summary. */
+	thread?: AiThreadEntry[]
+	threadLabel?: string
 	/** Draws a summary's visual as a PNG (the app rasterizes its SVG); without it visuals are written out as lists. */
 	drawVisual?: (visual: Visual) => Promise<DrawnVisual>
 }
@@ -185,6 +189,21 @@ export async function toDocx(title: string, segments: Segment[], direction: 'rtl
 	}
 
 	const summary = includeSummary ? await summaryParagraphs(options.summary ?? '', isRtl, options.drawVisual) : []
+	// Each question on the app's light green, as in the chat it was asked in, then its answer.
+	const thread: Paragraph[] = []
+	for (const entry of content !== 'transcript' ? (options.thread ?? []) : []) {
+		thread.push(
+			new Paragraph({
+				alignment,
+				bidirectional: isRtl,
+				keepNext: true,
+				shading: { type: ShadingType.CLEAR, color: 'auto', fill: 'BFE9CB' },
+				spacing: { before: 320, after: 120, line: LINE },
+				children: [new TextRun({ text: entry.question.trim(), size: BODY_SIZE, color: INK, rightToLeft: isRtl })],
+			}),
+			...(await summaryParagraphs(entry.answer, isRtl, options.drawVisual)),
+		)
+	}
 	const doc = new Document({
 		title,
 		description: 'Transcript exported from DIBE',
@@ -211,6 +230,7 @@ export async function toDocx(title: string, segments: Segment[], direction: 'rtl
 					...(includeSummary
 						? [...(content === 'both' ? [heading(options.summaryLabel ?? 'Summary')] : []), ...summary]
 						: []),
+						...(thread.length ? [heading(options.threadLabel ?? 'Follow-up questions'), ...thread] : []),
 				],
 			},
 		],

@@ -1,6 +1,7 @@
 package app.dibe.android.export
 
 import android.content.Context
+import app.dibe.android.data.AiThreadEntry
 import app.dibe.android.data.Meeting
 import app.dibe.android.data.Segment
 import app.dibe.android.data.TranscriptRecord
@@ -44,6 +45,9 @@ data class ExportOptions(
     /** Section headings in DOCX and PDF when [content] is BOTH; the text formats always say "Transcript"/"Summary", as on the desktop. */
     val transcriptLabel: String = "Transcript",
     val summaryLabel: String = "Summary",
+    /** The follow-up questions go after the summary (never without it), under [threadLabel]. */
+    val includeThread: Boolean = false,
+    val threadLabel: String = "Follow-up questions",
 )
 
 object Exporter {
@@ -62,7 +66,9 @@ object Exporter {
      * DOCX, the plain preview the desktop shows for them.
      */
     fun text(record: TranscriptRecord, options: ExportOptions): String {
-        val summary = record.summary?.jsTrim() ?: ""
+        // HTML draws the questions in bubbles; every other format carries them as text after the summary.
+        val summary = listOf(record.summary?.jsTrim() ?: "", if (options.format == ExportFormat.HTML) "" else threadMarkdown(record, options))
+            .filter { it.isNotEmpty() }.joinToString("\n\n")
         val segments = record.segments
         return when (options.format) {
             ExportFormat.MD -> markdown(segments, summary, record, options)
@@ -137,7 +143,8 @@ object Exporter {
         val background = "#ffffff"
         val foreground = "#1a1c1f"
         val muted = "#6e6e6e"
-        val primary = "#145a1e" // brand green; the only intended difference from the desktop HTML
+        val primary = "#26794a" // the app's green, as on the desktop
+        val bubble = "#bfe9cb" // its light green, behind each follow-up question as in a chat
         val border = "#e6e6e6"
         val direction = if (options.rtl) "rtl" else "ltr"
         val both = options.content == ExportContent.BOTH
@@ -152,6 +159,14 @@ object Exporter {
             if (options.content != ExportContent.TRANSCRIPT) {
                 add("<section class=\"summary\">${if (both) "<h2>Summary</h2>" else ""}${summaryHtml(summary, if (both) 3 else 2)}</section>")
             }
+            val thread = exportedThread(record, options)
+            if (thread.isNotEmpty()) {
+                val entries = thread.joinToString("\n") {
+                    "<div class=\"question\">${escapeHtml(it.question.jsTrim()).replace(Regex("\r?\n"), "<br>")}</div>" +
+                        "<div class=\"answer summary\">${summaryHtml(it.answer, 3)}</div>"
+                }
+                add("<section class=\"thread\"><h2>${escapeHtml(options.threadLabel)}</h2>$entries</section>")
+            }
         }
         val title = record.name.jsTrim()
         val style = ":root{color-scheme:light}html,body{min-height:100%;margin:0;background:$background;color:$foreground}" +
@@ -160,7 +175,8 @@ object Exporter {
             ".html .metadata{font-size:.8rem;font-weight:600;color:$muted}.html .segment p,.html .summary p{white-space:normal}" +
             ".html .summary hr{border:0;border-top:1px solid $border;margin:1.25rem 0}" +
             ".html .summary blockquote{margin:0;padding-inline-start:1rem;border-inline-start:3px solid $border;color:$muted}" +
-            ".html .summary ul,.html .summary ol{padding-inline-start:1.5rem}"
+            ".html .summary ul,.html .summary ol{padding-inline-start:1.5rem}" +
+            ".html .thread .question{width:fit-content;max-width:85%;margin:1.75rem 0 .5rem;padding:.6rem 1rem;border-radius:18px;border-start-start-radius:4px;background:$bubble;color:#1a1c1f}"
         return listOf(
             "<!doctype html>",
             "<html dir=\"$direction\">",
@@ -261,6 +277,13 @@ object Exporter {
             .joinToString("\n")
     }
 
+    /** Follow-up questions as Markdown after the summary, as the desktop writes them. */
+    private fun threadMarkdown(record: TranscriptRecord, options: ExportOptions): String {
+        val thread = exportedThread(record, options)
+        if (thread.isEmpty()) return ""
+        return (listOf("## ${options.threadLabel}") + thread.map { "> **${it.question.jsTrim()}**\n\n${it.answer.jsTrim()}" }).joinToString("\n\n")
+    }
+
     private fun sectioned(transcript: String, summary: String, options: ExportOptions, heading: (String) -> String) =
         when (options.content) {
             ExportContent.TRANSCRIPT -> transcript
@@ -311,3 +334,7 @@ internal fun formatTimestamp(centis: Long, alwaysIncludeHours: Boolean, decimalM
     val result = "$hoursMarker${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     return if (includeMilliseconds) "$result$decimalMarker${milliseconds.toString().padStart(3, '0')}" else result
 }
+
+/** The follow-up questions this export carries: none unless asked for, and never without the summary. */
+internal fun exportedThread(record: TranscriptRecord, options: ExportOptions): List<AiThreadEntry> =
+    if (options.includeThread && options.content != ExportContent.TRANSCRIPT) record.thread.orEmpty() else emptyList()

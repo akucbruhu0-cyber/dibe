@@ -98,6 +98,7 @@ class AiClientTest {
         )
         assertEquals(
             "Answer the question about this transcript in Hebrew, using markdown. Be direct and specific; quote the transcript where it helps. If the transcript does not say, say so." +
+                "\n\n" + VisualPass.ASK.replace("{language}", "Hebrew") +
                 "\n\nTranscript:\n\"\"\"\n[Dana] hi\nthere\n\n\"\"\"" +
                 "\n\nEarlier questions:\nQ: q1\nA: a1\n\nQ: q2\nA: a2" +
                 "\n\nQuestion: why?",
@@ -107,6 +108,7 @@ class AiClientTest {
         val long = record.copy(segments = List(500) { Segment(0, 1, "x".repeat(40)) }, thread = null)
         assertEquals(
             "Answer the question about this transcript in English, using markdown. Be direct and specific; quote the transcript where it helps. If the transcript does not say, say so." +
+                "\n\n" + VisualPass.ASK.replace("{language}", "English") +
                 "\n\nTranscript (summary):\n\"\"\"\nthe summary\n\"\"\"\n\nQuestion: q",
             askPrompt(long, "q", 8_192, "English", "Speaker"),
         )

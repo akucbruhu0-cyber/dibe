@@ -97,6 +97,8 @@
 	"exportPrint": "הדפסה",
 	"exportSave": "שמירה",
 	"exportSummary": "סיכום",
+	"exportFollowUps": "שאלות המשך",
+	"exportIncludeFollowUps": "כולל שאלות המשך",
 	"exportTranscript": "תמלול",
 	"ffmpegOptions": "אפשרויות FFMPEG",
 	"files": "קבצים",

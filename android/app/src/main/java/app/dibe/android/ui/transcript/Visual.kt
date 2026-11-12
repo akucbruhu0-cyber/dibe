@@ -141,15 +141,47 @@ private fun compare(title: String, lines: List<String>): Visual? {
     val rows = lines.filterNot { separatorRow.matches(it) }.map(::cells).filter { it[0].isNotEmpty() }
     if (rows.size < 2 || rows[0].size < 2) return null
     val header = rows[0]
-    return Visual.Compare(title, header, rows.drop(1).take(MAX_ROWS).map { row -> List(header.size) { row.getOrElse(it) { "" } } })
+    return Visual.Compare(title, header, rows.drop(1).take(MAX_TABLE_ROWS).map { row -> List(header.size) { row.getOrElse(it) { "" } } })
 }
 
 private const val MAX_ROWS = 8
+/** A comparison is also every Markdown table (see [tablesAsVisuals]), which runs longer than a chart. */
+private const val MAX_TABLE_ROWS = 30
+
+private val tableSeparator = Regex("""^\s*\|?\s*:?-{2,}:?\s*(?:\|\s*:?-{2,}:?\s*)*\|?\s*$""")
+
+/**
+ * Every Markdown table as a comparison visual. No renderer here draws tables (the screen, PDF, Word
+ * and HTML all showed the pipes), and a table is exactly a comparison: a header row, then one row per item.
+ */
+fun tablesAsVisuals(markdown: String): String {
+    val lines = markdown.split("\n")
+    val out = mutableListOf<String>()
+    var fenced = false
+    var i = 0
+    while (i < lines.size) {
+        val line = lines[i]
+        if (line.trimStart().startsWith("```")) fenced = !fenced
+        val separator = lines.getOrElse(i + 1) { "" }
+        if (!fenced && '|' in line && '|' in separator && tableSeparator.matches(separator)) {
+            var end = i + 2
+            while (end < lines.size && '|' in lines[end] && lines[end].isNotBlank()) end++
+            out += "```dibe:compare"
+            (listOf(line) + lines.subList(i + 2, end)).forEach { out += it.replace("**", "").replace("__", "") }
+            out += "```"
+            i = end
+        } else {
+            out += line
+            i++
+        }
+    }
+    return out.joinToString("\n")
+}
 
 private val fencedVisual = Regex("""(?m)^[ \t]*`{3,}[ \t]*dibe[:-]([a-zA-Z]+)[ \t]*\n([\s\S]*?)\n[ \t]*`{3,}[ \t]*$""")
 
 /** [markdown] with every visual written out as plain Markdown, for files that can't draw it. */
-fun visualsAsMarkdown(markdown: String): String = markdown.replace(fencedVisual) { match ->
+fun visualsAsMarkdown(markdown: String): String = tablesAsVisuals(markdown).replace(fencedVisual) { match ->
     parseVisual(match.groupValues[1].lowercase(), match.groupValues[2])?.asMarkdown().orEmpty()
 }
 
@@ -202,7 +234,7 @@ private const val MARK = '\uE000'
  */
 fun extractVisuals(markdown: String): Pair<String, List<Visual>> {
     val visuals = mutableListOf<Visual>()
-    val marked = markdown.replace(fencedVisual) { match ->
+    val marked = tablesAsVisuals(markdown).replace(fencedVisual) { match ->
         val visual = parseVisual(match.groupValues[1].lowercase(), match.groupValues[2]) ?: return@replace ""
         visuals += visual
         "\n\n$MARK${visuals.lastIndex}$MARK\n\n"

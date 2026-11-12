@@ -33,6 +33,8 @@ export interface ExportOptions {
 	theme: 'light' | 'dark'
 	showTimestamps: boolean
 	showSpeakers: boolean
+	/** The follow-up questions go after the summary. */
+	includeThread: boolean
 }
 
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
@@ -41,6 +43,7 @@ export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
 	theme: 'light',
 	showTimestamps: false,
 	showSpeakers: true,
+	includeThread: false,
 }
 
 export interface AdvancedTranscribeOptions {

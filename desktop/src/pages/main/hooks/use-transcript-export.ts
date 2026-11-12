@@ -16,6 +16,7 @@ import { serializeTranscriptExport, type TranscriptExportContent, type Transcrip
 import type { Meeting } from '~/lib/calendar'
 import type { Segment, SpeakerNames } from '~/lib/transcript'
 import type { NamedPath } from '~/lib/types'
+import type { AiThreadEntry } from '~/lib/transcripts-store'
 import { usePreferenceProvider } from '~/providers/preference'
 
 interface UseTranscriptExportOptions {
@@ -31,6 +32,9 @@ interface UseTranscriptExportOptions {
 	showSpeakers: boolean
 	speakerNames?: SpeakerNames
 	meeting?: Meeting
+	/** The questions asked about this transcript; exported after the summary when `includeThread` is on. */
+	thread?: AiThreadEntry[]
+	includeThread?: boolean
 }
 
 export function useTranscriptExport({
@@ -45,6 +49,8 @@ export function useTranscriptExport({
 	showSpeakers,
 	speakerNames,
 	meeting,
+	thread,
+	includeThread = false,
 }: UseTranscriptExportOptions) {
 	const preference = usePreferenceProvider()
 	const speakerLabel = m.speakerPrefix()
@@ -59,11 +65,15 @@ export function useTranscriptExport({
 			meeting,
 			direction: direction ?? preference.textAreaDirection,
 			theme: preference.exportOptions.theme,
+			thread: includeThread ? thread : undefined,
+			threadLabel: m.exportFollowUps(),
 		}),
 		[
 			content,
 			direction,
 			file?.name,
+			includeThread,
+			thread,
 			meeting,
 			preference.exportOptions.theme,
 			preference.textAreaDirection,
@@ -123,6 +133,8 @@ export function useTranscriptExport({
 				summary,
 				transcriptLabel: m.exportTranscript(),
 				summaryLabel: m.exportSummary(),
+				thread: serializerOptions.thread,
+				threadLabel: serializerOptions.threadLabel,
 				drawVisual: visualToPng,
 			})
 			await fs.writeFile(target, new Uint8Array(await document.arrayBuffer()))

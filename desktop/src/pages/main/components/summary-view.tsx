@@ -10,7 +10,7 @@ import { usePreferenceProvider } from '~/providers/preference'
 import { useSession } from '../session'
 import type { Job } from '../hooks/use-transcribe-queue'
 import { textSizeClass, type TranscriptViewOptions } from '../hooks/use-transcript-view'
-import { parseVisual, visualKind } from '~/lib/visuals'
+import { parseVisual, tablesAsVisuals, visualKind } from '~/lib/visuals'
 import { VisualCard, VisualSkeleton } from './visual-card'
 
 /** A ```` ```dibe:… ```` block draws as a visual; one that doesn't parse is left out rather than shown raw. */
@@ -35,7 +35,7 @@ const components: Components = {
 function Streaming({ text, size, drawing = false }: { text: string; size: TranscriptViewOptions['textSize']; drawing?: boolean }) {
 	return (
 		<div className={cn('shimmer-text prose prose-neutral text-justify max-w-none dark:prose-invert', textSizeClass[size])}>
-			<Markdown components={components}>{text}</Markdown>
+			<Markdown components={components}>{tablesAsVisuals(text)}</Markdown>
 			{drawing ? <VisualSkeleton /> : <span aria-hidden className="ms-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-foreground/60 align-text-bottom" />}
 		</div>
 	)
@@ -106,7 +106,7 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 					) : job.summary ? (
 						// The models answer in markdown; render it rather than showing the syntax.
 						<div className={cn('prose prose-neutral text-justify max-w-none dark:prose-invert', textSizeClass[options.textSize])}>
-							<Markdown components={components}>{job.summary}</Markdown>
+							<Markdown components={components}>{tablesAsVisuals(job.summary)}</Markdown>
 						</div>
 					) : summarizing ? (
 						<p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -142,7 +142,7 @@ export default function SummaryView({ job, options }: { job: Job; options: Trans
 											</button>
 										</div>
 										<div className={cn('prose prose-neutral text-justify mt-3 max-w-none ps-1 dark:prose-invert', textSizeClass[options.textSize])}>
-											<Markdown>{entry.answer}</Markdown>
+											<Markdown components={components}>{tablesAsVisuals(entry.answer)}</Markdown>
 										</div>
 									</div>
 								))}

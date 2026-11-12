@@ -314,12 +314,13 @@ class AiClient {
         fun askPrompt(record: TranscriptRecord, question: String, contextTokens: Int, uiLanguage: String, speakerLabel: String): String {
             // The whole transcript when it fits, otherwise the summary, which still answers most questions.
             val transcript = transcriptText(record, speakerLabel)
-            val budget = inputBudgetBytes(contextTokens) - 2_000
+            val budget = inputBudgetBytes(contextTokens) - 4_000
             val fits = utf8Bytes(transcript) < budget
             val context = if (fits) transcript else record.summary ?: transcript.take(maxOf(0, budget))
             val history = record.thread.orEmpty().joinToString("\n\n") { "Q: ${it.question}\nA: ${it.answer}" }
             return listOf(
                 "Answer the question about this transcript in $uiLanguage, using markdown. Be direct and specific; quote the transcript where it helps. If the transcript does not say, say so.",
+                VisualPass.ASK.replace("{language}", uiLanguage),
                 "Transcript${if (fits) "" else " (summary)"}:\n\"\"\"\n$context\n\"\"\"",
                 if (history.isNotEmpty()) "Earlier questions:\n$history" else "",
                 "Question: ${question.jsTrim()}",

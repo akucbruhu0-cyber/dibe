@@ -380,6 +380,8 @@ private fun ExportOptions.toBundle() = Bundle().apply {
     putBoolean("rtl", rtl)
     putString("transcriptLabel", transcriptLabel)
     putString("summaryLabel", summaryLabel)
+    putBoolean("includeThread", includeThread)
+    putString("threadLabel", threadLabel)
 }
 
 private fun Bundle.toExportOptions(): ExportOptions? = try {
@@ -392,6 +394,8 @@ private fun Bundle.toExportOptions(): ExportOptions? = try {
         rtl = getBoolean("rtl"),
         transcriptLabel = getString("transcriptLabel") ?: return null,
         summaryLabel = getString("summaryLabel") ?: return null,
+        includeThread = getBoolean("includeThread"),
+        threadLabel = getString("threadLabel") ?: "Follow-up questions",
     )
 } catch (e: IllegalArgumentException) { // an enum renamed since the state was saved
     null

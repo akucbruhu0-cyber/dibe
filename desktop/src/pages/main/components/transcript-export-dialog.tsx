@@ -28,6 +28,10 @@ export interface TranscriptExportDialogProps {
 	onShowTimestampsChange: (show: boolean) => void
 	showSpeakers: boolean
 	onShowSpeakersChange: (show: boolean) => void
+	/** The transcript has follow-up questions; the switch shows only then, and only with the summary. */
+	hasThread?: boolean
+	includeThread?: boolean
+	onIncludeThreadChange?: (include: boolean) => void
 	preview: string
 	renderedPreview?: string
 	direction: 'rtl' | 'ltr'
@@ -233,6 +237,9 @@ export default function TranscriptExportDialog({
 	onShowTimestampsChange,
 	showSpeakers,
 	onShowSpeakersChange,
+	hasThread = false,
+	includeThread = false,
+	onIncludeThreadChange,
 	preview,
 	renderedPreview,
 	direction,
@@ -346,6 +353,12 @@ export default function TranscriptExportDialog({
 								<OptionRow label={m.showSpeakers()}>
 									<Switch aria-label={m.showSpeakers()} checked={showSpeakers} onCheckedChange={onShowSpeakersChange} />
 								</OptionRow>
+
+								{hasThread && content !== 'transcript' && (
+									<OptionRow label={m.exportIncludeFollowUps()}>
+										<Switch aria-label={m.exportIncludeFollowUps()} checked={includeThread} onCheckedChange={onIncludeThreadChange} />
+									</OptionRow>
+								)}
 							</div>
 						</section>
 					</div>

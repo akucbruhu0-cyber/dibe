@@ -81,6 +81,11 @@ Do not repeat a kind unless the content clearly calls for it. Only blocks, nothi
 {transcript}
 </transcript>"""
 
+    /** For a question's answer: the same formats, without `after:`, since an answer has no sections. */
+    val ASK = "When a visual would make the answer clearer (numbers said in the recording, a process, an order of events, a choice, options side by side), " +
+        "add it as a fenced block in one of these formats, with its text in {language}. Use a comparison block instead of a Markdown table.\n\n" +
+        PROMPT.substring(PROMPT.indexOf("A chart,"), PROMPT.indexOf("Do not repeat")).replace(Regex("(?m)^after: .*\n"), "").trim()
+
     private val block = Regex("""```[ \t]*dibe[:-]([a-z]+)[ \t]*\n(.*?)\n[ \t]*```""", setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE))
     private val afterLine = Regex("""^\s*after\s*:\s*(.*)$""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
     /** A `#` heading, or a line that is only bold (`**Key points:**`), which models often write instead. */
