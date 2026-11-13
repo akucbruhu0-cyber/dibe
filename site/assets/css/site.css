@@ -343,3 +343,11 @@ details[open] > summary .chev { transform: rotate(180deg); }
 .btn-bmc { background: #FFDD00; color: #000; font-weight: 600; }
 .btn-bmc img { width: 20px; height: 20px; }
 @media (hover: hover) and (pointer: fine) { .btn-bmc:hover { background: #F5D000; } }
+
+/* CTA takes the detected platform's colour */
+.btn-primary[data-os="apple"] { background: #000; color: #fff; }
+.btn-primary[data-os="windows"] { background: #0078D4; color: #fff; }
+.btn-primary[data-os="android"] { background: #3DDC84; color: #0F2418; }
+:root[data-theme="dark"] .btn-primary[data-os="apple"] { background: #fff; color: #000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-primary[data-os="apple"] { background: #fff; color: #000; } }
+@media (hover: hover) and (pointer: fine) { .btn-primary[data-os]:hover { filter: brightness(1.12); } }
