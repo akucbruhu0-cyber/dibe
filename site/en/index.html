@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DIBE: private live transcription on your computer</title>
+<meta name="description" content="DIBE turns speech into text on your own computer. Record and watch the transcript appear live. No internet needed, and nothing leaves your device.">
+<link rel="canonical" href="https://akucbruhu0-cyber.github.io/dibe/en/">
+<link rel="alternate" hreflang="he" href="https://akucbruhu0-cyber.github.io/dibe/">
+<link rel="alternate" hreflang="en" href="https://akucbruhu0-cyber.github.io/dibe/en/">
+<link rel="alternate" hreflang="x-default" href="https://akucbruhu0-cyber.github.io/dibe/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DIBE">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="he_IL">
+<meta property="og:title" content="DIBE: private live transcription on your computer">
+<meta property="og:description" content="DIBE turns speech into text on your own computer. Record and watch the transcript appear live. No internet needed, and nothing leaves your device.">
+<meta property="og:url" content="https://akucbruhu0-cyber.github.io/dibe/en/">
+<meta property="og:image" content="https://akucbruhu0-cyber.github.io/dibe/assets/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#F5FAF6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0C1710" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>
+(function () {
+  var d = document.documentElement; d.classList.add('js');
+  try {
+    var t = localStorage.getItem('dibe-theme'); if (t) d.dataset.theme = t;
+    if (localStorage.getItem('dibe-motion') === 'off') d.dataset.motion = 'off';
+  } catch (e) {}
+})();
+</script>
+<script type="module" src="../assets/js/download.js"></script>
+<script type="module" src="../assets/js/site.js"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DIBE","applicationCategory":"MultimediaApplication","operatingSystem":"macOS, Windows, Android","inLanguage":"en","description":"Private live transcription on your computer. No internet needed, and nothing leaves your device.","softwareVersion":"1.4.0","license":"https://opensource.org/licenses/MIT","url":"https://akucbruhu0-cyber.github.io/dibe/en/","downloadUrl":"https://github.com/akucbruhu0-cyber/dibe/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"en","mainEntity":[
+{"@type":"Question","name":"Does DIBE really work offline?","acceptedAnswer":{"@type":"Answer","text":"Yes. Once a model is downloaded, transcription runs entirely on your computer. The internet is needed only for model downloads, links, and cloud summaries if you pick that."}},
+{"@type":"Question","name":"What does it cost?","acceptedAnswer":{"@type":"Answer","text":"Nothing. DIBE is free and open source (MIT). AI summaries need a key from the provider you choose. Gemini offers a free key, and Settings has a short video on how to get it."}},
+{"@type":"Question","name":"What do I need to run it?","acceptedAnswer":{"@type":"Answer","text":"A powerful computer, because transcription runs on it. A Mac with Apple Silicon is the tested setup. On a phone: 64-bit Android from about 2019."}},
+{"@type":"Question","name":"Why does my computer warn me?","acceptedAnswer":{"@type":"Answer","text":"DIBE is not code-signed or notarized by Apple. That is expected, and you allow it once (see Download)."}},
+{"@type":"Question","name":"Does it work in Hebrew?","acceptedAnswer":{"@type":"Answer","text":"Yes, alongside almost every other language. The interface is translated into many languages."}},
+{"@type":"Question","name":"How is it different from Vibe?","acceptedAnswer":{"@type":"Answer","text":"DIBE is built on Vibe and keeps everything it does. It adds live transcription, a sturdier recorder, Gemini for summaries, and no analytics at all."}},
+{"@type":"Question","name":"Does it update itself?","acceptedAnswer":{"@type":"Answer","text":"No. Download the new version from the releases page."}}]}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="edge" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="DIBE, back to top"><img src="../assets/img/logo-96.png" alt="" width="32" height="32">DIBE</a>
+    <nav class="nav" aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="actions">
+      <div class="lang" role="group" aria-label="Language">
+        <a href="../" hreflang="he" lang="he" data-lang="he" aria-label="עברית">עב</a>
+        <span aria-current="true">EN</span>
+      </div>
+      <a class="btn btn-primary btn-sm pill-cta" data-cta href="#download"><span data-cta-label>Download DIBE</span></a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<section id="hero" class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <div class="hero-card grain">
+      <div class="hero-copy">
+        <p class="eyebrow">Private transcription. Live.</p>
+        <h1 id="hero-title"><span>Recording in.</span> <span>Summary out.</span></h1>
+        <p class="sub">DIBE turns speech into text on your own computer. Record and watch the transcript appear live. No internet needed, and nothing leaves your device.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" data-cta href="#download"><span data-cta-label>Download DIBE</span></a>
+          <a class="btn btn-outline" href="#all-versions">All versions</a>
+        </div>
+        <p class="micro">Free · Open source · Version <span data-version>1.4.0</span></p>
+      </div>
+      <div class="media hero-media">
+        <div class="mock" aria-hidden="true">
+          <div class="mock-head"><span class="rec"><span class="dot"></span>Recording</span><span class="timer">00:00:12</span></div>
+          <div class="wave"><i style="animation-delay:-.1s"></i><i style="animation-delay:-.5s"></i><i style="animation-delay:-.3s"></i><i style="animation-delay:-.8s"></i><i style="animation-delay:-.2s"></i><i style="animation-delay:-.6s"></i><i style="animation-delay:-.4s"></i><i style="animation-delay:-.9s"></i><i style="animation-delay:-.15s"></i><i style="animation-delay:-.7s"></i><i style="animation-delay:-.35s"></i><i style="animation-delay:-.55s"></i><i style="animation-delay:-.05s"></i><i style="animation-delay:-.65s"></i><i style="animation-delay:-.25s"></i><i style="animation-delay:-.85s"></i></div>
+          <div class="mock-lines">
+            <p>Last time we saw that a trade deficit is not always a bad sign.</p>
+            <p>Today we look at what happens when an economy opens up to trade.</p>
+            <p class="pending">and how that shapes growth over…</p>
+          </div>
+        </div>
+        <video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteHero-en.poster.webp">
+          <source src="../media/SiteHero-en.webm" type="video/webm">
+          <source src="../media/SiteHero-en.mp4" type="video/mp4">
+        </video>
+        <button class="btn btn-sm media-toggle" type="button" data-motion-toggle>Pause animations</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="intro" class="sec intro" aria-labelledby="intro-title">
+  <div class="wrap">
+    <h2 id="intro-title">Transcribes, then summarizes your way.</h2>
+    <p class="j" style="margin-block-start:18px">DIBE transcribes from a file, the microphone, your system audio or a link. Then it summarizes the way you ask: key points, exam questions, meeting notes. Transcription runs on your computer.</p>
+    <ul class="chips" aria-label="Sources">
+      <li>From a file</li><li>Live</li><li>From a link</li>
+    </ul>
+    <p class="muted">Students · Meetings · Interviews · and more</p>
+  </div>
+</section>
+
+<section id="features" class="sec" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="features-title">What DIBE does</h2></div>
+    <ul class="grid" data-reveal>
+      <li class="card">
+        <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteFeatLive-en.poster.webp"><source src="../media/SiteFeatLive-en.webm" type="video/webm"><source src="../media/SiteFeatLive-en.mp4" type="video/mp4"></video></div>
+        <div class="card-body">
+          <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 12h1M7 8v8M11 4v16M15 7v10M19 10v4M22 12h-1"/></svg><h3>Live transcript</h3></div>
+          <p class="j">Finished sentences appear within a second or a few. A grey line shows the sentence still being spoken. Pause, resume, edit while it writes.</p>
+        </div>
+      </li>
+      <li class="card">
+        <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteFeatSources.poster.webp"><source src="../media/SiteFeatSources.webm" type="video/webm"><source src="../media/SiteFeatSources.mp4" type="video/mp4"></video></div>
+        <div class="card-body">
+          <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h5l4 7M3 19h5l4-7M3 12h18M17 8l4 4-4 4"/></svg><h3>Any source, almost any language</h3></div>
+          <p class="j">Audio or video files, the microphone, system audio, links from YouTube and more. Almost every language, offline.</p>
+        </div>
+      </li>
+      <li class="card">
+        <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteFeatAi-en.poster.webp"><source src="../media/SiteFeatAi-en.webm" type="video/webm"><source src="../media/SiteFeatAi-en.mp4" type="video/mp4"></video></div>
+        <div class="card-body">
+          <div class="card-title"><svg viewBox="0 0 24 24" aria-hidden="true" style="color:var(--spark)" fill="currentColor"><path d="M9 4c.6 4.2 3 6.6 7.2 7.2-4.2.6-6.6 3-7.2 7.2-.6-4.2-3-6.6-7.2-7.2C6 10.6 8.4 8.2 9 4Z"/><path d="M18.5 2c.3 2 1.4 3.2 3.5 3.5-2.1.3-3.2 1.4-3.5 3.5-.3-2.1-1.4-3.2-3.5-3.5 2.1-.3 3.2-1.5 3.5-3.5Z"/><path d="M19.5 14c.2 1.2.8 1.8 2 2-1.2.2-1.8.8-2 2-.2-1.2-.8-1.8-2-2 1.2-.2 1.8-.8 2-2Z"/></svg><h3>A summary on your terms</h3></div>
+          <p class="j">Write what you need and the AI summarizes. Attach images, PDFs and text files. Works with Gemini, Claude, any OpenAI-compatible server or local Ollama.</p>
+        </div>
+      </li>
+      <li class="card">
+        <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteFeatChart-en.poster.webp"><source src="../media/SiteFeatChart-en.webm" type="video/webm"><source src="../media/SiteFeatChart-en.mp4" type="video/mp4"></video></div>
+        <div class="card-body">
+          <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H10l-6 4z"/><path d="M9 12V9M12 12V7M15 12v-2"/></svg><h3>Ask the recording</h3></div>
+          <p class="j">Ask a question about a recording and get an answer, sometimes with a chart, timeline or table when it helps. Charts use only numbers that were said.</p>
+        </div>
+      </li>
+      <li class="card">
+        <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteFeatExport.poster.webp"><source src="../media/SiteFeatExport.webm" type="video/webm"><source src="../media/SiteFeatExport.mp4" type="video/mp4"></video></div>
+        <div class="card-body">
+          <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></svg><h3>Exports that look right</h3></div>
+          <p class="j">SRT, VTT, TXT, HTML, JSON, Word and a designed PDF: real headings, tables, justified text. Add your follow-up questions if you like.</p>
+        </div>
+      </li>
+      <li class="card">
+        <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SiteFeatPhone-en.poster.webp"><source src="../media/SiteFeatPhone-en.webm" type="video/webm"><source src="../media/SiteFeatPhone-en.mp4" type="video/mp4"></video></div>
+        <div class="card-body">
+          <div class="card-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><h3>Also on your phone</h3></div>
+          <p class="j">An Android app that records and transcribes on the phone itself, offline. Recordings survive crashes.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<section id="showcase" class="showcase" aria-labelledby="show-title">
+  <h2 id="show-title" class="sr-only">DIBE in action</h2>
+  <figure class="scene" style="margin:0">
+    <div class="scene-stage">
+      <div class="media" role="img" aria-label="From lecture to notes: record, watch the words appear live, stop, and the summary is ready."><video muted playsinline preload="none" data-autoplay aria-hidden="true" poster="../media/SiteShow1-en.poster.webp"><source src="../media/SiteShow1-en.webm" type="video/webm"><source src="../media/SiteShow1-en.mp4" type="video/mp4"></video></div>
+      <figcaption class="sr-only" aria-hidden="true">From lecture to notes: record, watch the words appear live, stop, and the summary is ready.</figcaption>
+    </div>
+  </figure>
+  <figure class="scene" style="margin:0">
+    <div class="scene-stage">
+      <div class="media" role="img" aria-label="Models and speed: pick a model, it downloads, and DIBE is ready to transcribe."><video muted playsinline preload="none" data-autoplay aria-hidden="true" poster="../media/SiteShow2-en.poster.webp"><source src="../media/SiteShow2-en.webm" type="video/webm"><source src="../media/SiteShow2-en.mp4" type="video/mp4"></video></div>
+      <figcaption class="sr-only" aria-hidden="true">Models and speed: pick a model, it downloads, and DIBE is ready to transcribe.</figcaption>
+    </div>
+  </figure>
+  <figure class="scene" style="margin:0">
+    <div class="scene-stage">
+      <div class="media" role="img" aria-label="One question, one chart: ask about the recording and get a timeline and a table."><video muted playsinline preload="none" data-autoplay aria-hidden="true" poster="../media/SiteShow3-en.poster.webp"><source src="../media/SiteShow3-en.webm" type="video/webm"><source src="../media/SiteShow3-en.mp4" type="video/mp4"></video></div>
+      <figcaption class="sr-only" aria-hidden="true">One question, one chart: ask about the recording and get a timeline and a table.</figcaption>
+    </div>
+  </figure>
+  <div class="progress" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+</section>
+
+<section id="privacy" class="sec" aria-labelledby="privacy-title">
+  <div class="wrap split">
+    <div class="copy">
+      <h2 id="privacy-title">Your transcript stays with you.</h2>
+      <p class="j">DIBE has no analytics, no telemetry, no accounts and no update checks. Transcription runs on your computer, and the local server listens only on <span class="mono">127.0.0.1</span> behind a token that changes on every launch.</p>
+      <ul class="facts">
+        <li>Without internet it keeps working.</li>
+        <li>It uses the network only when you ask: a model download, a link, an AI provider you configured.</li>
+        <li>Nothing runs in the background.</li>
+      </ul>
+      <p><a href="privacy/">Exactly what is sent, and when</a></p>
+      <p class="small muted">Open source under the MIT license. Check it yourself.</p>
+    </div>
+    <div class="media"><video muted playsinline loop preload="none" data-autoplay aria-hidden="true" poster="../media/SitePrivacy-en.poster.webp"><source src="../media/SitePrivacy-en.webm" type="video/webm"><source src="../media/SitePrivacy-en.mp4" type="video/mp4"></video></div>
+  </div>
+</section>
+
+<section id="download" class="sec" aria-labelledby="download-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="download-title">Download</h2></div>
+
+    <div class="dl-auto" id="dl-auto" hidden>
+      <div data-auto-yes style="display:flex;flex-direction:column;gap:12px;align-items:start">
+        <h3>Picked for your computer</h3>
+        <a class="btn btn-primary" data-cta data-cta-long href="#all-versions"><span data-cta-label>Download DIBE</span></a>
+        <p class="file"><span class="mono" data-auto-file>DIBE-1.4.0-macos-arm64.zip</span> · <span class="mono" data-auto-size>38 MB</span></p>
+      </div>
+      <p data-auto-note hidden></p>
+      <p class="small">Not sure? See <a href="#all-versions">"All versions"</a></p>
+    </div>
+
+    <details class="versions" id="all-versions" open>
+      <summary><span>All versions</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <ul class="rows">
+        <li data-asset="arm64">
+          <div class="what"><b>Mac, Apple Silicon</b><span class="status">Tested</span></div>
+          <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.4.0/DIBE-1.4.0-macos-arm64.zip" aria-label="DIBE-1.4.0-macos-arm64.zip, 38 MB, download"><span class="mono" data-asset-name>DIBE-1.4.0-macos-arm64.zip</span><span class="mono" data-asset-size>38 MB</span></a>
+        </li>
+        <li data-asset="intel">
+          <div class="what"><b>Mac, Intel</b><span class="status">Untested, no speaker diarization</span></div>
+          <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.4.0/DIBE-1.4.0-macos-intel.zip" aria-label="DIBE-1.4.0-macos-intel.zip, 43 MB, download"><span class="mono" data-asset-name>DIBE-1.4.0-macos-intel.zip</span><span class="mono" data-asset-size>43 MB</span></a>
+        </li>
+        <li data-asset="win">
+          <div class="what"><b>Windows 10/11, 64-bit</b><span class="status">Untested</span></div>
+          <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.4.0/DIBE-1.4.0-windows-x64-setup.exe" aria-label="DIBE-1.4.0-windows-x64-setup.exe, 43 MB, download"><span class="mono" data-asset-name>DIBE-1.4.0-windows-x64-setup.exe</span><span class="mono" data-asset-size>43 MB</span></a>
+        </li>
+        <li data-asset="apk">
+          <div class="what"><b>Android (64-bit)</b><span class="status">64-bit phone from about 2019 (Snapdragon 855 or newer)</span></div>
+          <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/latest/download/dibe-android-arm64.apk" aria-label="dibe-android-arm64.apk, 12 MB, download"><span class="mono" data-asset-name>dibe-android-arm64.apk</span><span class="mono" data-asset-size>12 MB</span></a>
+        </li>
+      </ul>
+    </details>
+
+    <div class="help">
+      <h3>First launch</h3>
+      <details>
+        <summary><span>macOS</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="body">
+          <p class="j">DIBE is not notarized by Apple, so macOS blocks the first launch. Drag DIBE.app into Applications, then: System Settings → Privacy &amp; Security → Open Anyway.</p>
+          <div class="cmd"><code id="xattr">xattr -dr com.apple.quarantine /Applications/DIBE.app</code><button class="btn btn-outline btn-sm" type="button" data-copy="xattr" aria-live="polite">Copy</button></div>
+        </div>
+      </details>
+      <details>
+        <summary><span>Windows</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="body"><p>Windows may show "Windows protected your PC". Choose More info → Run anyway.</p></div>
+      </details>
+      <details>
+        <summary><span>Android</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="body"><p>Open the file on your phone and allow installing from this source.</p></div>
+      </details>
+    </div>
+
+    <div class="notes">
+      <p class="j">DIBE is built and tested on Apple Silicon Macs. The Intel and Windows builds are produced automatically and not yet tested. If something breaks, <a href="https://github.com/akucbruhu0-cyber/dibe/issues" target="_blank" rel="noopener">tell us<span class="sr-only"> (opens in a new tab)</span></a>.</p>
+      <p>You need a powerful computer, because transcription runs on it. <a href="https://github.com/akucbruhu0-cyber/dibe" target="_blank" rel="noopener">Source on GitHub<span class="sr-only"> (opens in a new tab)</span></a></p>
+      <p class="small muted">DIBE is a fork of Vibe by thewh1teagle, MIT license.</p>
+    </div>
+  </div>
+</section>
+
+<section id="support" class="sec" aria-labelledby="support-title">
+  <div class="wrap">
+    <div class="support-card">
+      <div class="copy">
+        <h2 id="support-title" style="font-size:clamp(26px,3.4vw,36px)">DIBE is free, and stays free.</h2>
+        <p>If it saved you time, you can buy it a coffee.</p>
+      </div>
+      <div class="act">
+        <a class="btn btn-outline" href="https://buymeacoffee.com/dibe" target="_blank" rel="noopener">Buy DIBE a coffee<span class="sr-only"> (opens in a new tab)</span></a>
+        <p class="small">Optional. Downloading never depends on it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="sec" aria-labelledby="faq-title">
+  <div class="wrap">
+    <div class="sec-head"><h2 id="faq-title">Questions</h2></div>
+    <div class="faq">
+      <details><summary><span>Does DIBE really work offline?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>Yes. Once a model is downloaded, transcription runs entirely on your computer. The internet is needed only for model downloads, links, and cloud summaries if you pick that.</p></details>
+      <details><summary><span>What does it cost?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>Nothing. DIBE is free and open source (MIT). AI summaries need a key from the provider you choose. Gemini offers a free key, and Settings has a short video on how to get it.</p></details>
+      <details><summary><span>What do I need to run it?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>A powerful computer, because transcription runs on it. A Mac with Apple Silicon is the tested setup. On a phone: 64-bit Android from about 2019.</p></details>
+      <details><summary><span>Why does my computer warn me?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>DIBE is not code-signed or notarized by Apple. That is expected, and you allow it once (see <a href="#download">Download</a>).</p></details>
+      <details><summary><span>Does it work in Hebrew?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>Yes, alongside almost every other language. The interface is translated into many languages.</p></details>
+      <details><summary><span>How is it different from Vibe?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>DIBE is built on Vibe and keeps everything it does. It adds live transcription, a sturdier recorder, Gemini for summaries, and no analytics at all.</p></details>
+      <details><summary><span>Does it update itself?</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary><p>No. Download the new version from the <a href="https://github.com/akucbruhu0-cyber/dibe/releases" target="_blank" rel="noopener">releases page<span class="sr-only"> (opens in a new tab)</span></a>.</p></details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer id="footer" class="site-footer">
+  <div class="wrap">
+    <div class="foot-top">
+      <a class="brand" href="./"><img src="../assets/img/logo-96.png" alt="" width="32" height="32"><span>DIBE <span class="muted" style="font:400 15px var(--body)">Private transcription. Live.</span></span></a>
+      <div class="toggles">
+        <button class="btn btn-outline btn-sm" type="button" data-theme-toggle>Dark mode</button>
+        <button class="btn btn-outline btn-sm" type="button" data-motion-toggle>Pause animations</button>
+      </div>
+    </div>
+    <nav aria-label="Links">
+      <ul class="foot-links">
+        <li><a href="#download">Download</a></li>
+        <li><a href="https://github.com/akucbruhu0-cyber/dibe">GitHub</a></li>
+        <li><a href="privacy/">Privacy</a></li>
+        <li><a href="https://github.com/akucbruhu0-cyber/dibe/blob/main/CHANGELOG.md">Changelog</a></li>
+        <li><a href="https://github.com/akucbruhu0-cyber/dibe/issues">Report an issue</a></li>
+        <li><a href="https://buymeacoffee.com/dibe" target="_blank" rel="noopener">Buy a coffee<span class="sr-only"> (opens in a new tab)</span></a></li>
+      </ul>
+    </nav>
+    <p class="legal">DIBE is an independent project, not affiliated with or endorsed by OpenAI, NVIDIA, Anthropic, Google or Apple. Names and logos belong to their owners.</p>
+    <p class="legal">© MIT · thewh1teagle (Vibe) · akucbruhu0-cyber (DIBE)</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Privacy: DIBE</title>
+<meta name="description" content="What stays on your computer, and when DIBE uses the network. No analytics, no telemetry, no accounts and no update checks.">
+<link rel="canonical" href="https://akucbruhu0-cyber.github.io/dibe/en/privacy/">
+<link rel="alternate" hreflang="he" href="https://akucbruhu0-cyber.github.io/dibe/privacy/">
+<link rel="alternate" hreflang="en" href="https://akucbruhu0-cyber.github.io/dibe/en/privacy/">
+<meta property="og:title" content="Privacy: DIBE">
+<meta property="og:image" content="https://akucbruhu0-cyber.github.io/dibe/assets/img/og.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../../assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="../../assets/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../../assets/css/site.css">
+<script>try{var t=localStorage.getItem('dibe-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../../assets/img/logo-96.png" alt="" width="32" height="32">DIBE</a>
+    <div class="actions">
+      <div class="lang" role="group" aria-label="Language">
+        <a href="../../privacy/" hreflang="he" lang="he" aria-label="עברית" onclick="try{localStorage.setItem('dibe-lang','he')}catch(e){}">עב</a>
+        <span aria-current="true">EN</span>
+      </div>
+      <a class="btn btn-primary btn-sm" href="../#download">Download</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap doc">
+  <h1>Privacy</h1>
+  <p class="j">DIBE transcribes on your device. It has no analytics, no telemetry, no accounts and no update checks.</p>
+
+  <h2>What stays on your Mac</h2>
+  <ul>
+    <li>Recordings, imported media, transcripts, summaries and settings (<code>~/Library/Application Support/io.github.akucbruhu0-cyber.dibe</code> and <code>~/Documents/DIBE</code>).</li>
+    <li>Transcription itself: the <code>vibe-server</code> engine inside the app runs locally and listens only on <code>127.0.0.1</code>, behind a token that changes every time it starts.</li>
+  </ul>
+
+  <h2>When DIBE uses the network: only when you ask</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th scope="col">You choose to…</th><th scope="col">DIBE contacts</th><th scope="col">What is sent</th></tr></thead>
+      <tbody>
+        <tr><td>Download a model</td><td>Hugging Face or the Vibe project's GitHub releases</td><td>A normal file download</td></tr>
+        <tr><td>Transcribe a web link</td><td>The website, and GitHub once to download <code>yt-dlp</code></td><td>The link you entered</td></tr>
+        <tr><td>Use AI summaries or dictation clean-up</td><td>The provider you configured: Anthropic (Claude), Google (Gemini), your OpenAI-compatible server, or Ollama (local by default)</td><td>The transcript text being summarized or cleaned, with your API key</td></tr>
+        <tr><td>Record from your phone</td><td>The pairing page hosted by the Vibe project, and peer-to-peer relays (iroh)</td><td>Audio travels encrypted from your phone to your Mac</td></tr>
+        <tr><td>Report a bug</td><td>Opens a pre-filled GitHub issue in your browser</td><td>Only what you submit there</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="j">Nothing is sent in the background. With AI turned off and every model already downloaded, DIBE works completely offline.</p>
+
+  <h2>Compared to Vibe</h2>
+  <p class="j">DIBE removed Vibe's anonymous usage analytics entirely (the Aptabase plugin and every event), and turned off automatic update checks.</p>
+  <p class="small muted">Source: <a href="https://github.com/akucbruhu0-cyber/dibe/blob/main/PRIVACY.md">PRIVACY.md on GitHub</a>.</p>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <ul class="foot-links">
+      <li><a href="../">Home</a></li>
+      <li><a href="../#download">Download</a></li>
+      <li><a href="https://github.com/akucbruhu0-cyber/dibe">GitHub</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>
