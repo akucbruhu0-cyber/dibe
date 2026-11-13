@@ -1,5 +1,29 @@
 # Changelog
 
+## DIBE 1.4.0 — 2026-11-13
+
+Charts that land where they belong, tables everywhere, a redesigned PDF, and follow-up questions in your exports.
+
+### New
+
+- **A redesigned PDF**, on the desktop and on Android: text justified to both edges (a right-to-left paragraph ends on the right), the app's green for headings, a clear heading hierarchy, wider margins and line spacing, visuals on soft green cards, real tables, bars with a track, and tick boxes for action items.
+- **Follow-up questions in exports.** "Include follow-up questions" in the export window adds the questions you asked about a recording after its summary: each question in a light-green chat bubble in PDF, Word and HTML, and as text in the other formats.
+- **Tables work.** A table the AI writes, in a summary or an answer, shows as a table on screen and in every export instead of rows of pipes.
+- **Answers can draw.** A question about a recording can be answered with a chart, flow, timeline, decision tree or comparison when one makes the answer clearer.
+- **How do I get a free key?** A short video in Settings → AI shows how to get a free Gemini API key and connect it, on the desktop and on Android.
+- **The Android app from the desktop**: Settings → Phone has a direct link to download the Android APK.
+- **Support DIBE**: a "Buy DIBE a coffee" button in Settings, on the desktop and on Android.
+- **Meeting names from your calendar**, export to Apple Notes, and frontmatter (date, attendees) in Markdown exports for Obsidian and other notes apps.
+
+### Fixes
+
+- **Visuals go where they belong.** A chart or diagram is placed under the section it explains, also when the summary's headings are bold lines rather than `#` headings.
+- **Only visuals that help.** The AI adds none to three visuals, only where one shows something the text can't, and uses only numbers that were said, never estimates.
+- **All five kinds of visuals.** A decision tree written with Hebrew names was dropped silently; it now shows, and the AI picks the kind that fits the content.
+- **Full recording titles**: a long title wraps instead of being cut, in the recording list on both apps.
+- **Justified text** in the transcript and the summary, on both apps.
+- **Copy from the live transcript on Android**: long-press selects words across lines, without the times.
+
 ## DIBE 1.2.0 — 2026-10-31
 
 A pause that comes back after any length of time, a battery saver, files and images for the AI summary, and editing a finished transcript.
