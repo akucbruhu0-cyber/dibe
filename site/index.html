@@ -33,7 +33,6 @@
   var d = document.documentElement; d.classList.add('js');
   try {
     var t = localStorage.getItem('dibe-theme'); if (t) d.dataset.theme = t;
-    if (localStorage.getItem('dibe-motion') === 'off') d.dataset.motion = 'off';
     var langs = navigator.languages || [navigator.language || ''];
     if (!localStorage.getItem('dibe-lang') && !/bot|crawl|spider|slurp/i.test(navigator.userAgent) &&
         !langs.some(function (l) { return /^(he|iw)\b/i.test(l); })) location.replace('en/');
@@ -318,7 +317,6 @@
       <a class="brand" href="./"><img src="assets/img/logo-96.png" alt="" width="32" height="32"><span>DIBE <span class="muted" style="font:400 15px var(--body)">תמלול פרטי. בלייב.</span></span></a>
       <div class="toggles">
         <button class="btn btn-outline btn-sm" type="button" data-theme-toggle>מצב כהה</button>
-        <button class="btn btn-outline btn-sm" type="button" data-motion-toggle>עצרו אנימציות</button>
       </div>
     </div>
     <nav aria-label="קישורים">

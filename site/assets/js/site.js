@@ -1,4 +1,4 @@
-// Page behaviour: header pill, language/theme/motion switches, reveals, lazy videos, showcase scrub, copy button.
+// Page behaviour: header pill, language/theme switches, reveals, lazy videos, showcase scrub, copy button.
 const root = document.documentElement;
 const he = root.lang === 'he';
 const store = {
@@ -27,24 +27,11 @@ themeBtn?.addEventListener('click', () => {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeLabel);
 themeLabel();
 
-// pause animations: every [data-motion-toggle] (hero + footer) drives one state; the label says what a press does
-const motionBtns = document.querySelectorAll('[data-motion-toggle]');
-const motionLabel = () => {
-  const off = root.dataset.motion === 'off';
-  motionBtns.forEach((b) => { b.textContent = off ? (he ? 'הפעילו אנימציות' : 'Play animations') : (he ? 'עצרו אנימציות' : 'Pause animations'); });
-};
 const applyMotion = () => {
   if (still()) document.querySelectorAll('video').forEach((v) => v.pause());
   else document.querySelectorAll('video[data-autoplay]').forEach(checkPlay);
 };
-motionBtns.forEach((b) => b.addEventListener('click', () => {
-  if (root.dataset.motion === 'off') delete root.dataset.motion; else root.dataset.motion = 'off';
-  store.set('dibe-motion', root.dataset.motion || 'on');
-  motionLabel();
-  applyMotion();
-}));
 reduceMQ.addEventListener('change', applyMotion); // OS setting flipped mid-visit
-motionLabel();
 
 // header download pill appears once the hero is gone
 const pill = document.querySelector('.pill-cta');
