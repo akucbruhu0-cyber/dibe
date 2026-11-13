@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>פרטיות: DIBE</title>
+<meta name="description" content="מה נשאר אצלכם במחשב, ומתי DIBE פונה לרשת. בלי אנליטיקס, בלי טלמטריה, בלי חשבונות ובלי בדיקות עדכון.">
+<link rel="canonical" href="https://akucbruhu0-cyber.github.io/dibe/privacy/">
+<link rel="alternate" hreflang="he" href="https://akucbruhu0-cyber.github.io/dibe/privacy/">
+<link rel="alternate" hreflang="en" href="https://akucbruhu0-cyber.github.io/dibe/en/privacy/">
+<meta property="og:title" content="פרטיות: DIBE">
+<meta property="og:image" content="https://akucbruhu0-cyber.github.io/dibe/assets/img/og.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon-32.png">
+<link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('dibe-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">דלגו לתוכן</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../"><img src="../assets/img/logo-96.png" alt="" width="32" height="32">DIBE</a>
+    <div class="actions">
+      <div class="lang" role="group" aria-label="שפה">
+        <span aria-current="true" lang="he">עב</span>
+        <a href="../en/privacy/" hreflang="en" lang="en" aria-label="English" onclick="try{localStorage.setItem('dibe-lang','en')}catch(e){}">EN</a>
+      </div>
+      <a class="btn btn-primary btn-sm" href="../#download">הורדה</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap doc">
+  <h1>פרטיות</h1>
+  <p class="j">DIBE מתמללת על המכשיר שלכם. אין בה אנליטיקס, אין טלמטריה, אין חשבונות ואין בדיקות עדכון.</p>
+
+  <h2>מה נשאר על המק שלכם</h2>
+  <ul>
+    <li>הקלטות, קובצי מדיה שייבאתם, תמלולים, סיכומים והגדרות. הם נשמרים בשתי תיקיות:<br><code>~/Library/Application Support/io.github.akucbruhu0-cyber.dibe</code><br><code>~/Documents/DIBE</code></li>
+    <li>התמלול עצמו: מנוע <code>vibe-server</code> שבתוך האפליקציה רץ מקומית ומאזין רק ל-<code>127.0.0.1</code>, מאחורי טוקן שמשתנה בכל הפעלה.</li>
+  </ul>
+
+  <h2>מתי DIBE משתמשת ברשת: רק כשאתם מבקשים</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th scope="col">כשאתם בוחרים…</th><th scope="col">DIBE פונה אל</th><th scope="col">מה נשלח</th></tr></thead>
+      <tbody>
+        <tr><td>להוריד מודל</td><td><bdi lang="en">Hugging Face</bdi> או דף ה-releases של פרויקט <bdi lang="en">Vibe</bdi> ב-<bdi lang="en">GitHub</bdi></td><td>הורדת קובץ רגילה</td></tr>
+        <tr><td>לתמלל קישור מהרשת</td><td>האתר עצמו, ו-<bdi lang="en">GitHub</bdi> פעם אחת כדי להוריד את <code>yt-dlp</code></td><td>הקישור שהזנתם</td></tr>
+        <tr><td>להשתמש בסיכומי AI או בניקוי הכתבה</td><td>הספק שהגדרתם: <bdi lang="en">Anthropic (Claude)</bdi>, <bdi lang="en">Google (Gemini)</bdi>, השרת התואם <bdi lang="en">OpenAI</bdi> שלכם, או <bdi lang="en">Ollama</bdi> (מקומי כברירת מחדל)</td><td>טקסט התמלול שמסוכם או מנוקה, יחד עם מפתח ה-API שלכם</td></tr>
+        <tr><td>להקליט מהטלפון</td><td>דף הצימוד שמתארח אצל פרויקט <bdi lang="en">Vibe</bdi>, ושרתי ממסר peer-to-peer ‏(<bdi lang="en">iroh</bdi>)</td><td>האודיו עובר מוצפן מהטלפון למק</td></tr>
+        <tr><td>לדווח על באג</td><td>נפתח issue ממולא מראש ב-<bdi lang="en">GitHub</bdi>, בדפדפן שלכם</td><td>רק מה שאתם שולחים שם</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="j">שום דבר לא נשלח ברקע. כשה-AI כבוי וכל המודלים כבר הורדו, DIBE עובדת לגמרי בלי אינטרנט.</p>
+
+  <h2>לעומת Vibe</h2>
+  <p class="j">DIBE הסירה לגמרי את האנליטיקס האנונימי של <bdi lang="en">Vibe</bdi> (התוסף <bdi lang="en">Aptabase</bdi> וכל האירועים שלו), וכיבתה את בדיקות העדכון האוטומטיות.</p>
+  <p class="small muted">המקור: <a href="https://github.com/akucbruhu0-cyber/dibe/blob/main/PRIVACY.md">PRIVACY.md ב-<bdi lang="en">GitHub</bdi></a>.</p>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <ul class="foot-links">
+      <li><a href="../">דף הבית</a></li>
+      <li><a href="../#download">הורדה</a></li>
+      <li><a href="https://github.com/akucbruhu0-cyber/dibe">GitHub</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>

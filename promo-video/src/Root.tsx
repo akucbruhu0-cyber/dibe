@@ -18,6 +18,7 @@ import { OnboardingWelcome, WELCOME_DUR } from "./onboarding/OnboardingWelcome";
 import { REEL_DUR, REEL_FPS, REEL_H, REEL_W, StudentReel } from "./reel/StudentReel";
 import { AIR_DUR, AIR_FPS, AIR_H, AIR_W, AirplaneReel } from "./airplane/AirplaneReel";
 import { GeminiKey, KEY_DUR, KEY_FPS } from "./gemini-key/GeminiKey";
+import { SiteCompositions } from "./site";
 
 type Props = { lang: Lang; guides: boolean; voiceover: boolean; captions: boolean };
 
@@ -54,5 +55,6 @@ export const RemotionRoot: React.FC = () => (
     <Composition id="OnboardingPowerLaptop" component={OnboardingPower} durationInFrames={120} fps={30} width={720} height={720} defaultProps={{ device: "laptop" as const }} />
     <Composition id="OnboardingHardware" component={OnboardingHardware} durationInFrames={120} fps={30} width={720} height={720} />
     <Composition id="OnboardingFit" component={OnboardingFit} durationInFrames={120} fps={30} width={720} height={720} />
+    <SiteCompositions />
   </>
 );
