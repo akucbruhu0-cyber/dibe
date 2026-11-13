@@ -105,7 +105,8 @@ function apply(data, who) {
   const pick = who.key && data.assets[who.key];
   document.querySelectorAll('[data-cta]').forEach((cta) => {
     const label = cta.querySelector('[data-cta-label]') || cta;
-    if (!pick) { label.textContent = t.generic; cta.href = '#download'; cta.removeAttribute('aria-label'); return; }
+    if (!pick) { label.textContent = t.generic; cta.href = '#download'; cta.removeAttribute('aria-label'); delete cta.dataset.os; return; }
+    cta.dataset.os = { arm64: 'apple', intel: 'apple', win: 'windows', apk: 'android' }[who.key];
     const [pre, short, long] = t[who.key];
     setLabel(label, pre, cta.hasAttribute('data-cta-long') ? long : short);
     cta.href = pick.url;

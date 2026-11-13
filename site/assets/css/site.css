@@ -1,6 +1,6 @@
 /* DIBE site. Tokens from dibe-brand-book.html. Logical properties only, so RTL and LTR share every rule. */
 :root {
-  --paper: #F5FAF6; --mint: #CDEBD5; --mint-soft: #E6F5EA; --forest: #1E6A2E; --on-forest: #FFFFFF;
+  --paper: #FFFFFF; --mint: #CDEBD5; --mint-soft: #E6F5EA; --forest: #1E6A2E; --on-forest: #FFFFFF;
   --ink: #0F2418; --muted: #4D6656; --line: #CFE0D4; --card: #FFFFFF;
   --spark: #FFB574; --live: #EE4F45;
   --g1: #FFC37E; --g2: #FF9FC2; --g3: #B8A4FF; --g4: #86D2FF; --g5: #93E6B0;
@@ -33,8 +33,8 @@ body {
 }
 :lang(en) body, body:lang(en) { line-height: 1.6; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
-h2 { font-size: clamp(30px, 4.4vw, 46px); font-weight: 700; }
-h3 { font-size: 21px; font-weight: 500; line-height: 1.3; }
+h2 { font-size: clamp(36px, 5.6vw, 64px); font-weight: 700; }
+h3 { font-size: 24px; font-weight: 500; line-height: 1.3; }
 p, ul, ol { margin: 0; }
 a { color: var(--forest); text-underline-offset: .2em; }
 img, video { display: block; max-width: 100%; }
@@ -131,7 +131,7 @@ code, kbd, .mono { font-family: var(--mono); font-size: .88em; direction: ltr; u
 .hero-copy { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 .eyebrow { font: 500 16px/1.3 var(--display); color: var(--forest); }
 .hero h1 span { display: block; }
-.hero h1 { font-size: clamp(40px, 5vw, 72px); font-weight: 700; line-height: 1.05; letter-spacing: -.01em; }
+.hero h1 { font-size: clamp(48px, 6.6vw, 96px); font-weight: 700; line-height: 1.05; letter-spacing: -.01em; }
 :lang(en) .hero h1 { letter-spacing: -.025em; }
 .hero .sub { font-size: clamp(17px, 1.6vw, 19px); max-width: 52ch; }
 .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -142,11 +142,6 @@ code, kbd, .mono { font-family: var(--mono); font-size: .88em; direction: ltr; u
   opacity: 0; transition: opacity 400ms ease;
 }
 .hero-media video.ready { opacity: 1; }
-.media-toggle {
-  position: absolute; inset-block-end: 12px; inset-inline-end: 12px; z-index: 1;
-  background: var(--card); color: var(--ink); border-color: var(--line);
-}
-.media-toggle:focus-visible { outline-color: #1E6A2E; } /* clips are always light, in both themes */
 @media (max-width: 860px) { .hero-card { grid-template-columns: 1fr; } }
 
 /* the static live-transcript stand-in behind the hero video */
@@ -254,7 +249,7 @@ details[open] > summary .chev { transform: rotate(180deg); }
   display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap;
   padding-block: 16px; border-block-start: 1px solid var(--line);
 }
-.rows .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rows .what { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rows .what b { font: 500 17px var(--display); }
 .rows .status { font-size: 15px; color: var(--muted); }
 .rows .btn { font-size: 14px; min-height: 44px; max-width: 100%; }
@@ -334,3 +329,25 @@ details[open] > summary .chev { transform: rotate(180deg); }
 [data-motion="off"] .scrub .scene + .scene { margin-block-start: 24px; }
 [data-motion="off"] .scrub .scene-stage { position: static; height: auto; }
 [data-motion="off"] .scrub .progress { display: none; }
+
+/* OS logos in download rows and the auto CTA (mask = white on the forest button) */
+.os-ico { width: 28px; height: 28px; flex: none; }
+:root[data-theme="dark"] .os-ico[src$="os-apple.svg"] { filter: invert(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .os-ico[src$="os-apple.svg"] { filter: invert(1); } }
+[data-cta][data-os]::before { content: ""; width: 1.2em; height: 1.2em; flex: none; background: currentColor; -webkit-mask: var(--os) center/contain no-repeat; mask: var(--os) center/contain no-repeat; }
+[data-os="apple"] { --os: url(../img/os-apple.svg); }
+[data-os="windows"] { --os: url(../img/os-windows.svg); }
+[data-os="android"] { --os: url(../img/os-android.svg); }
+
+/* Buy Me a Coffee: their yellow, their cup */
+.btn-bmc { background: #FFDD00; color: #000; font-weight: 600; }
+.btn-bmc img { width: 20px; height: 20px; }
+@media (hover: hover) and (pointer: fine) { .btn-bmc:hover { background: #F5D000; } }
+
+/* CTA takes the detected platform's colour */
+.btn-primary[data-os="apple"] { background: #000; color: #fff; }
+.btn-primary[data-os="windows"] { background: #0078D4; color: #fff; }
+.btn-primary[data-os="android"] { background: #3DDC84; color: #0F2418; }
+:root[data-theme="dark"] .btn-primary[data-os="apple"] { background: #fff; color: #000; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-primary[data-os="apple"] { background: #fff; color: #000; } }
+@media (hover: hover) and (pointer: fine) { .btn-primary[data-os]:hover { filter: brightness(1.12); } }

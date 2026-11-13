@@ -33,7 +33,6 @@
   var d = document.documentElement; d.classList.add('js');
   try {
     var t = localStorage.getItem('dibe-theme'); if (t) d.dataset.theme = t;
-    if (localStorage.getItem('dibe-motion') === 'off') d.dataset.motion = 'off';
     var langs = navigator.languages || [navigator.language || ''];
     if (!localStorage.getItem('dibe-lang') && !/bot|crawl|spider|slurp/i.test(navigator.userAgent) &&
         !langs.some(function (l) { return /^(he|iw)\b/i.test(l); })) location.replace('en/');
@@ -107,7 +106,6 @@
           <source src="media/SiteHero-he.webm" type="video/webm">
           <source src="media/SiteHero-he.mp4" type="video/mp4">
         </video>
-        <button class="btn btn-sm media-toggle" type="button" data-motion-toggle>עצרו אנימציות</button>
       </div>
     </div>
   </div>
@@ -232,18 +230,22 @@
       <summary><span>כל הגרסאות</span> <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
       <ul class="rows">
         <li data-asset="arm64">
+          <img class="os-ico" src="assets/img/os-apple.svg" alt="" width="28" height="28">
           <div class="what"><b>מק עם <bdi lang="en">Apple Silicon</bdi></b><span class="status">נבדקה ומומלצת</span></div>
           <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.4.0/DIBE-1.4.0-macos-arm64.zip" aria-label="DIBE-1.4.0-macos-arm64.zip, 38 MB, הורדה"><span class="mono" data-asset-name>DIBE-1.4.0-macos-arm64.zip</span><bdi class="mono" data-asset-size>38 MB</bdi></a>
         </li>
         <li data-asset="intel">
+          <img class="os-ico" src="assets/img/os-apple.svg" alt="" width="28" height="28">
           <div class="what"><b>מק עם <bdi lang="en">Intel</bdi></b><span class="status">לא נבדקה, בלי זיהוי דוברים</span></div>
           <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.4.0/DIBE-1.4.0-macos-intel.zip" aria-label="DIBE-1.4.0-macos-intel.zip, 43 MB, הורדה"><span class="mono" data-asset-name>DIBE-1.4.0-macos-intel.zip</span><bdi class="mono" data-asset-size>43 MB</bdi></a>
         </li>
         <li data-asset="win">
+          <img class="os-ico" src="assets/img/os-windows.svg" alt="" width="28" height="28">
           <div class="what"><b><bdi lang="en">Windows 10/11, 64-bit</bdi></b><span class="status">לא נבדקה</span></div>
           <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/download/v1.4.0/DIBE-1.4.0-windows-x64-setup.exe" aria-label="DIBE-1.4.0-windows-x64-setup.exe, 43 MB, הורדה"><span class="mono" data-asset-name>DIBE-1.4.0-windows-x64-setup.exe</span><bdi class="mono" data-asset-size>43 MB</bdi></a>
         </li>
         <li data-asset="apk">
+          <img class="os-ico" src="assets/img/os-android.svg" alt="" width="28" height="28">
           <div class="what"><b>אנדרואיד (<bdi>64-bit</bdi>)</b><span class="status">טלפון 64-ביט מ-2019 בערך, <bdi lang="en">Snapdragon 855</bdi> ומעלה</span></div>
           <a class="btn btn-outline" href="https://github.com/akucbruhu0-cyber/dibe/releases/latest/download/dibe-android-arm64.apk" aria-label="dibe-android-arm64.apk, 12 MB, הורדה"><span class="mono" data-asset-name>dibe-android-arm64.apk</span><bdi class="mono" data-asset-size>12 MB</bdi></a>
         </li>
@@ -285,7 +287,7 @@
         <p>אם היא חסכה לכם זמן, אפשר לקנות לה קפה.</p>
       </div>
       <div class="act">
-        <a class="btn btn-outline" href="https://buymeacoffee.com/dibe" target="_blank" rel="noopener">קנו ל-DIBE קפה<span class="sr-only"> (נפתח בלשונית חדשה)</span></a>
+        <a class="btn btn-bmc" href="https://buymeacoffee.com/dibe" target="_blank" rel="noopener"><img src="assets/img/bmc.svg" alt="" width="20" height="20">קנו ל-DIBE קפה<span class="sr-only"> (נפתח בלשונית חדשה)</span></a>
         <p class="small">לא חובה. ההורדה לא תלויה בזה.</p>
       </div>
     </div>
@@ -315,7 +317,6 @@
       <a class="brand" href="./"><img src="assets/img/logo-96.png" alt="" width="32" height="32"><span>DIBE <span class="muted" style="font:400 15px var(--body)">תמלול פרטי. בלייב.</span></span></a>
       <div class="toggles">
         <button class="btn btn-outline btn-sm" type="button" data-theme-toggle>מצב כהה</button>
-        <button class="btn btn-outline btn-sm" type="button" data-motion-toggle>עצרו אנימציות</button>
       </div>
     </div>
     <nav aria-label="קישורים">
